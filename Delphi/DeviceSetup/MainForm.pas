@@ -115,6 +115,14 @@ type
 var
   frmMain: TMainForm;
 
+{ Command-line self test. "DeviceSetup.exe /selftest" builds both forms,
+  checks that the catalog loaded and that MAIN 2 accepted the device, then
+  exits with 0 (or 1, after writing an error report). The compiler cannot see
+  form-streaming problems - a component in the .dfm/.lfm that does not match
+  the form class only fails at run time - so the build pipeline runs this. }
+function SelfTestRequested: Boolean;
+function RunSelfTest: Integer;
+
 implementation
 
 {$IFDEF FPC}
@@ -680,6 +688,63 @@ procedure TMainForm.DeviceArrivedOrLeft(Sender: TObject;
 begin
   { MAIN 1 only reflects the state in its menu; MAIN 2 writes the log. }
   DevicesChanged(Sender);
+end;
+
+function SelfTestRequested: Boolean;
+begin
+  Result := (ParamCount >= 1) and SameText(ParamStr(1), '/selftest');
+end;
+
+function RunSelfTest: Integer;
+var
+  Form1: TMainForm;
+  Form2: TMain2Form;
+  BrandCount, ModelCount: Integer;
+begin
+  Result := 0;
+  Form1 := nil;
+  Form2 := nil;
+  try
+    {$IFDEF FPC}
+    { Without this the LCL does not stream the .lfm into the form and every
+      component field stays nil. The normal start-up path sets it in the
+      project file; the self test runs before that. }
+    RequireDerivedFormResource := True;
+    {$ENDIF}
+    Application.Initialize;
+
+    if TDeviceCatalog.BrandCount <= 0 then
+      raise Exception.Create('The model catalog has no brands.');
+    BrandCount := TDeviceCatalog.BrandCount;
+    ModelCount := TDeviceCatalog.TotalModelCount;
+    if ModelCount <= 0 then
+      raise Exception.Create('The model catalog has no models.');
+
+    { MAIN 1: streams the form, fills both lists, starts the device watcher. }
+    Form1 := TMainForm.Create(nil);
+    if Form1.lstBrands.Items.Count <> BrandCount then
+      raise Exception.Create(Format(
+        'MAIN 1 listed %d brands but the catalog has %d.',
+        [Form1.lstBrands.Items.Count, BrandCount]));
+    if Form1.lstModels.Items.Count = 0 then
+      raise Exception.Create('MAIN 1 shows no models for the start-up brand.');
+
+    { MAIN 2: the larger form, only streamed when the user presses Next. }
+    Form2 := TMain2Form.Create(nil);
+    Form2.SetDevice('Realme', 'RMX3511 : Realme C35');
+    if Pos('Realme C35', Form2.Caption) = 0 then
+      raise Exception.Create('MAIN 2 did not accept the selected device.');
+  except
+    on E: Exception do
+    begin
+      TAppSettings.WriteErrorReport('Self test',
+        string(E.ClassName) + ': ' + E.Message);
+      Result := 1;
+    end;
+  end;
+  Form2.Free;
+  Form1.Free;
+  TAppSettings.Save;
 end;
 
 procedure TMainForm.HandleAppException(Sender: TObject; E: Exception);

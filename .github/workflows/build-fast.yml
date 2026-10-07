@@ -77,19 +77,36 @@ jobs:
           Copy-Item $exe "artifacts\DeviceSetup-${{ matrix.platform }}.exe"
           Get-Item "artifacts\*.exe" | Format-Table Name, Length
 
-      - name: Smoke test the EXE
+      - name: Self test both forms
         shell: pwsh
         run: |
           # The compiler cannot see form-streaming problems: a component that
           # exists in the .lfm but not in the form class only fails when the
-          # app starts. Launch it, make sure it is still alive, then close it.
+          # form is created. /selftest builds MAIN 1 *and* MAIN 2 and exits
+          # non-zero if anything goes wrong.
           $exe = Join-Path (Get-Location) "artifacts\DeviceSetup-${{ matrix.platform }}.exe"
           if (-not (Test-Path $exe)) { Write-Output "::error::EXE not found: $exe"; exit 1 }
+          $proc = Start-Process -FilePath $exe -ArgumentList '/selftest' -PassThru -Wait
+          if ($proc.ExitCode -ne 0) {
+            $logdir = Join-Path $env:APPDATA 'MobileServicingTools\logs'
+            Get-ChildItem -Path $logdir -Filter 'error-*.txt' -ErrorAction SilentlyContinue |
+              ForEach-Object { Get-Content $_.FullName | ForEach-Object { Write-Output "::error::$_" } }
+            Write-Output "::error::Self test failed with exit code $($proc.ExitCode)"
+            exit 1
+          }
+          Write-Output 'Self test passed: both forms stream and the catalog loads.'
+
+      - name: Smoke test the EXE
+        shell: pwsh
+        run: |
+          # Then make sure the real start-up path (message loop, device watcher)
+          # keeps running instead of dying on the way in.
+          $exe = Join-Path (Get-Location) "artifacts\DeviceSetup-${{ matrix.platform }}.exe"
           $proc = Start-Process -FilePath $exe -PassThru
           Start-Sleep -Seconds 10
           $proc.Refresh()
           if ($proc.HasExited) {
-            Write-Output "::error::The app exited during start-up (code $($proc.ExitCode)) - a form probably could not be streamed from its .lfm"
+            Write-Output "::error::The app exited during start-up (code $($proc.ExitCode))"
             exit 1
           }
           Write-Output "Started and stayed running (PID $($proc.Id)); closing it."
