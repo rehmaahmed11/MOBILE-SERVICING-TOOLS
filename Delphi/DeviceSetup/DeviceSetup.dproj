@@ -36,7 +36,12 @@
     <DelphiCompile Include="$(MainSource)">
       <MainSource>MainSource</MainSource>
     </DelphiCompile>
-    <DCCReference Include="MainForm.pas" />
+    <DCCReference Include="MainForm.pas">
+      <Form>frmMain</Form>
+    </DCCReference>
+    <DCCReference Include="Main2Form.pas">
+      <Form>frmMain2</Form>
+    </DCCReference>
     <DCCReference Include="DeviceCatalog.pas" />
   </ItemGroup>
 

@@ -1,18 +1,28 @@
 # Mobile Servicing Tools — Device Setup
 
-The first screen is implemented as a native **Delphi VCL** Windows application. It presents phone brands and their models side by side; selecting a brand refreshes the model list, and the **Next** button becomes available after a model is selected.
+A native **Delphi VCL** Windows application.
+
+## Screens
+
+### MAIN 1 — first screen (`MainForm.pas` / `MainForm.dfm`)
+
+Laid out to match the MAIN 1 reference screenshot:
+
+- **Blue menu icon** (top-left): opens a menu with *Next*, *Save model list…* and *Exit*.
+- **Green play icon** (top-right) = **Next**: opens MAIN 2 for the selected model. It is greyed out until a model is selected. Double-clicking a model or pressing **Enter** on it does the same.
+- **Orange arrow icon** (top-right): saves the model list currently shown to a `.txt` file.
+- **Quick search** box: type to search all brands. Matches can be in the model code (e.g. `RMX3511`), the model name or the brand. Clear the box or press **Esc** to go back to the brand's list.
+- **Brand list** (left) and **model list** (right), with models shown as `CODE : Name`, e.g. `RMX3382 : Realme 8s 5G`. Realme is selected when the app starts.
+
+### MAIN 2 — opened by Next (`Main2Form.pas` / `Main2Form.dfm`)
+
+Shows the brand, model name and model code selected on MAIN 1. The back icon, **< Back** button or **Esc** returns to MAIN 1. This is a placeholder layout until the MAIN 2 reference screenshot is provided.
 
 ## Delphi project
 
-Open [`Delphi/DeviceSetup/DeviceSetup.dproj`](Delphi/DeviceSetup/DeviceSetup.dproj) in RAD Studio. The project targets both **Win32 (32-bit)** and **Win64 (64-bit)** (`TargetedPlatforms=3`); select the desired target platform in the IDE and build it separately. The matching Delphi compiler/platform support must be installed.
+Open [`Delphi/DeviceSetup/DeviceSetup.dproj`](Delphi/DeviceSetup/DeviceSetup.dproj) in RAD Studio. The project targets both **Win32 (32-bit)** and **Win64 (64-bit)** (`TargetedPlatforms=3`); select the desired target platform in the IDE and build it separately.
 
-## Current scope
-
-- Brand/model selection screen only — the next workflow screen is intentionally left for the next stage.
-- The **Next** button confirms the selection and explains that the next screen is not part of this stage.
-- `DeviceCatalog.pas` contains a small in-memory starter catalog for Nokia, Samsung, Google Pixel, Lenovo, and Motorola. This is demo data, not a database or backend; it can be replaced with a service/data source later.
-
-The VCL source and form can be found in `Delphi/DeviceSetup/` (`MainForm.pas` and `MainForm.dfm`).
+`DeviceCatalog.pas` holds an in-memory starter catalog. The Realme entries match the reference screenshot. The other brands contain sample entries only: check them before production use, or replace the catalog with a real data source.
 
 ## EXE artifacts on merges
 

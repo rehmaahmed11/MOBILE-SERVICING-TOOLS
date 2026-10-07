@@ -1,63 +1,75 @@
 unit MainForm;
 
+{ MAIN 1 - first screen.
+  Layout (matching the reference screenshot):
+    - blue menu icon top-left
+    - "next" (green play) and "save" (orange arrow) icons top-right
+    - "Quick search" combo box
+    - brand list on the left, "<code> : <name>" model list on the right
+  Pressing the green Next icon (or double-clicking / Enter on a model)
+  opens MAIN 2 for the selected device. }
+
 interface
 
 uses
   Winapi.Windows,
   System.Classes,
   System.SysUtils,
+  System.StrUtils,
   System.Types,
   Vcl.Controls,
   Vcl.Dialogs,
   Vcl.Forms,
   Vcl.Graphics,
+  Vcl.Menus,
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   DeviceCatalog;
 
 type
   TMainForm = class(TForm)
-    pnlHeader: TPanel;
-    lblEyebrow: TLabel;
-    lblTitle: TLabel;
-    lblSubtitle: TLabel;
-    lblStep: TLabel;
-    pnlFooter: TPanel;
-    lblSelectionCaption: TLabel;
-    lblSelectionValue: TLabel;
-    lblSelectionNote: TLabel;
-    btnNext: TButton;
-    pnlWorkspace: TPanel;
-    pnlBrandCard: TPanel;
-    lblBrandSection: TLabel;
-    lblBrandCount: TLabel;
-    lblBrandTitle: TLabel;
-    lblBrandHelper: TLabel;
+    pbMenu: TPaintBox;
+    pbNext: TPaintBox;
+    pbDownload: TPaintBox;
+    cbSearch: TComboBox;
     lstBrands: TListBox;
-    pnlModelCard: TPanel;
-    lblModelSection: TLabel;
-    lblModelCount: TLabel;
-    lblModelTitle: TLabel;
-    lblModelHelper: TLabel;
     lstModels: TListBox;
+    pmMain: TPopupMenu;
+    miNext: TMenuItem;
+    miSaveList: TMenuItem;
+    miSeparator: TMenuItem;
+    miExit: TMenuItem;
     procedure FormCreate(Sender: TObject);
-    procedure FormResize(Sender: TObject);
+    procedure FormShow(Sender: TObject);
+    procedure pbMenuPaint(Sender: TObject);
+    procedure pbNextPaint(Sender: TObject);
+    procedure pbDownloadPaint(Sender: TObject);
+    procedure pbMenuClick(Sender: TObject);
+    procedure pbNextClick(Sender: TObject);
+    procedure pbDownloadClick(Sender: TObject);
+    procedure cbSearchChange(Sender: TObject);
+    procedure cbSearchEnter(Sender: TObject);
+    procedure cbSearchExit(Sender: TObject);
+    procedure cbSearchKeyDown(Sender: TObject; var Key: Word;
+      Shift: TShiftState);
     procedure lstBrandsClick(Sender: TObject);
     procedure lstModelsClick(Sender: TObject);
-    procedure lstBrandsDrawItem(Control: TWinControl; Index: Integer;
-      Rect: TRect; State: TOwnerDrawState);
-    procedure lstModelsDrawItem(Control: TWinControl; Index: Integer;
-      Rect: TRect; State: TOwnerDrawState);
-    procedure btnNextClick(Sender: TObject);
+    procedure lstModelsDblClick(Sender: TObject);
+    procedure lstModelsKeyDown(Sender: TObject; var Key: Word;
+      Shift: TShiftState);
+    procedure miExitClick(Sender: TObject);
   private
-    FUpdatingCatalog: Boolean;
-    procedure ApplyTheme;
-    procedure ReflowLayout;
-    procedure PopulateModels(const ABrandIndex: Integer);
-    procedure RefreshSelection;
-    procedure DrawCatalogItem(AListBox: TListBox; const AIndex: Integer;
-      const ARect: TRect; const AState: TOwnerDrawState;
-      const AShowModelCount: Boolean);
+    FUpdating: Boolean;
+    function SearchText: string;
+    procedure LoadBrands;
+    procedure LoadBrandModels(const ABrandIndex: Integer);
+    procedure LoadSearchResults(const AText: string);
+    procedure AddModelItem(const ABrandIndex, AModelIndex: Integer;
+      const AWithBrand: Boolean);
+    function SelectedDevice(out ABrandIndex, AModelIndex: Integer): Boolean;
+    procedure UpdateNextState;
+    procedure OpenMain2;
+    procedure SaveModelList;
   end;
 
 var
@@ -67,65 +79,137 @@ implementation
 
 {$R *.dfm}
 
+uses
+  Main2Form;
+
 const
-  CBackground: TColor = TColor($001F120C);     { RGB(12, 18, 31) }
-  CSurface: TColor = TColor($002D1D14);        { RGB(20, 29, 45) }
-  CListRow: TColor = TColor($0036281D);        { RGB(29, 40, 54) }
-  CSelectedRow: TColor = TColor($00433722);    { RGB(34, 55, 67) }
-  CSelectedBorder: TColor = TColor($00553E2B); { RGB(43, 62, 85) }
-  CPrimaryText: TColor = TColor($00FAF4F0);    { RGB(240, 244, 250) }
-  CSecondaryText: TColor = TColor($00C7B5A8);  { RGB(168, 181, 199) }
-  CMutedText: TColor = TColor($00998271);      { RGB(113, 130, 153) }
-  CAccent: TColor = TColor($00ADDA38);         { RGB(56, 218, 173) }
+  CSearchPlaceholder = 'Quick search';
+  CRefFactor = 65536;
 
-procedure TMainForm.ApplyTheme;
+function PackRef(const ABrandIndex, AModelIndex: Integer): TObject;
 begin
-  Color := CBackground;
-  Font.Name := 'Segoe UI';
-
-  pnlHeader.Color := CBackground;
-  pnlWorkspace.Color := CBackground;
-  pnlFooter.Color := CBackground;
-  pnlBrandCard.Color := CSurface;
-  pnlModelCard.Color := CSurface;
-
-  lblEyebrow.Font.Color := CAccent;
-  lblTitle.Font.Color := CPrimaryText;
-  lblSubtitle.Font.Color := CSecondaryText;
-  lblStep.Font.Color := CMutedText;
-
-  lblBrandSection.Font.Color := CAccent;
-  lblBrandCount.Font.Color := CMutedText;
-  lblBrandTitle.Font.Color := CPrimaryText;
-  lblBrandHelper.Font.Color := CSecondaryText;
-
-  lblModelSection.Font.Color := CAccent;
-  lblModelCount.Font.Color := CMutedText;
-  lblModelTitle.Font.Color := CPrimaryText;
-  lblModelHelper.Font.Color := CSecondaryText;
-
-  lblSelectionCaption.Font.Color := CAccent;
-  lblSelectionValue.Font.Color := CPrimaryText;
-  lblSelectionNote.Font.Color := CSecondaryText;
-
-  lstBrands.Color := CSurface;
-  lstBrands.Font.Color := CPrimaryText;
-  lstModels.Color := CSurface;
-  lstModels.Font.Color := CPrimaryText;
-
-  btnNext.Color := CAccent;
-  btnNext.Font.Color := CBackground;
-  btnNext.StyleElements := [seFont, seBorder];
-  btnNext.Cursor := crHandPoint;
-  btnNext.Caption := 'NEXT  ' + #$2193;
+  Result := TObject(Pointer(NativeInt(ABrandIndex) * CRefFactor + AModelIndex));
 end;
+
+procedure UnpackRef(const ARef: TObject; out ABrandIndex, AModelIndex: Integer);
+var
+  Value: NativeInt;
+begin
+  Value := NativeInt(Pointer(ARef));
+  ABrandIndex := Integer(Value div CRefFactor);
+  AModelIndex := Integer(Value mod CRefFactor);
+end;
+
+{ ---------------------------------------------------------------- icons }
+
+procedure DrawMenuIcon(ACanvas: TCanvas; const R: TRect);
+var
+  I, Y: Integer;
+begin
+  ACanvas.Brush.Style := bsSolid;
+  ACanvas.Brush.Color := clBtnFace;
+  ACanvas.FillRect(R);
+  ACanvas.Pen.Color := RGB(16, 82, 168);
+  ACanvas.Brush.Color := RGB(36, 120, 214);
+  for I := 0 to 2 do
+  begin
+    Y := R.Top + 3 + I * 8;
+    ACanvas.RoundRect(R.Left + 3, Y, R.Right - 3, Y + 7, 4, 4);
+  end;
+end;
+
+procedure DrawNextIcon(ACanvas: TCanvas; const R: TRect; const AEnabled: Boolean);
+var
+  L, T: Integer;
+  Frame, Fill, Arrow, ArrowEdge: TColor;
+begin
+  ACanvas.Brush.Style := bsSolid;
+  ACanvas.Brush.Color := clBtnFace;
+  ACanvas.FillRect(R);
+  L := R.Left;
+  T := R.Top;
+  if AEnabled then
+  begin
+    Frame := RGB(70, 70, 70);
+    Fill := clWhite;
+    Arrow := RGB(38, 170, 64);
+    ArrowEdge := RGB(22, 118, 42);
+  end
+  else
+  begin
+    Frame := RGB(150, 150, 150);
+    Fill := RGB(235, 235, 235);
+    Arrow := RGB(170, 200, 175);
+    ArrowEdge := RGB(140, 165, 145);
+  end;
+
+  { window }
+  ACanvas.Pen.Color := Frame;
+  ACanvas.Brush.Color := Fill;
+  ACanvas.Rectangle(L + 3, T + 3, L + 21, T + 21);
+  ACanvas.Brush.Color := Frame;
+  ACanvas.FillRect(Rect(L + 3, T + 3, L + 21, T + 7));
+
+  { green play arrow }
+  ACanvas.Pen.Color := ArrowEdge;
+  ACanvas.Brush.Color := Arrow;
+  ACanvas.Polygon([Point(L + 12, T + 10), Point(L + 12, T + 26),
+    Point(L + 25, T + 18)]);
+end;
+
+procedure DrawDownloadIcon(ACanvas: TCanvas; const R: TRect);
+var
+  L, T: Integer;
+begin
+  ACanvas.Brush.Style := bsSolid;
+  ACanvas.Brush.Color := clBtnFace;
+  ACanvas.FillRect(R);
+  L := R.Left;
+  T := R.Top;
+  ACanvas.Pen.Color := RGB(200, 60, 20);
+  ACanvas.Brush.Color := RGB(242, 92, 34);
+  ACanvas.Rectangle(L + 11, T + 2, L + 18, T + 12);
+  ACanvas.Polygon([Point(L + 5, T + 12), Point(L + 23, T + 12),
+    Point(L + 14, T + 21)]);
+  ACanvas.Rectangle(L + 4, T + 23, L + 25, T + 27);
+end;
+
+{ ---------------------------------------------------------------- form }
 
 procedure TMainForm.FormCreate(Sender: TObject);
 var
   I: Integer;
 begin
-  ApplyTheme;
-  FUpdatingCatalog := True;
+  LoadBrands;
+  cbSearch.Text := CSearchPlaceholder;
+
+  { Start on Realme, as in the reference screen. }
+  for I := 0 to lstBrands.Items.Count - 1 do
+    if SameText(lstBrands.Items[I], 'Realme') then
+    begin
+      lstBrands.ItemIndex := I;
+      Break;
+    end;
+  if lstBrands.ItemIndex < 0 then
+    lstBrands.ItemIndex := 0;
+  LoadBrandModels(lstBrands.ItemIndex);
+  UpdateNextState;
+end;
+
+procedure TMainForm.FormShow(Sender: TObject);
+begin
+  if cbSearch.CanFocus then
+  begin
+    cbSearch.SetFocus;
+    cbSearch.SelectAll;
+  end;
+end;
+
+procedure TMainForm.LoadBrands;
+var
+  I: Integer;
+begin
+  FUpdating := True;
   try
     lstBrands.Items.BeginUpdate;
     try
@@ -135,251 +219,301 @@ begin
     finally
       lstBrands.Items.EndUpdate;
     end;
-
-    lstBrands.ItemIndex := -1;
-    lstModels.Items.Clear;
-    lstModels.ItemIndex := -1;
-    lstModels.Enabled := False;
   finally
-    FUpdatingCatalog := False;
+    FUpdating := False;
   end;
-
-  lblBrandCount.Caption := Format('%d BRANDS', [TDeviceCatalog.BrandCount]);
-  lblModelCount.Caption := '0 MODELS';
-  lblModelHelper.Caption := 'Select a brand to load its models';
-  lblSelectionValue.Caption := 'No device selected';
-  lblSelectionNote.Caption := 'Select a brand, then choose a model to continue.';
-  btnNext.Enabled := False;
-  ReflowLayout;
-  lstBrands.Invalidate;
-  lstModels.Invalidate;
 end;
 
-procedure TMainForm.FormResize(Sender: TObject);
-begin
-  ReflowLayout;
-end;
-
-procedure TMainForm.ReflowLayout;
+procedure TMainForm.AddModelItem(const ABrandIndex, AModelIndex: Integer;
+  const AWithBrand: Boolean);
 var
-  AvailableWidth: Integer;
-  BrandCardWidth: Integer;
-  SummaryWidth: Integer;
+  ItemText: string;
 begin
-  if not Assigned(pnlWorkspace) then
-    Exit;
-
-  AvailableWidth := pnlWorkspace.ClientWidth - pnlWorkspace.Padding.Left -
-    pnlWorkspace.Padding.Right;
-  BrandCardWidth := Round(AvailableWidth * 0.37);
-  if BrandCardWidth < 290 then
-    BrandCardWidth := 290;
-  if BrandCardWidth > 430 then
-    BrandCardWidth := 430;
-  pnlBrandCard.Width := BrandCardWidth;
-
-  if Assigned(btnNext) and Assigned(lblSelectionValue) and
-     Assigned(lblSelectionNote) then
-  begin
-    SummaryWidth := btnNext.Left - lblSelectionValue.Left - 32;
-    if SummaryWidth < 180 then
-      SummaryWidth := 180;
-    lblSelectionValue.Width := SummaryWidth;
-    lblSelectionNote.Width := SummaryWidth;
-  end;
+  ItemText := TDeviceCatalog.ModelName(ABrandIndex, AModelIndex);
+  if AWithBrand then
+    ItemText := ItemText + '  [' + TDeviceCatalog.BrandName(ABrandIndex) + ']';
+  lstModels.Items.AddObject(ItemText, PackRef(ABrandIndex, AModelIndex));
 end;
 
-procedure TMainForm.PopulateModels(const ABrandIndex: Integer);
+procedure TMainForm.LoadBrandModels(const ABrandIndex: Integer);
 var
   I: Integer;
-  ModelCount: Integer;
 begin
-  FUpdatingCatalog := True;
+  FUpdating := True;
   try
     lstModels.Items.BeginUpdate;
     try
       lstModels.Items.Clear;
+      if (ABrandIndex >= 0) and (ABrandIndex < TDeviceCatalog.BrandCount) then
+        for I := 0 to TDeviceCatalog.ModelCount(ABrandIndex) - 1 do
+          AddModelItem(ABrandIndex, I, False);
       lstModels.ItemIndex := -1;
-      if (ABrandIndex >= 0) and
-         (ABrandIndex < TDeviceCatalog.BrandCount) then
-      begin
-        ModelCount := TDeviceCatalog.ModelCount(ABrandIndex);
-        for I := 0 to ModelCount - 1 do
-          lstModels.Items.Add(TDeviceCatalog.ModelName(ABrandIndex, I));
-
-        lblModelHelper.Caption := Format('Available models for %s',
-          [TDeviceCatalog.BrandName(ABrandIndex)]);
-        lblModelCount.Caption := Format('%d MODELS', [ModelCount]);
-        lstModels.Enabled := True;
-      end
-      else
-      begin
-        lblModelHelper.Caption := 'Select a brand to load its models';
-        lblModelCount.Caption := '0 MODELS';
-        lstModels.Enabled := False;
-      end;
     finally
       lstModels.Items.EndUpdate;
     end;
   finally
-    FUpdatingCatalog := False;
+    FUpdating := False;
   end;
-
-  lstModels.Invalidate;
+  UpdateNextState;
 end;
 
-procedure TMainForm.RefreshSelection;
+procedure TMainForm.LoadSearchResults(const AText: string);
 var
-  BrandIndex: Integer;
-  ModelIndex: Integer;
+  B, M: Integer;
+  BrandMatches: Boolean;
 begin
-  BrandIndex := lstBrands.ItemIndex;
-  ModelIndex := lstModels.ItemIndex;
+  FUpdating := True;
+  try
+    lstModels.Items.BeginUpdate;
+    try
+      lstModels.Items.Clear;
+      for B := 0 to TDeviceCatalog.BrandCount - 1 do
+      begin
+        BrandMatches := ContainsText(TDeviceCatalog.BrandName(B), AText);
+        for M := 0 to TDeviceCatalog.ModelCount(B) - 1 do
+          if BrandMatches or
+             ContainsText(TDeviceCatalog.ModelName(B, M), AText) then
+            AddModelItem(B, M, True);
+      end;
+      lstModels.ItemIndex := -1;
+    finally
+      lstModels.Items.EndUpdate;
+    end;
+  finally
+    FUpdating := False;
+  end;
+  UpdateNextState;
+end;
 
-  if (BrandIndex >= 0) and (ModelIndex >= 0) then
-  begin
-    lblSelectionValue.Caption := Format('%s  /  %s',
-      [TDeviceCatalog.BrandName(BrandIndex),
-       TDeviceCatalog.ModelName(BrandIndex, ModelIndex)]);
-    lblSelectionNote.Caption := 'Device selected. Continue when you are ready.';
-    btnNext.Enabled := True;
-  end
-  else if BrandIndex >= 0 then
-  begin
-    lblSelectionValue.Caption := TDeviceCatalog.BrandName(BrandIndex);
-    lblSelectionNote.Caption := 'Now choose a model from the list.';
-    btnNext.Enabled := False;
-  end
+function TMainForm.SearchText: string;
+begin
+  Result := Trim(cbSearch.Text);
+  if SameText(Result, CSearchPlaceholder) then
+    Result := '';
+end;
+
+function TMainForm.SelectedDevice(out ABrandIndex,
+  AModelIndex: Integer): Boolean;
+begin
+  ABrandIndex := -1;
+  AModelIndex := -1;
+  Result := lstModels.ItemIndex >= 0;
+  if Result then
+    UnpackRef(lstModels.Items.Objects[lstModels.ItemIndex],
+      ABrandIndex, AModelIndex);
+end;
+
+procedure TMainForm.UpdateNextState;
+var
+  B, M: Integer;
+begin
+  pbNext.Enabled := SelectedDevice(B, M);
+  miNext.Enabled := pbNext.Enabled;
+  pbNext.Invalidate;
+end;
+
+{ ---------------------------------------------------------------- search }
+
+procedure TMainForm.cbSearchChange(Sender: TObject);
+var
+  Query: string;
+begin
+  if FUpdating then
+    Exit;
+  Query := SearchText;
+  if Query = '' then
+    LoadBrandModels(lstBrands.ItemIndex)
   else
+    LoadSearchResults(Query);
+end;
+
+procedure TMainForm.cbSearchEnter(Sender: TObject);
+begin
+  if SameText(cbSearch.Text, CSearchPlaceholder) then
+    cbSearch.SelectAll;
+end;
+
+procedure TMainForm.cbSearchExit(Sender: TObject);
+var
+  Query: string;
+begin
+  Query := SearchText;
+  if Query = '' then
   begin
-    lblSelectionValue.Caption := 'No device selected';
-    lblSelectionNote.Caption := 'Select a brand, then choose a model to continue.';
-    btnNext.Enabled := False;
+    FUpdating := True;
+    try
+      cbSearch.Text := CSearchPlaceholder;
+    finally
+      FUpdating := False;
+    end;
+  end
+  else if cbSearch.Items.IndexOf(Query) < 0 then
+    cbSearch.Items.Insert(0, Query);
+end;
+
+procedure TMainForm.cbSearchKeyDown(Sender: TObject; var Key: Word;
+  Shift: TShiftState);
+begin
+  case Key of
+    VK_RETURN, VK_DOWN:
+      if (not cbSearch.DroppedDown) and (lstModels.Items.Count > 0) then
+      begin
+        Key := 0;
+        if (SearchText <> '') and (cbSearch.Items.IndexOf(SearchText) < 0) then
+          cbSearch.Items.Insert(0, SearchText);
+        lstModels.SetFocus;
+        if lstModels.ItemIndex < 0 then
+          lstModels.ItemIndex := 0;
+        UpdateNextState;
+      end;
+    VK_ESCAPE:
+      begin
+        Key := 0;
+        cbSearch.Text := '';
+        cbSearchChange(cbSearch);
+      end;
   end;
 end;
+
+{ ---------------------------------------------------------------- lists }
 
 procedure TMainForm.lstBrandsClick(Sender: TObject);
 begin
-  if FUpdatingCatalog then
+  if FUpdating then
     Exit;
-
-  PopulateModels(lstBrands.ItemIndex);
-  RefreshSelection;
-  lstBrands.Invalidate;
+  if SearchText <> '' then
+  begin
+    FUpdating := True;
+    try
+      cbSearch.Text := CSearchPlaceholder;
+    finally
+      FUpdating := False;
+    end;
+  end;
+  LoadBrandModels(lstBrands.ItemIndex);
+  if lstModels.Items.Count > 0 then
+    lstModels.TopIndex := 0;
 end;
 
 procedure TMainForm.lstModelsClick(Sender: TObject);
-begin
-  if FUpdatingCatalog then
-    Exit;
-  RefreshSelection;
-  lstModels.Invalidate;
-end;
-
-procedure TMainForm.DrawCatalogItem(AListBox: TListBox;
-  const AIndex: Integer; const ARect: TRect; const AState: TOwnerDrawState;
-  const AShowModelCount: Boolean);
 var
-  RowRect: TRect;
-  TextRect: TRect;
-  MetaRect: TRect;
-  IsSelected: Boolean;
-  ItemText: string;
-  MetaText: string;
+  B, M: Integer;
 begin
-  AListBox.Canvas.Brush.Style := bsSolid;
-  AListBox.Canvas.Brush.Color := CSurface;
-  AListBox.Canvas.FillRect(ARect);
-
-  if (AIndex < 0) or (AIndex >= AListBox.Items.Count) then
+  if FUpdating then
     Exit;
-
-  RowRect := ARect;
-  InflateRect(RowRect, -3, -2);
-  IsSelected := odSelected in AState;
-
-  if IsSelected then
+  { Keep the brand list in sync with the selected model (search results
+    can come from any brand). }
+  if SelectedDevice(B, M) and (lstBrands.ItemIndex <> B) then
   begin
-    AListBox.Canvas.Brush.Color := CSelectedRow;
-    AListBox.Canvas.Pen.Color := CSelectedBorder;
-  end
-  else
-  begin
-    AListBox.Canvas.Brush.Color := CListRow;
-    AListBox.Canvas.Pen.Color := CListRow;
+    FUpdating := True;
+    try
+      lstBrands.ItemIndex := B;
+    finally
+      FUpdating := False;
+    end;
   end;
-  AListBox.Canvas.RoundRect(RowRect.Left, RowRect.Top, RowRect.Right,
-    RowRect.Bottom, 10, 10);
-
-  if IsSelected then
-  begin
-    AListBox.Canvas.Brush.Color := CAccent;
-    AListBox.Canvas.Pen.Color := CAccent;
-    AListBox.Canvas.RoundRect(RowRect.Left + 8, RowRect.Top + 12,
-      RowRect.Left + 12, RowRect.Bottom - 12, 3, 3);
-  end;
-
-  ItemText := AListBox.Items[AIndex];
-  TextRect := RowRect;
-  TextRect.Left := RowRect.Left + 23;
-  TextRect.Right := RowRect.Right - 16;
-
-  if AShowModelCount then
-  begin
-    TextRect.Right := RowRect.Right - 108;
-    MetaRect := RowRect;
-    MetaRect.Left := RowRect.Right - 101;
-    MetaRect.Right := RowRect.Right - 16;
-
-    MetaText := Format('%d models', [TDeviceCatalog.ModelCount(AIndex)]);
-    AListBox.Canvas.Font.Assign(AListBox.Font);
-    AListBox.Canvas.Font.Size := 9;
-    AListBox.Canvas.Font.Color := CMutedText;
-    SetBkMode(AListBox.Canvas.Handle, TRANSPARENT);
-    DrawText(AListBox.Canvas.Handle, PChar(MetaText), Length(MetaText),
-      MetaRect, DT_VCENTER or DT_SINGLELINE or DT_RIGHT or DT_END_ELLIPSIS);
-  end;
-
-  AListBox.Canvas.Font.Assign(AListBox.Font);
-  AListBox.Canvas.Font.Color := CPrimaryText;
-  if IsSelected then
-    AListBox.Canvas.Font.Style := [fsBold]
-  else
-    AListBox.Canvas.Font.Style := [];
-  SetBkMode(AListBox.Canvas.Handle, TRANSPARENT);
-  DrawText(AListBox.Canvas.Handle, PChar(ItemText), Length(ItemText), TextRect,
-    DT_VCENTER or DT_SINGLELINE or DT_LEFT or DT_END_ELLIPSIS);
-
-  if odFocused in AState then
-    AListBox.Canvas.DrawFocusRect(RowRect);
+  UpdateNextState;
 end;
 
-procedure TMainForm.lstBrandsDrawItem(Control: TWinControl; Index: Integer;
-  Rect: TRect; State: TOwnerDrawState);
+procedure TMainForm.lstModelsDblClick(Sender: TObject);
 begin
-  DrawCatalogItem(lstBrands, Index, Rect, State, True);
+  if lstModels.ItemIndex >= 0 then
+    OpenMain2;
 end;
 
-procedure TMainForm.lstModelsDrawItem(Control: TWinControl; Index: Integer;
-  Rect: TRect; State: TOwnerDrawState);
+procedure TMainForm.lstModelsKeyDown(Sender: TObject; var Key: Word;
+  Shift: TShiftState);
 begin
-  DrawCatalogItem(lstModels, Index, Rect, State, False);
+  if (Key = VK_RETURN) and (lstModels.ItemIndex >= 0) then
+  begin
+    Key := 0;
+    OpenMain2;
+  end;
 end;
 
-procedure TMainForm.btnNextClick(Sender: TObject);
+{ ---------------------------------------------------------------- toolbar }
+
+procedure TMainForm.pbMenuPaint(Sender: TObject);
+begin
+  DrawMenuIcon(pbMenu.Canvas, pbMenu.ClientRect);
+end;
+
+procedure TMainForm.pbNextPaint(Sender: TObject);
+begin
+  DrawNextIcon(pbNext.Canvas, pbNext.ClientRect, pbNext.Enabled);
+end;
+
+procedure TMainForm.pbDownloadPaint(Sender: TObject);
+begin
+  DrawDownloadIcon(pbDownload.Canvas, pbDownload.ClientRect);
+end;
+
+procedure TMainForm.pbMenuClick(Sender: TObject);
 var
-  BrandIndex: Integer;
-  ModelIndex: Integer;
+  P: TPoint;
 begin
-  BrandIndex := lstBrands.ItemIndex;
-  ModelIndex := lstModels.ItemIndex;
-  if (BrandIndex < 0) or (ModelIndex < 0) then
-    Exit;
+  P := pbMenu.ClientToScreen(Point(0, pbMenu.Height));
+  pmMain.Popup(P.X, P.Y);
+end;
 
-  MessageDlg(Format('%s / %s selected.%s%sThe next screen will be added in the next stage.',
-    [TDeviceCatalog.BrandName(BrandIndex),
-     TDeviceCatalog.ModelName(BrandIndex, ModelIndex), sLineBreak, sLineBreak]),
-    mtInformation, [mbOK], 0);
+procedure TMainForm.pbNextClick(Sender: TObject);
+begin
+  OpenMain2;
+end;
+
+procedure TMainForm.pbDownloadClick(Sender: TObject);
+begin
+  SaveModelList;
+end;
+
+procedure TMainForm.miExitClick(Sender: TObject);
+begin
+  Close;
+end;
+
+procedure TMainForm.SaveModelList;
+var
+  Dialog: TSaveDialog;
+begin
+  if lstModels.Items.Count = 0 then
+    Exit;
+  Dialog := TSaveDialog.Create(Self);
+  try
+    Dialog.Title := 'Save model list';
+    Dialog.Filter := 'Text files (*.txt)|*.txt|All files (*.*)|*.*';
+    Dialog.DefaultExt := 'txt';
+    Dialog.Options := Dialog.Options + [ofOverwritePrompt];
+    if lstBrands.ItemIndex >= 0 then
+      Dialog.FileName := lstBrands.Items[lstBrands.ItemIndex] + ' models.txt';
+    if Dialog.Execute then
+      lstModels.Items.SaveToFile(Dialog.FileName, TEncoding.UTF8);
+  finally
+    Dialog.Free;
+  end;
+end;
+
+procedure TMainForm.OpenMain2;
+var
+  B, M: Integer;
+  Screen2: TMain2Form;
+begin
+  if not SelectedDevice(B, M) then
+  begin
+    MessageDlg('Select a model first.', mtInformation, [mbOK], 0);
+    Exit;
+  end;
+
+  Screen2 := TMain2Form.Create(Self);
+  try
+    Screen2.SetDevice(TDeviceCatalog.BrandName(B),
+      TDeviceCatalog.ModelName(B, M));
+    Screen2.Position := poDesigned;
+    Screen2.BoundsRect := BoundsRect;
+    Screen2.WindowState := WindowState;
+    Screen2.ShowModal;
+  finally
+    Screen2.Free;
+  end;
 end;
 
 end.
