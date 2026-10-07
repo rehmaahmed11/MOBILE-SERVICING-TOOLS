@@ -4,14 +4,15 @@ A native **Delphi VCL** Windows application (also builds with free Lazarus / Fre
 
 ## Download
 
-- **Releases (easiest):** open the repository's **Releases** page and download from **Latest build (main)**:
-  - `DeviceSetup-Win64.zip` for 64-bit Windows
-  - `DeviceSetup-Win32.zip` for 32-bit Windows
+- **Releases (easiest):** open the repository's **Releases** page and download the installer for your Windows architecture:
+  - `DeviceSetup-Setup-Win64.exe` for 64-bit Windows
+  - `DeviceSetup-Setup-Win32.exe` for 32-bit Windows
 
-  Extract the ZIP and run `DeviceSetup.exe` from the extracted folder. Each bundle includes the EXE and the complete checked-in support tree (`Data`, DLLs and the architecture-specific `libusb` folders). This release is replaced on every push to `main`. Pushing a tag such as `v1.1.0` also creates a versioned release that stays.
-- **Build artifacts:** every CI run uploads the portable ZIP bundles under **Artifacts**. You need to be logged in to GitHub, and they are kept for 30 days.
+  Run Setup and choose an install folder. It places `DeviceSetup.exe` at that folder's root and keeps `Data/DA`, `Data/FDL1`, `Data/FDL2`, the DLLs, and the complete `libusb` tree beside it. The app locates support files from those subfolders at runtime. The installer does not run USB driver installers.
+- **Portable option:** `DeviceSetup-Win64.zip` and `DeviceSetup-Win32.zip` contain the same files and folder layout; extract one and run `DeviceSetup.exe` from its root.
+- **Build artifacts:** every run of **Build EXEs (fast)** uploads both architecture-specific installers and portable ZIPs under **Artifacts**. They are kept for 30 days.
 
-The app saves its settings and logs next to the EXE. If that folder is read-only (e.g. Program Files), it uses `%APPDATA%\MobileServicingTools` instead. Keep the `Data` folder beside the EXE; the standalone executable alone does not contain the servicing payloads.
+The default installer location is under the current user's Local AppData and is writable, so settings and logs stay beside the EXE. If the app is placed in a read-only folder (for example, Program Files), it stores them in `%APPDATA%\MobileServicingTools`. Do not separate the `Data` or `libusb` folders from the EXE.
 
 ## Screens
 
@@ -83,19 +84,20 @@ It only reads the device list (SetupAPI) and never sends anything to the phone. 
 
 ## Integrated support data
 
-The release bundles carry the actual files from `FULL APP STRUCTURE/MOBILO TOOLZ` in their original directory layout. The application locates `Data/DA` and `Data/FDL1` / `Data/FDL2` beside the executable; in a source checkout it can locate the same tree without copying the 130+ MiB data into the Delphi project.
+The installer and portable bundles carry the actual files from `FULL APP STRUCTURE/MOBILO TOOLZ` in their original directory layout. `DeviceSetup.exe` is installed at the chosen app root; the application finds `Data/DA` and `Data/FDL1` / `Data/FDL2` beside it. In a source checkout it can locate the same tree without copying the 130+ MiB data into the Delphi project.
 
 - The data folder contains **39 DA/FDL payload files** (about **131 MiB**): brand-level `.da` packages, MediaTek `.bin` / `.crp` resources, preloader resources and the full-size Unisoc FDL1/FDL2 pair.
 - `Data/DA/models_map.ini` routes the supported brand/model aliases to existing files. A route is only a file-availability hint; it does not prove exact handset/chipset compatibility.
-- The portable bundle also preserves the supplied ADB, 7-Zip and LZ4 DLLs and the complete x86 / amd64 / arm64 `libusb` subfolders. Driver installers are not run automatically.
+- Both the installer and portable bundle preserve the supplied ADB, 7-Zip and LZ4 DLLs and the complete x86 / amd64 / arm64 `libusb` subfolders byte-for-byte. USB driver installers are included in the support tree but are not run automatically.
 - The former 133–280 byte demo DA/FDL files have been removed. Bundled `.da`, `.bin` and `.crp` files are kept byte-for-byte; opaque vendor payloads are not unpacked or rewritten as invented `da.bin` files.
 
-`FULL APP STRUCTURE/MOBILO TOOLZ/assets-manifest.json` records SHA-256 and byte size for every non-empty support file. `tools/package_app.py` verifies that inventory before making the portable ZIP. These hashes establish package identity/copy integrity only—not vendor authenticity, licensing, or compatibility. The app can display the matching data filename and size, but **device communication is still not implemented** and no agent or driver is sent/installed by the app.
+`FULL APP STRUCTURE/MOBILO TOOLZ/assets-manifest.json` records SHA-256 and byte size for every non-empty support file. `tools/package_app.py` verifies that inventory before assembling the portable bundle; `tools/build_installer.py` checks the assembled tree against the same inventory before invoking Inno Setup. CI silently installs the generated Setup EXE into a temporary folder, verifies all manifested files in place, then runs the app self-test from that installed folder. These hashes establish package identity/copy integrity only—not vendor authenticity, licensing, or compatibility. The app can display the matching data filename and size, but **device communication is still not implemented** and no agent or driver is sent/installed by the app.
 
-To assemble a bundle after compiling the EXE, run from `Delphi/DeviceSetup`:
+To assemble both release formats after compiling the EXE, run from `Delphi/DeviceSetup` on Windows with Inno Setup 6 installed:
 
 ```sh
-python tools/package_app.py --exe path/to/DeviceSetup.exe --output artifacts/package --archive artifacts/DeviceSetup.zip
+python tools/package_app.py --exe path/to/DeviceSetup.exe --output artifacts/package --archive artifacts/DeviceSetup-Win64.zip
+python tools/build_installer.py --iscc "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" --platform Win64
 ```
 
 ## Model list (`models.csv`)
@@ -137,7 +139,7 @@ Buttons, group frames and compact tab strips are interactive controls in `Sample
 2. Runs the platform-independent UI/resource contracts, checks the embedded artwork, validates the real support-tree SHA-256 inventory and DA/FDL routing, and smoke-tests that a portable ZIP contains every manifested asset.
 3. Stamps the commit id into `BuildInfo.inc`, which is shown in Help.
 4. Compiles.
-5. Runs **`DeviceSetup.exe --selftest`**, which:
+5. Builds the Win32/Win64 Inno Setup installer, silently installs it into a clean temporary folder, verifies the installed support files against the manifest, and runs **`DeviceSetup.exe --selftest`** from the installed root. The self-test:
    - opens both screens (this catches form-loading errors that the compiler cannot see)
    - checks hex parsing, file checks, the `models.csv` round trip, search, SetupAPI calls, and actual OPPO/Realme DA plus full-size FDL1/FDL2 lookup
    - checks actual control bounds, all seven tabs, empty idle log, connection defaults and independent radio groups
@@ -147,10 +149,10 @@ Buttons, group frames and compact tab strips are interactive controls in `Sample
    The results and PNG screenshots are uploaded as `DeviceSetup-selftest-<platform>-<sha>`. The self-test result is also shown as a notice on the run page.
 
    **Screenshots of every screen are also published as check runs** (named `ci-shot <screen> <n>/<m>`, lossless base64 PNG chunks) so the UI can be reviewed through the GitHub API without downloading artifacts. This happens on every **pull request**, when you start the workflow by hand (**Actions > Build EXEs (fast) > Run workflow**) and tick *screenshots*, and for any commit that contains the marker file `.github/ci-screenshots`.
-6. Verifies the support manifest and produces a portable ZIP containing `DeviceSetup.exe` plus the complete support tree.
-7. Uploads the ZIP bundle; on `main` or a `v*` tag, publishes that bundle as the GitHub Release.
+6. Produces both the portable ZIP and the setup EXE. The installer keeps `DeviceSetup.exe` at `{app}` and copies the complete `Data` and `libusb` trees below that root.
+7. Uploads both formats; on `main` or a `v*` tag, publishes the installers and portable ZIPs as the GitHub Release.
 
-To build locally with Lazarus: `python tools/dfm2lfm.py`, then `lazbuild DeviceSetup.lpi`. Use `python tools/package_app.py` to verify and assemble the portable bundle as shown above.
+To build locally with Lazarus: `python tools/dfm2lfm.py`, then `lazbuild DeviceSetup.lpi`. Use `tools/package_app.py` to create the verified `artifacts/package` tree and portable ZIP, then `tools/build_installer.py` (Inno Setup 6 required) to compile the installer.
 
 ### Optional: Delphi build
 

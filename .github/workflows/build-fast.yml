@@ -3,9 +3,9 @@ name: Build EXEs (fast)
 # Builds the app on GitHub-hosted Windows runners with the free Lazarus /
 # Free Pascal compiler - no self-hosted runner or Delphi licence needed.
 # Lazarus is cached after the first run, so later runs only compile.
-# Every build runs "DeviceSetup.exe --selftest" from the portable package
-# (forms, real-data lookup and screenshots are checked). Releases contain the
-# EXE plus the complete verified support tree, not a data-less standalone EXE.
+# Every build compiles an installer from the verified portable bundle, silently
+# installs it, then runs "DeviceSetup.exe --selftest" from the installed layout.
+# Releases contain both the installer and portable ZIP with the full support tree.
 
 on:
   push:
@@ -71,6 +71,25 @@ jobs:
           Start-Process -Wait -FilePath .\lazarus-setup.exe -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/SP-','/DIR=C:\lazarus'
           if (-not (Test-Path C:\lazarus\lazbuild.exe)) { Write-Output "::error::lazbuild.exe not found after install"; exit 1 }
 
+      - name: Install Inno Setup 6
+        shell: pwsh
+        run: |
+          $iscc = Get-Command ISCC.exe -ErrorAction SilentlyContinue
+          $programFilesX86 = [Environment]::GetEnvironmentVariable('ProgramFiles(x86)')
+          $candidate = Join-Path $programFilesX86 'Inno Setup 6\ISCC.exe'
+          if ($iscc) {
+            $isccPath = $iscc.Source
+          } elseif (Test-Path $candidate) {
+            $isccPath = $candidate
+          } else {
+            choco install innosetup --no-progress -y
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            $isccPath = $candidate
+          }
+          if (-not (Test-Path $isccPath)) { Write-Error "ISCC.exe not found: $isccPath"; exit 1 }
+          "ISCC_PATH=$isccPath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Write-Output "Using Inno Setup compiler: $isccPath"
+
       - name: Generate .lfm forms from .dfm
         shell: pwsh
         run: python tools/dfm2lfm.py
@@ -112,21 +131,39 @@ jobs:
         run: |
           python tools/package_app.py `
             --exe "artifacts/DeviceSetup-${{ matrix.platform }}.exe" `
-            --output "artifacts/package-${{ matrix.platform }}" `
+            --output "artifacts/package" `
             --archive "artifacts/DeviceSetup-${{ matrix.platform }}.zip"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Self-test (forms, real data, checks and screenshots)
+      - name: Build Inno Setup installer
         shell: pwsh
         run: |
-          $package = "artifacts\package-${{ matrix.platform }}"
+          python tools/build_installer.py --iscc "$env:ISCC_PATH" --platform "${{ matrix.platform }}"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Get-Item "artifacts\DeviceSetup-Setup-${{ matrix.platform }}.exe" | Format-Table Name, Length
+
+      - name: Self-test installed layout, real data and UI
+        shell: pwsh
+        run: |
+          $installRoot = Join-Path $env:RUNNER_TEMP "device-setup-install-${{ matrix.platform }}"
+          $installer = "artifacts\DeviceSetup-Setup-${{ matrix.platform }}.exe"
+          New-Item -ItemType Directory -Force $installRoot | Out-Null
+          $dirArg = '/DIR="' + $installRoot + '"'
+          $setup = Start-Process -FilePath $installer `
+            -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/SP-',$dirArg) `
+            -PassThru -Wait
+          if ($setup.ExitCode -ne 0) { Write-Error "Installer failed: $($setup.ExitCode)"; exit 1 }
+          python tools/package_app.py --verify-bundle "$installRoot"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
           New-Item -ItemType Directory -Force selftest-run | Out-Null
-          $p = Start-Process -FilePath "$package\DeviceSetup.exe" -ArgumentList '--selftest' -PassThru
+          $p = Start-Process -FilePath "$installRoot\DeviceSetup.exe" `
+            -ArgumentList '--selftest' -WorkingDirectory $installRoot -PassThru
           $null = $p.Handle
           $timedOut = -not $p.WaitForExit(120000)
           New-Item -ItemType Directory -Force selftest-run\selftest | Out-Null
-          if (Test-Path "$package\selftest") {
-            Copy-Item -Recurse -Force "$package\selftest\*" selftest-run\selftest
+          if (Test-Path "$installRoot\selftest") {
+            Copy-Item -Recurse -Force "$installRoot\selftest\*" selftest-run\selftest
           }
           Add-Type -AssemblyName System.Drawing, System.Windows.Forms
           if ($timedOut) {
@@ -221,11 +258,13 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-      - name: Upload portable bundle
+      - name: Upload portable bundle and installer
         uses: actions/upload-artifact@v4
         with:
           name: DeviceSetup-${{ matrix.platform }}-${{ github.sha }}
-          path: Delphi/DeviceSetup/artifacts/DeviceSetup-${{ matrix.platform }}.zip
+          path: |
+            Delphi/DeviceSetup/artifacts/DeviceSetup-${{ matrix.platform }}.zip
+            Delphi/DeviceSetup/artifacts/DeviceSetup-Setup-${{ matrix.platform }}.exe
           if-no-files-found: error
           retention-days: 30
 
@@ -237,7 +276,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Download portable bundles
+      - name: Download installers and portable bundles
         uses: actions/download-artifact@v4
         with:
           pattern: DeviceSetup-Win*-${{ github.sha }}
@@ -252,11 +291,11 @@ jobs:
           ls -l exe
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             tag="${GITHUB_REF#refs/tags/}"
-            gh release create "$tag" exe/*.zip --verify-tag \
+            gh release create "$tag" exe/*.zip exe/*.exe --verify-tag \
               --title "Mobile Servicing Tools $tag" --generate-notes
           else
             gh release delete latest-build --yes --cleanup-tag 2>/dev/null || true
-            gh release create latest-build exe/*.zip --target "$GITHUB_SHA" --latest \
+            gh release create latest-build exe/*.zip exe/*.exe --target "$GITHUB_SHA" --latest \
               --title "Latest build (main)" \
-              --notes "Built from ${GITHUB_SHA::7} on main. Download and extract DeviceSetup-Win64.zip (64-bit) or DeviceSetup-Win32.zip (32-bit); each bundle includes the EXE and verified support data. This release is replaced on every push to main."
+              --notes "Built from ${GITHUB_SHA::7} on main. Install with DeviceSetup-Setup-Win64.exe (64-bit) or DeviceSetup-Setup-Win32.exe (32-bit), or use the portable ZIP bundles. The installer puts DeviceSetup.exe at the install root and preserves the complete Data and libusb support tree. This release is replaced on every push to main."
           fi
