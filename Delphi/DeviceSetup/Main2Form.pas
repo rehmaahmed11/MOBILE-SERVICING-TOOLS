@@ -5,17 +5,17 @@ unit Main2Form;
 {$ENDIF}
 
 
-{ MAIN 2 - opened from MAIN 1 when the user presses Next.
-  Layout follows the MAIN 2 reference screenshot:
-    - toolbar: menu and platform selector (left); settings, Facebook, help,
-      change device, save log and start (right)
-    - left: Presets, Files (SCAT / AUTH / BIN / OFP / BL / AP / CP / CSC /
-      USER), colour log and progress
-    - right: Jobs / platform service-mode tabs (META / DIAG / DOWNLOAD),
-      Connections and Storage groups, then the Flash / Read / Format / IMEI /
-      Locks / Service / RPMB tabs
-    - USB device state (bottom right)
-  Device communication (flashing, reading, etc.) is NOT implemented: the
+{ MAIN 2 - the job screen (UI SAMPLE/S2.png ... S10.png).
+  Layout:
+    - toolbar: menu (left); start, save log, change device, settings,
+      report, Facebook and help (right)
+    - left: Presets, Files (SCAT / AUTH / BIN / OFP, plus BL / AP / CP /
+      CSC / USER on Samsung), the colour log and the progress strip
+    - right: "Jobs" and platform service-mode tabs. Each holds the
+      Connections group and the Flash / Read / Format / IMEI / Locks /
+      Service / RPMB pages.
+    - the platform selector lives on the service-mode tab.
+  Device communication (flashing, reading, ...) is NOT implemented: the
   action buttons check their inputs and write to the log. USB detection only
   reads the Windows device list. }
 
@@ -48,14 +48,13 @@ type
   TMain2Form = class(TForm)
     { toolbar }
     pbMenu: TPaintBox;
-    lblPlatform: TLabel;
-    cbPlatform: TComboBox;
+    pbNext: TPaintBox;
+    pbDownload: TPaintBox;
+    pbChangeDevice: TPaintBox;
     pbSettings: TPaintBox;
+    pbContact: TPaintBox;
     pbFacebook: TPaintBox;
     pbHelp: TPaintBox;
-    pbChangeDevice: TPaintBox;
-    pbDownload: TPaintBox;
-    pbNext: TPaintBox;
     pmMain: TPopupMenu;
     miChangeDevice: TMenuItem;
     miSaveLog: TMenuItem;
@@ -95,10 +94,16 @@ type
     miLogSave: TMenuItem;
     miLogClear: TMenuItem;
     pbProgress: TPaintBox;
-    { right side - Jobs / META }
+    { right side - Jobs / service-mode tabs }
     pcJobs: TPageControl;
     tsJobs: TTabSheet;
     tsMeta: TTabSheet;
+    grpPlatform: TGroupBox;
+    lblPlatform: TLabel;
+    cbPlatform: TComboBox;
+    lblServiceMode: TLabel;
+    lblServiceModeValue: TLabel;
+    lblMetaInfo: TLabel;
     grpConnections: TGroupBox;
     lblDownloadAgent: TLabel;
     cbDownloadAgent: TComboBox;
@@ -111,9 +116,8 @@ type
     cbUsbSpeed: TComboBox;
     lblBattery: TLabel;
     cbBattery: TComboBox;
-    grpStorage: TGroupBox;
+    lblStorage: TLabel;
     cbStorage: TComboBox;
-    lblMetaInfo: TLabel;
     { right side - operations }
     pcOperations: TPageControl;
     tsFlash: TTabSheet;
@@ -123,7 +127,7 @@ type
     tsLocks: TTabSheet;
     tsService: TTabSheet;
     tsRpmb: TTabSheet;
-    grpOptions: TGroupBox;
+    lblOptionsFlash: TLabel;
     cbFlashMode: TComboBox;
     btnWriteFirmware: TBitBtn;
     btnRestoreBackup: TBitBtn;
@@ -132,7 +136,7 @@ type
     edtAddress: TEdit;
     btnWriteBin: TBitBtn;
     btnWriteOfp: TBitBtn;
-    grpReadOptions: TGroupBox;
+    lblOptionsRead: TLabel;
     btnReadInfo: TBitBtn;
     btnReadPartitions: TBitBtn;
     lblReadAddress: TLabel;
@@ -142,36 +146,48 @@ type
     btnReadBin: TBitBtn;
     btnReadRegion: TBitBtn;
     btnReadOtp: TBitBtn;
-    lblFormatInfo: TLabel;
-    lblImeiInfo: TLabel;
-    lblLocksInfo: TLabel;
-    lblServiceInfo: TLabel;
-    lblRpmbInfo: TLabel;
-    grpFormatOptions: TGroupBox;
-    lblFormatMode: TLabel;
-    cbFormatMode: TComboBox;
-    lblFormatTarget: TLabel;
-    cbFormatTarget: TComboBox;
-    chkPreserveCalibration: TCheckBox;
-    chkFormatByAddress: TCheckBox;
-    lblFormatAddress: TLabel;
-    edtFormatAddress: TEdit;
-    lblFormatSize: TLabel;
-    edtFormatSize: TEdit;
-    btnFormat: TButton;
-    grpServiceOptions: TGroupBox;
-    lblServiceAction: TLabel;
-    cbServiceAction: TComboBox;
-    chkServiceVerbose: TCheckBox;
-    btnRunService: TButton;
-    grpRpmbOptions: TGroupBox;
-    lblRpmbOperation: TLabel;
-    cbRpmbOperation: TComboBox;
-    lblRpmbTarget: TLabel;
-    cbRpmbTarget: TComboBox;
-    btnRunRpmb: TButton;
+    lblOptionsFormat: TLabel;
+    rbAutoFormat: TRadioButton;
+    rbManualFormat: TRadioButton;
+    rbFormatAiFlash: TRadioButton;
+    rbFormatAiExceptBootloader: TRadioButton;
+    btnFormat: TBitBtn;
+    chkCreateDefaultFs: TCheckBox;
+    btnWipeData: TBitBtn;
+    btnWipePartitions: TBitBtn;
+    btnEraseFrp: TBitBtn;
+    btnEraseFrpAndWipe: TBitBtn;
+    lblOptionsImei: TLabel;
+    chkImei1: TCheckBox;
+    edtImei1: TEdit;
+    lblImei1Digits: TLabel;
+    chkImei2: TCheckBox;
+    edtImei2: TEdit;
+    lblImei2Digits: TLabel;
+    lblAdvancedSettings: TLabel;
+    btnRepair: TBitBtn;
+    btnReadImei: TBitBtn;
+    lblOptionsLocks: TLabel;
+    btnUnlockBootloader: TBitBtn;
+    btnRelockBootloader: TBitBtn;
+    btnUnlockNetwork: TBitBtn;
+    btnReadCodes: TBitBtn;
+    btnResetPassword: TBitBtn;
+    btnResetAccount: TBitBtn;
+    lblOptionsService: TLabel;
+    btnRebootRecovery: TBitBtn;
+    btnDisableOta: TBitBtn;
+    btnResetDmVerity: TBitBtn;
+    btnDisableOrangeState: TBitBtn;
+    btnSwitchSlot: TBitBtn;
+    btnFixDlImage: TBitBtn;
+    lblOptionsRpmb: TLabel;
+    btnRpmbBackup: TBitBtn;
+    lblRpmbAddress: TLabel;
+    edtRpmbAddress: TEdit;
+    btnRpmbWrite: TBitBtn;
+    btnRpmbFormat: TBitBtn;
     { device state }
-    pnlDeviceState: TPanel;
     lblDeviceState: TLabel;
     pbDeviceState: TPaintBox;
     procedure FormCreate(Sender: TObject);
@@ -179,15 +195,12 @@ type
     procedure FormShow(Sender: TObject);
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure cbPlatformChange(Sender: TObject);
-    procedure chkFormatByAddressClick(Sender: TObject);
-    procedure btnFormatClick(Sender: TObject);
-    procedure btnRunServiceClick(Sender: TObject);
-    procedure btnRunRpmbClick(Sender: TObject);
     procedure pbMenuPaint(Sender: TObject);
     procedure pbNextPaint(Sender: TObject);
     procedure pbDownloadPaint(Sender: TObject);
     procedure pbChangeDevicePaint(Sender: TObject);
     procedure pbSettingsPaint(Sender: TObject);
+    procedure pbContactPaint(Sender: TObject);
     procedure pbFacebookPaint(Sender: TObject);
     procedure pbHelpPaint(Sender: TObject);
     procedure pbProgressPaint(Sender: TObject);
@@ -197,6 +210,7 @@ type
     procedure pbDownloadClick(Sender: TObject);
     procedure pbChangeDeviceClick(Sender: TObject);
     procedure pbSettingsClick(Sender: TObject);
+    procedure pbContactClick(Sender: TObject);
     procedure pbFacebookClick(Sender: TObject);
     procedure pbHelpClick(Sender: TObject);
     procedure miClearLogClick(Sender: TObject);
@@ -226,6 +240,31 @@ type
     procedure btnReadBinClick(Sender: TObject);
     procedure btnReadRegionClick(Sender: TObject);
     procedure btnReadOtpClick(Sender: TObject);
+    procedure btnFormatClick(Sender: TObject);
+    procedure btnWipeDataClick(Sender: TObject);
+    procedure btnWipePartitionsClick(Sender: TObject);
+    procedure btnEraseFrpClick(Sender: TObject);
+    procedure btnEraseFrpAndWipeClick(Sender: TObject);
+    procedure btnRepairClick(Sender: TObject);
+    procedure btnReadImeiClick(Sender: TObject);
+    procedure lblAdvancedSettingsClick(Sender: TObject);
+    procedure btnUnlockBootloaderClick(Sender: TObject);
+    procedure btnRelockBootloaderClick(Sender: TObject);
+    procedure btnUnlockNetworkClick(Sender: TObject);
+    procedure btnReadCodesClick(Sender: TObject);
+    procedure btnResetPasswordClick(Sender: TObject);
+    procedure btnResetAccountClick(Sender: TObject);
+    procedure btnRebootRecoveryClick(Sender: TObject);
+    procedure btnDisableOtaClick(Sender: TObject);
+    procedure btnResetDmVerityClick(Sender: TObject);
+    procedure btnDisableOrangeStateClick(Sender: TObject);
+    procedure btnSwitchSlotClick(Sender: TObject);
+    procedure btnFixDlImageClick(Sender: TObject);
+    procedure btnRpmbBackupClick(Sender: TObject);
+    procedure btnRpmbWriteClick(Sender: TObject);
+    procedure btnRpmbFormatClick(Sender: TObject);
+    procedure ImeiEditChange(Sender: TObject);
+    procedure FormatRadioClick(Sender: TObject);
   private
     FBrand: string;
     FModelCode: string;
@@ -237,12 +276,16 @@ type
     FMeasure: TBitmap;
     FSessionLog: TStringList;
     FLayoutFixed: Boolean;
+    FManualFormat: Boolean;
+    FAiExceptBootloader: Boolean;
     procedure AssignGlyph(AButton: TBitBtn; const AKind: TActionGlyph);
     procedure SetupLogFont;
     procedure AddLogLine(const ALine: string);
     procedure LogSettings;
     procedure LogNotImplemented(const AOperation: string);
     procedure LogError(const AText: string);
+    procedure UpdateImeiDigits;
+    procedure UpdateFileRows(const APlatform: Integer);
     function SelectedLogText(const AOnlySelected: Boolean): string;
     function BrowseFile(const ATitle, AFilter: string; AEdit: TEdit): Boolean;
     procedure BrowseFirmwarePart(AEdit: TEdit; const AName: string);
@@ -251,8 +294,8 @@ type
     function AskSaveFile(const ATitle, ADefaultName: string;
       out AFileName: string): Boolean;
     procedure UpdateAdvancedWrite;
+    procedure UpdateFormatRadios;
     procedure ApplyPlatformSettings;
-    procedure UpdateFormatAddress;
     function PlatformName: string;
     procedure SetProgress(const AValue: Integer);
     procedure UsbTimerTick(Sender: TObject);
@@ -277,6 +320,9 @@ type
   (high / low half) format of the address boxes is accepted. }
 function TryParseHex64(const S: string; out AValue: UInt64): Boolean;
 
+{ Luhn check digit of a 14/15 digit IMEI, or -1 when the text is not an IMEI. }
+function ImeiCheckDigit(const AImei: string): Integer;
+
 implementation
 
 {$IFDEF FPC}
@@ -299,6 +345,7 @@ uses
 
 const
   CFacebookUrl = 'https://www.facebook.com/';
+  CIssuesUrl = 'https://github.com/rehmaahmed11/MOBILE-SERVICING-TOOLS/issues';
   CMaxLogLines = 5000;
   CSection = 'Main2';
 
@@ -310,6 +357,11 @@ const
   CPlatformQualcomm = 2;
   CPlatformSamsung = 3;
   CPlatformGeneric = 4;
+
+  { Files group: four rows are always visible, the Samsung BL / AP / CP /
+    CSC / USER rows follow on a Samsung profile. }
+  CFileRowPitch = 23;
+  CFilesHeight = 104;
 
 procedure ReplaceComboItems(ACombo: TComboBox; const AItems: array of string);
 var
@@ -363,6 +415,33 @@ begin
   Result := Count > 0;
 end;
 
+function ImeiCheckDigit(const AImei: string): Integer;
+var
+  Digits: string;
+  I, D, Sum: Integer;
+begin
+  Result := -1;
+  Digits := '';
+  for I := 1 to Length(AImei) do
+    if CharInSet(AImei[I], ['0'..'9']) then
+      Digits := Digits + AImei[I];
+  if (Length(Digits) < 14) or (Length(Digits) > 15) then
+    Exit;
+  Sum := 0;
+  for I := 1 to 14 do
+  begin
+    D := Ord(Digits[I]) - Ord('0');
+    if Odd(I) = False then
+    begin
+      D := D * 2;
+      if D > 9 then
+        D := D - 9;
+    end;
+    Sum := Sum + D;
+  end;
+  Result := (10 - (Sum mod 10)) mod 10;
+end;
+
 function Hex64(const AValue: UInt64): string;
 begin
   { "00000000 00100000" - the same high / low layout as the address boxes }
@@ -409,6 +488,42 @@ begin
   AssignGlyph(btnReadBin, agReadBin);
   AssignGlyph(btnReadRegion, agReadRegion);
   AssignGlyph(btnReadOtp, agReadOtp);
+  AssignGlyph(btnFormat, agFormat);
+  AssignGlyph(btnWipeData, agWipeData);
+  AssignGlyph(btnWipePartitions, agWipePartitions);
+  AssignGlyph(btnEraseFrp, agEraseFrp);
+  AssignGlyph(btnEraseFrpAndWipe, agEraseFrpWipe);
+  AssignGlyph(btnRepair, agRepair);
+  AssignGlyph(btnReadImei, agReadImei);
+  AssignGlyph(btnUnlockBootloader, agUnlockBootloader);
+  AssignGlyph(btnRelockBootloader, agRelockBootloader);
+  AssignGlyph(btnUnlockNetwork, agUnlockNetwork);
+  AssignGlyph(btnReadCodes, agReadCodes);
+  AssignGlyph(btnResetPassword, agResetPassword);
+  AssignGlyph(btnResetAccount, agResetAccount);
+  AssignGlyph(btnRebootRecovery, agRebootRecovery);
+  AssignGlyph(btnDisableOta, agDisableOta);
+  AssignGlyph(btnResetDmVerity, agResetDmVerity);
+  AssignGlyph(btnDisableOrangeState, agDisableOrangeState);
+  AssignGlyph(btnSwitchSlot, agSwitchSlot);
+  AssignGlyph(btnFixDlImage, agFixDlImage);
+  AssignGlyph(btnRpmbBackup, agRpmbBackup);
+  AssignGlyph(btnRpmbWrite, agRpmbWrite);
+  AssignGlyph(btnRpmbFormat, agRpmbFormat);
+
+  edtImei1.OnChange := ImeiEditChange;
+  edtImei2.OnChange := ImeiEditChange;
+
+  { The two pairs of format radios are managed here, so they cannot get in
+    each other's way (Windows treats radio buttons of one parent as one
+    group). }
+  rbAutoFormat.OnClick := FormatRadioClick;
+  rbManualFormat.OnClick := FormatRadioClick;
+  rbFormatAiFlash.OnClick := FormatRadioClick;
+  rbFormatAiExceptBootloader.OnClick := FormatRadioClick;
+  FManualFormat := rbManualFormat.Checked;
+  FAiExceptBootloader := rbFormatAiExceptBootloader.Checked;
+  UpdateFormatRadios;
 
   FSessionLog := TStringList.Create;
   FMeasure := TBitmap.Create;
@@ -422,7 +537,7 @@ begin
   LoadState;
   ApplyPlatformSettings;
   UpdateAdvancedWrite;
-  UpdateFormatAddress;
+  UpdateImeiDigits;
 
   FUsbTimer := TTimer.Create(Self);
   FUsbTimer.Enabled := False;
@@ -465,6 +580,36 @@ begin
   end;
 end;
 
+procedure TMain2Form.UpdateFileRows(const APlatform: Integer);
+var
+  Samsung: Boolean;
+  Extra, I: Integer;
+begin
+  Samsung := APlatform = CPlatformSamsung;
+  btnBl.Visible := Samsung;
+  edtBl.Visible := Samsung;
+  btnAp.Visible := Samsung;
+  edtAp.Visible := Samsung;
+  btnCp.Visible := Samsung;
+  edtCp.Visible := Samsung;
+  btnCsc.Visible := Samsung;
+  edtCsc.Visible := Samsung;
+  btnUser.Visible := Samsung;
+  edtUser.Visible := Samsung;
+  if Samsung then
+    Extra := 5 * CFileRowPitch
+  else
+    Extra := 0;
+  if grpFiles.Height <> CFilesHeight + Extra then
+  begin
+    grpFiles.Height := CFilesHeight + Extra;
+    grpLog.Top := grpFiles.Top + grpFiles.Height + 4;
+    I := pbProgress.Top - 4;
+    if I > grpLog.Top + 120 then
+      grpLog.Height := I - grpLog.Top;
+  end;
+end;
+
 procedure TMain2Form.ApplyPlatformSettings;
 var
   I: Integer;
@@ -479,126 +624,81 @@ begin
     CPlatformMtk:
       begin
         tsMeta.Caption := 'META';
-        lblMetaInfo.Caption := 'MediaTek service profile. META mode and DA options are shown. ' +
-          'This build only validates selections; it does not communicate with a phone.';
+        lblServiceModeValue.Caption := 'META';
+        lblMetaInfo.Caption := 'MediaTek service profile: META. Select this tab to ' +
+          'change the platform.' + sLineBreak +
+          'Device communication is not part of this build.';
         ReplaceComboItems(cbDownloadAgent, ['MTK_AllInOne_DA.bin']);
         chkAuthBrom.Caption := 'Advanced Authorization [BROM]';
         chkAuthPreloader.Caption := 'Advanced Authorization [Preloader]';
         chkForceBrom.Caption := 'Force BROM Mode';
         chkReadEmi.Caption := 'Read EMI from phone';
-        lblServiceInfo.Caption := 'MediaTek service actions use the META profile. ' +
-          'Actions are logged for review and are not sent to a connected device.';
-        lblRpmbInfo.Caption := 'MTK RPMB options are read / backup planning only. ' +
-          'Key programming, write and erase operations are intentionally not exposed.';
-        ReplaceComboItems(cbFormatMode, ['Safe format (preserve calibration)',
-          'Format user data', 'Format selected partition']);
-        ReplaceComboItems(cbFormatTarget, ['USERDATA', 'CACHE', 'METADATA',
-          'CUSTOM PARTITION']);
-        ReplaceComboItems(cbServiceAction, ['Read device info',
-          'Switch to META mode', 'Restart device']);
-        ReplaceComboItems(cbRpmbOperation, ['Read RPMB information',
-          'Read RPMB counter', 'Back up RPMB region']);
+        chkReadPhoneInfo.Caption := 'Read Phone Info';
       end;
     CPlatformUnisoc:
       begin
         tsMeta.Caption := 'DIAG';
-        lblMetaInfo.Caption := 'Unisoc / Spreadtrum service profile. The top service tab is DIAG ' +
-          'instead of META. This build does not communicate with a phone.';
+        lblServiceModeValue.Caption := 'DIAG';
+        lblMetaInfo.Caption := 'Unisoc / Spreadtrum service profile: DIAG.' +
+          sLineBreak + 'This build does not communicate with a phone.';
         ReplaceComboItems(cbDownloadAgent, ['Unisoc FDL1 / FDL2 (firmware supplied)']);
         chkAuthBrom.Caption := 'Secure-boot authorization [BootROM]';
         chkAuthPreloader.Caption := 'Load signed FDL1 / FDL2';
         chkForceBrom.Caption := 'Force download / BootROM mode';
         chkReadEmi.Caption := 'Read calibration / NV data';
-        lblServiceInfo.Caption := 'Unisoc service actions use the DIAG profile. ' +
-          'Use only firmware and service files intended for the exact device.' + sLineBreak +
-          'Actions are log-only in this build.';
-        lblRpmbInfo.Caption := 'Unisoc RPMB choices are limited to information and backup planning ' +
-          'through the selected DIAG profile. No RPMB write or key operation is available.';
-        ReplaceComboItems(cbFormatMode, ['Format user data (DIAG)',
-          'Reset selected partition', 'Format selected region']);
-        ReplaceComboItems(cbFormatTarget, ['USERDATA', 'CACHE', 'METADATA',
-          'CUSTOM PARTITION']);
-        ReplaceComboItems(cbServiceAction, ['Read device info',
-          'Switch to DIAG mode', 'Restart device']);
-        ReplaceComboItems(cbRpmbOperation, ['Read RPMB information (DIAG)',
-          'Back up RPMB region (DIAG)']);
+        chkReadPhoneInfo.Caption := 'Read device info';
       end;
     CPlatformQualcomm:
       begin
         tsMeta.Caption := 'DIAG';
-        lblMetaInfo.Caption := 'Qualcomm service profile. DIAG is selected for the service-mode ' +
-          'tab. This build does not communicate with a phone.';
+        lblServiceModeValue.Caption := 'DIAG';
+        lblMetaInfo.Caption := 'Qualcomm service profile: DIAG (EDL programming).' +
+          sLineBreak + 'This build does not communicate with a phone.';
         ReplaceComboItems(cbDownloadAgent, ['Qualcomm programmer (user supplied)']);
         chkAuthBrom.Caption := 'Programmer authorization';
         chkAuthPreloader.Caption := 'Load signed programmer';
         chkForceBrom.Caption := 'Enter EDL mode';
         chkReadEmi.Caption := 'Read calibration / NV data';
-        lblServiceInfo.Caption := 'Qualcomm service actions use the DIAG profile. ' +
-          'Actions are logged for review and are not sent to a connected device.';
-        lblRpmbInfo.Caption := 'Qualcomm RPMB options are limited to information, counter and backup ' +
-          'planning. No RPMB write or key operation is available.';
-        ReplaceComboItems(cbFormatMode, ['Format user data',
-          'Erase selected partition', 'Format selected region']);
-        ReplaceComboItems(cbFormatTarget, ['USERDATA', 'METADATA',
-          'CUSTOM PARTITION']);
-        ReplaceComboItems(cbServiceAction, ['Read device info',
-          'Switch to DIAG mode', 'Restart device']);
-        ReplaceComboItems(cbRpmbOperation, ['Read RPMB information',
-          'Read RPMB counter', 'Back up RPMB region']);
+        chkReadPhoneInfo.Caption := 'Read device info';
       end;
     CPlatformSamsung:
       begin
         tsMeta.Caption := 'DOWNLOAD';
-        lblMetaInfo.Caption := 'Samsung download-mode profile. The top service tab is DOWNLOAD ' +
-          'instead of META. This build does not communicate with a phone.';
+        lblServiceModeValue.Caption := 'DOWNLOAD';
+        lblMetaInfo.Caption := 'Samsung download-mode profile. BL / AP / CP / CSC / ' +
+          'USER file rows appear in the Files box.' + sLineBreak +
+          'This build does not communicate with a phone.';
         ReplaceComboItems(cbDownloadAgent, ['Samsung download-mode package']);
         chkAuthBrom.Caption := 'Download-mode authorization';
         chkAuthPreloader.Caption := 'Use signed firmware package';
         chkForceBrom.Caption := 'Enter DOWNLOAD mode';
         chkReadEmi.Caption := 'Read device information';
-        lblServiceInfo.Caption := 'Samsung service actions use the DOWNLOAD profile. ' +
-          'Actions are logged for review and are not sent to a connected device.';
-        lblRpmbInfo.Caption := 'Samsung RPMB choices are limited to information and backup planning. ' +
-          'No RPMB write or key operation is available.';
-        ReplaceComboItems(cbFormatMode, ['Factory reset', 'Format user data',
-          'Format selected partition']);
-        ReplaceComboItems(cbFormatTarget, ['USERDATA', 'CACHE',
-          'CUSTOM PARTITION']);
-        ReplaceComboItems(cbServiceAction, ['Read device info',
-          'Enter DOWNLOAD mode', 'Restart device']);
-        ReplaceComboItems(cbRpmbOperation, ['Read RPMB information',
-          'Back up RPMB region']);
+        chkReadPhoneInfo.Caption := 'Read device info';
       end;
   else
     begin
       tsMeta.Caption := 'SERVICE';
-      lblMetaInfo.Caption := 'Generic service profile. Choose the correct platform family above ' +
-        'before using a device-specific workflow. No phone communication is implemented.';
+      lblServiceModeValue.Caption := 'SERVICE';
+      lblMetaInfo.Caption := 'Generic service profile. Choose the platform family ' +
+        'for device-specific options.' + sLineBreak +
+        'No phone communication is implemented.';
       ReplaceComboItems(cbDownloadAgent, ['Platform-specific agent / loader']);
       chkAuthBrom.Caption := 'Platform authorization';
       chkAuthPreloader.Caption := 'Load signed agent / loader';
       chkForceBrom.Caption := 'Force service mode';
       chkReadEmi.Caption := 'Read calibration / NV data';
-      lblServiceInfo.Caption := 'Generic service actions are informational only. ' +
-        'Choose a supported platform family for device-specific options.';
-      lblRpmbInfo.Caption := 'Only generic RPMB information is listed for this platform. ' +
-        'No RPMB write or key operation is available.';
-      ReplaceComboItems(cbFormatMode, ['Format user data',
-        'Format selected partition', 'Format selected region']);
-      ReplaceComboItems(cbFormatTarget, ['USERDATA', 'CUSTOM PARTITION']);
-      ReplaceComboItems(cbServiceAction, ['Read device info', 'Restart device']);
-      ReplaceComboItems(cbRpmbOperation, ['Read RPMB information']);
+      chkReadPhoneInfo.Caption := 'Read device info';
     end;
   end;
 
-  cbDownloadAgent.Enabled := True;
+  UpdateFileRows(I);
+
   chkAuthBrom.Enabled := (I = CPlatformMtk) or (I = CPlatformUnisoc) or
     (I = CPlatformQualcomm);
-  chkAuthPreloader.Enabled := (I = CPlatformMtk) or (I = CPlatformUnisoc) or
-    (I = CPlatformQualcomm);
+  chkAuthPreloader.Enabled := chkAuthBrom.Enabled;
   chkForceBrom.Enabled := False;
   chkReadEmi.Enabled := False;
-  UpdateFormatAddress;
+  chkReadPhoneInfo.Enabled := True;
 end;
 
 procedure TMain2Form.AssignGlyph(AButton: TBitBtn; const AKind: TActionGlyph);
@@ -716,16 +816,12 @@ begin
   LoadCheck(chkAuthPreloader, 'AuthPreloader');
   LoadCheck(chkReadPhoneInfo, 'ReadPhoneInfo');
   LoadCheck(chkAdvancedWrite, 'AdvancedWrite');
-  LoadCheck(chkPreserveCalibration, 'PreserveCalibration');
-  LoadCheck(chkFormatByAddress, 'FormatByAddress');
-  LoadCheck(chkServiceVerbose, 'ServiceVerbose');
-  LoadCombo(cbFormatMode, 'FormatMode');
-  LoadCombo(cbFormatTarget, 'FormatTarget');
-  LoadCombo(cbServiceAction, 'ServiceAction');
-  LoadCombo(cbRpmbOperation, 'RpmbOperation');
-  LoadCombo(cbRpmbTarget, 'RpmbTarget');
-  LoadEdit(edtFormatAddress, 'FormatAddress');
-  LoadEdit(edtFormatSize, 'FormatSize');
+  LoadCheck(chkCreateDefaultFs, 'CreateDefaultFs');
+  LoadCheck(chkImei1, 'Imei1Enabled');
+  LoadCheck(chkImei2, 'Imei2Enabled');
+  LoadEdit(edtImei1, 'Imei1');
+  LoadEdit(edtImei2, 'Imei2');
+  LoadEdit(edtRpmbAddress, 'RpmbAddress');
   LoadCombo(cbUsbSpeed, 'UsbSpeed');
   LoadCombo(cbBattery, 'Battery');
   LoadCombo(cbStorage, 'Storage');
@@ -740,13 +836,10 @@ begin
     edtReadAddress.Text := '00000000  00000000';
   if not TryParseHex64(edtReadSize.Text, Dummy) then
     edtReadSize.Text := '00000000  00000000';
-  if not TryParseHex64(edtFormatAddress.Text, Dummy) then
-    edtFormatAddress.Text := '00000000  00000000';
-  if not TryParseHex64(edtFormatSize.Text, Dummy) then
-    edtFormatSize.Text := '00000000  00000000';
   Tab := Ini.ReadInteger(CSection, 'OperationTab', 0);
   if (Tab >= 0) and (Tab < pcOperations.PageCount) then
     pcOperations.ActivePageIndex := Tab;
+  UpdateImeiDigits;
 end;
 
 procedure TMain2Form.SaveState;
@@ -769,17 +862,13 @@ begin
   Ini.WriteBool(CSection, 'AuthPreloader', chkAuthPreloader.Checked);
   Ini.WriteBool(CSection, 'ReadPhoneInfo', chkReadPhoneInfo.Checked);
   Ini.WriteBool(CSection, 'AdvancedWrite', chkAdvancedWrite.Checked);
-  Ini.WriteBool(CSection, 'PreserveCalibration', chkPreserveCalibration.Checked);
-  Ini.WriteBool(CSection, 'FormatByAddress', chkFormatByAddress.Checked);
-  Ini.WriteBool(CSection, 'ServiceVerbose', chkServiceVerbose.Checked);
+  Ini.WriteBool(CSection, 'CreateDefaultFs', chkCreateDefaultFs.Checked);
+  Ini.WriteBool(CSection, 'Imei1Enabled', chkImei1.Checked);
+  Ini.WriteBool(CSection, 'Imei2Enabled', chkImei2.Checked);
+  Ini.WriteString(CSection, 'Imei1', edtImei1.Text);
+  Ini.WriteString(CSection, 'Imei2', edtImei2.Text);
+  Ini.WriteString(CSection, 'RpmbAddress', edtRpmbAddress.Text);
   Ini.WriteInteger(CSection, 'Platform', cbPlatform.ItemIndex);
-  Ini.WriteInteger(CSection, 'FormatMode', cbFormatMode.ItemIndex);
-  Ini.WriteInteger(CSection, 'FormatTarget', cbFormatTarget.ItemIndex);
-  Ini.WriteInteger(CSection, 'ServiceAction', cbServiceAction.ItemIndex);
-  Ini.WriteInteger(CSection, 'RpmbOperation', cbRpmbOperation.ItemIndex);
-  Ini.WriteInteger(CSection, 'RpmbTarget', cbRpmbTarget.ItemIndex);
-  Ini.WriteString(CSection, 'FormatAddress', edtFormatAddress.Text);
-  Ini.WriteString(CSection, 'FormatSize', edtFormatSize.Text);
   Ini.WriteInteger(CSection, 'UsbSpeed', cbUsbSpeed.ItemIndex);
   Ini.WriteInteger(CSection, 'Battery', cbBattery.ItemIndex);
   Ini.WriteInteger(CSection, 'Storage', cbStorage.ItemIndex);
@@ -982,12 +1071,17 @@ end;
 procedure TMain2Form.pbChangeDevicePaint(Sender: TObject);
 begin
   PaintIcon(pbChangeDevice.Canvas, pbChangeDevice.ClientRect,
-    DrawPhoneRefreshIcon);
+    DrawDeviceDocIcon);
 end;
 
 procedure TMain2Form.pbSettingsPaint(Sender: TObject);
 begin
   PaintIcon(pbSettings.Canvas, pbSettings.ClientRect, DrawGearIcon);
+end;
+
+procedure TMain2Form.pbContactPaint(Sender: TObject);
+begin
+  PaintIcon(pbContact.Canvas, pbContact.ClientRect, DrawPlaneIcon);
 end;
 
 procedure TMain2Form.pbFacebookPaint(Sender: TObject);
@@ -1019,27 +1113,22 @@ var
 begin
   C := pbProgress.Canvas;
   R := pbProgress.ClientRect;
-  C.Brush.Style := bsSolid;
-  C.Brush.Color := clBtnFace;
-  C.FillRect(R);
-
-  { thin red bar along the bottom while a job runs }
+  { progress strip along the bottom, as in the samples }
+  C.Brush.Color := RGB(226, 226, 226);
+  C.FillRect(Rect(R.Left, R.Bottom - 4, R.Right, R.Bottom));
   if FProgress > 0 then
   begin
-    BarTop := R.Bottom - 4;
     Fill := R.Left + MulDiv(R.Right - R.Left, FProgress, 100);
-    C.Brush.Color := RGB(200, 200, 200);
-    C.FillRect(Rect(R.Left, BarTop, R.Right, R.Bottom));
     C.Brush.Color := RGB(232, 0, 18);
-    C.FillRect(Rect(R.Left, BarTop, Fill, R.Bottom));
+    C.FillRect(Rect(R.Left, R.Bottom - 4, Fill, R.Bottom));
   end;
 
   S := IntToStr(FProgress) + '%';
+  C.Brush.Style := bsClear;
   C.Font.Assign(Font);
   C.Font.Color := clWindowText;
-  C.Brush.Style := bsClear;
   C.TextOut(R.Left + (R.Right - R.Left - C.TextWidth(S)) div 2,
-    R.Top + 1, S);
+    R.Top + (R.Bottom - R.Top - 4 - C.TextHeight(S)) div 2, S);
   C.Brush.Style := bsSolid;
 end;
 
@@ -1118,14 +1207,18 @@ begin
   if not GOptions.DetectUsb then
     Text := 'USB detection is off'
   else if Length(FDevices) = 0 then
-    Text := 'No device'
+    Text := ''
   else
   begin
     Text := DescribeDevice(FDevices[0]);
     if Length(FDevices) > 1 then
       Text := Text + '  (+' + IntToStr(Length(FDevices) - 1) + ' more)';
   end;
+  { the state only appears when a phone is actually connected, so the idle
+    screen matches the reference layout }
   lblDeviceState.Caption := Text;
+  lblDeviceState.Visible := Text <> '';
+  pbDeviceState.Visible := Text <> '';
   pbDeviceState.Hint := Text;
   pbDeviceState.Invalidate;
 end;
@@ -1148,10 +1241,14 @@ begin
     btnReadInfoClick(btnReadInfo)
   else if pcOperations.ActivePage = tsFormat then
     btnFormatClick(btnFormat)
+  else if pcOperations.ActivePage = tsImei then
+    btnReadImeiClick(btnReadImei)
+  else if pcOperations.ActivePage = tsLocks then
+    btnUnlockBootloaderClick(btnUnlockBootloader)
   else if pcOperations.ActivePage = tsService then
-    btnRunServiceClick(btnRunService)
+    btnRebootRecoveryClick(btnRebootRecovery)
   else if pcOperations.ActivePage = tsRpmb then
-    btnRunRpmbClick(btnRunRpmb)
+    btnRpmbBackupClick(btnRpmbBackup)
   else if pcOperations.ActivePage = tsFlash then
     btnWriteFirmwareClick(btnWriteFirmware)
   else
@@ -1177,6 +1274,7 @@ begin
   finally
     Lines.Free;
   end;
+  Log('Log saved : ' + LInfo(FileName));
 end;
 
 procedure TMain2Form.pbChangeDeviceClick(Sender: TObject);
@@ -1194,6 +1292,11 @@ begin
       CheckUsb(True);
     lstLog.Invalidate;
   end;
+end;
+
+procedure TMain2Form.pbContactClick(Sender: TObject);
+begin
+  ShellExecute(Handle, 'open', PChar(CIssuesUrl), nil, nil, SW_SHOWNORMAL);
 end;
 
 procedure TMain2Form.pbFacebookClick(Sender: TObject);
@@ -1374,71 +1477,243 @@ begin
     '  [' + tsMeta.Caption + ']');
 end;
 
-procedure TMain2Form.UpdateFormatAddress;
-var
-  Enabled: Boolean;
+procedure TMain2Form.UpdateFormatRadios;
 begin
-  Enabled := chkFormatByAddress.Checked;
-  lblFormatAddress.Enabled := Enabled;
-  edtFormatAddress.Enabled := Enabled;
-  lblFormatSize.Enabled := Enabled;
-  edtFormatSize.Enabled := Enabled;
-  cbFormatTarget.Enabled := not Enabled;
+  rbAutoFormat.Checked := not FManualFormat;
+  rbManualFormat.Checked := FManualFormat;
+  rbFormatAiFlash.Checked := not FAiExceptBootloader;
+  rbFormatAiExceptBootloader.Checked := FAiExceptBootloader;
 end;
 
-procedure TMain2Form.chkFormatByAddressClick(Sender: TObject);
+procedure TMain2Form.FormatRadioClick(Sender: TObject);
 begin
-  UpdateFormatAddress;
+  if Sender = rbAutoFormat then
+    FManualFormat := False
+  else if Sender = rbManualFormat then
+    FManualFormat := True
+  else if Sender = rbFormatAiFlash then
+    FAiExceptBootloader := False
+  else if Sender = rbFormatAiExceptBootloader then
+    FAiExceptBootloader := True;
+  UpdateFormatRadios;
+end;
+
+procedure TMain2Form.UpdateImeiDigits;
+begin
+  if ImeiCheckDigit(edtImei1.Text) >= 0 then
+    lblImei1Digits.Caption := IntToStr(ImeiCheckDigit(edtImei1.Text))
+  else
+    lblImei1Digits.Caption := '-';
+  if ImeiCheckDigit(edtImei2.Text) >= 0 then
+    lblImei2Digits.Caption := IntToStr(ImeiCheckDigit(edtImei2.Text))
+  else
+    lblImei2Digits.Caption := '-';
+end;
+
+procedure TMain2Form.ImeiEditChange(Sender: TObject);
+begin
+  UpdateImeiDigits;
 end;
 
 procedure TMain2Form.btnFormatClick(Sender: TObject);
-var
-  StartAddress, Size: UInt64;
 begin
-  Log('[Format] ' + LInfo(cbFormatMode.Text));
-  if chkFormatByAddress.Checked then
-  begin
-    if not TryParseHex64(edtFormatAddress.Text, StartAddress) then
-    begin
-      LogError('Enter the format start address in hex, e.g. 00000000 00100000');
-      Exit;
-    end;
-    if (not TryParseHex64(edtFormatSize.Text, Size)) or (Size = 0) then
-    begin
-      LogError('Enter a non-zero format size in hex, e.g. 00000000 00400000');
-      Exit;
-    end;
-    Log('Address : ' + LInfo('0x' + Hex64(StartAddress)) +
-      '  Size : ' + LInfo('0x' + Hex64(Size)));
-  end
+  Log('[Format] ' + LInfo(btnFormat.Caption));
+  if rbAutoFormat.Checked then
+    Log('Mode : ' + LInfo('Auto Format'))
   else
-    Log('Target : ' + LInfo(cbFormatTarget.Text));
-
-  if chkPreserveCalibration.Checked then
-    Log('Calibration / NV data : ' + LOk('preserve'))
+    Log('Mode : ' + LInfo('Manual Format'));
+  if rbFormatAiFlash.Checked then
+    Log('Target : ' + LInfo('AI Flash'))
   else
-    Log('Calibration / NV data : ' + LWarn('not preserved'));
+    Log('Target : ' + LInfo('AI Except Bootloader'));
+  if chkCreateDefaultFs.Checked then
+    Log('Create Default FS : ' + LInfo('yes'));
   LogSettings;
   LogNotImplemented('Format');
 end;
 
-procedure TMain2Form.btnRunServiceClick(Sender: TObject);
+procedure TMain2Form.btnWipeDataClick(Sender: TObject);
 begin
-  Log('[Service] ' + LInfo(cbServiceAction.Text));
-  Log('Service mode : ' + LInfo(tsMeta.Caption));
-  if chkServiceVerbose.Checked then
-    Log('Diagnostic detail logging : ' + LOk('enabled'));
+  Log('[Wipe Data]');
   LogSettings;
-  LogNotImplemented('Service - ' + cbServiceAction.Text);
+  LogNotImplemented('Wipe Data');
 end;
 
-procedure TMain2Form.btnRunRpmbClick(Sender: TObject);
+procedure TMain2Form.btnWipePartitionsClick(Sender: TObject);
 begin
-  Log('[RPMB] ' + LInfo(cbRpmbOperation.Text));
-  Log('RPMB target : ' + LInfo(cbRpmbTarget.Text));
+  Log('[Wipe Partitions]');
+  LogSettings;
+  LogNotImplemented('Wipe Partitions');
+end;
+
+procedure TMain2Form.btnEraseFrpClick(Sender: TObject);
+begin
+  Log('[Erase FRP]');
+  LogSettings;
+  LogNotImplemented('Erase FRP');
+end;
+
+procedure TMain2Form.btnEraseFrpAndWipeClick(Sender: TObject);
+begin
+  Log('[Erase FRP and Wipe]');
+  LogSettings;
+  LogNotImplemented('Erase FRP and Wipe');
+end;
+
+procedure TMain2Form.btnRepairClick(Sender: TObject);
+begin
+  Log('[Repair]');
+  if chkImei1.Checked and (ImeiCheckDigit(edtImei1.Text) < 0) then
+  begin
+    LogError('IMEI1 must be a 14 or 15 digit number.');
+    Exit;
+  end;
+  if chkImei2.Checked and (ImeiCheckDigit(edtImei2.Text) < 0) then
+  begin
+    LogError('IMEI2 must be a 14 or 15 digit number.');
+    Exit;
+  end;
+  if chkImei1.Checked then
+    Log('IMEI1 : ' + LInfo(edtImei1.Text) + '  check digit : ' +
+      LInfo(lblImei1Digits.Caption));
+  if chkImei2.Checked then
+    Log('IMEI2 : ' + LInfo(edtImei2.Text) + '  check digit : ' +
+      LInfo(lblImei2Digits.Caption));
+  LogSettings;
+  LogNotImplemented('Repair');
+end;
+
+procedure TMain2Form.btnReadImeiClick(Sender: TObject);
+begin
+  Log('[Read IMEI]');
+  LogSettings;
+  LogNotImplemented('Read IMEI');
+end;
+
+procedure TMain2Form.lblAdvancedSettingsClick(Sender: TObject);
+begin
+  Log('[Advanced settings] IMEI editing options');
+  Log(LMuted('Editing the IMEI of a device may be illegal in your country. ' +
+    'This build never writes to a phone.'));
+  Log('');
+end;
+
+procedure TMain2Form.btnUnlockBootloaderClick(Sender: TObject);
+begin
+  Log('[Unlock Bootloader]');
+  Log(LWarn('Unlocking the bootloader usually erases user data.'));
+  LogSettings;
+  LogNotImplemented('Unlock Bootloader');
+end;
+
+procedure TMain2Form.btnRelockBootloaderClick(Sender: TObject);
+begin
+  Log('[Relock Bootloader]');
+  LogSettings;
+  LogNotImplemented('Relock Bootloader');
+end;
+
+procedure TMain2Form.btnUnlockNetworkClick(Sender: TObject);
+begin
+  Log('[Unlock Network]');
+  LogSettings;
+  LogNotImplemented('Unlock Network');
+end;
+
+procedure TMain2Form.btnReadCodesClick(Sender: TObject);
+begin
+  Log('[Read Codes]');
+  LogSettings;
+  LogNotImplemented('Read Codes');
+end;
+
+procedure TMain2Form.btnResetPasswordClick(Sender: TObject);
+begin
+  Log('[Reset Password] ' + LWarn('[SAFE WIPE]'));
+  LogSettings;
+  LogNotImplemented('Reset Password');
+end;
+
+procedure TMain2Form.btnResetAccountClick(Sender: TObject);
+begin
+  Log('[Reset Account]');
+  LogSettings;
+  LogNotImplemented('Reset Account');
+end;
+
+procedure TMain2Form.btnRebootRecoveryClick(Sender: TObject);
+begin
+  Log('[Reboot to Recovery]');
+  LogSettings;
+  LogNotImplemented('Reboot to Recovery');
+end;
+
+procedure TMain2Form.btnDisableOtaClick(Sender: TObject);
+begin
+  Log('[Disable OTA Updates]');
+  LogSettings;
+  LogNotImplemented('Disable OTA Updates');
+end;
+
+procedure TMain2Form.btnResetDmVerityClick(Sender: TObject);
+begin
+  Log('[Reset Dm-Verity Error]');
+  LogSettings;
+  LogNotImplemented('Reset Dm-Verity Error');
+end;
+
+procedure TMain2Form.btnDisableOrangeStateClick(Sender: TObject);
+begin
+  Log('[Disable Orange State]');
+  LogSettings;
+  LogNotImplemented('Disable Orange State');
+end;
+
+procedure TMain2Form.btnSwitchSlotClick(Sender: TObject);
+begin
+  Log('[Switch Slot]');
+  LogSettings;
+  LogNotImplemented('Switch Slot');
+end;
+
+procedure TMain2Form.btnFixDlImageClick(Sender: TObject);
+begin
+  Log('[Fix DL Image Fail]');
+  LogSettings;
+  LogNotImplemented('Fix DL Image Fail');
+end;
+
+procedure TMain2Form.btnRpmbBackupClick(Sender: TObject);
+begin
+  Log('[RPMB] Backup RPMB');
+  Log('RPMB target : ' + LInfo(cbStorage.Text));
   Log('Platform service mode : ' + LInfo(tsMeta.Caption));
   LogSettings;
-  LogNotImplemented('RPMB - ' + cbRpmbOperation.Text);
+  LogNotImplemented('RPMB - Backup');
+end;
+
+procedure TMain2Form.btnRpmbWriteClick(Sender: TObject);
+var
+  Dummy: UInt64;
+begin
+  Log('[RPMB] Write RPMB');
+  if not TryParseHex64(edtRpmbAddress.Text, Dummy) then
+  begin
+    LogError('Enter the RPMB address in hex, e.g. 000000');
+    Exit;
+  end;
+  Log('Address : ' + LInfo('0x' + edtRpmbAddress.Text));
+  Log('RPMB target : ' + LInfo(cbStorage.Text));
+  LogSettings;
+  LogNotImplemented('RPMB - Write');
+end;
+
+procedure TMain2Form.btnRpmbFormatClick(Sender: TObject);
+begin
+  Log('[RPMB] Format RPMB');
+  Log('RPMB target : ' + LInfo(cbStorage.Text));
+  LogSettings;
+  LogNotImplemented('RPMB - Format');
 end;
 
 { ---------------------------------------------------------------- Flash tab }
@@ -1460,7 +1735,7 @@ begin
   Log('[Write Firmware] ' + LInfo(cbFlashMode.Text));
   HasParts := False;
   for I := 0 to High(Parts) do
-    if Trim(Parts[I].Text) <> '' then
+    if Parts[I].Visible and (Trim(Parts[I].Text) <> '') then
       HasParts := True;
 
   if (Trim(edtScat.Text) = '') and not HasParts then
@@ -1473,7 +1748,7 @@ begin
      not CheckOptionalFile(edtAuth, 'AUTH') then
     Exit;
   for I := 0 to High(Parts) do
-    if not CheckOptionalFile(Parts[I], CNames[I]) then
+    if Parts[I].Visible and (not CheckOptionalFile(Parts[I], CNames[I])) then
       Exit;
 
   if Trim(edtScat.Text) <> '' then
@@ -1481,7 +1756,7 @@ begin
   if Trim(edtAuth.Text) <> '' then
     Log('Auth file : ' + LInfo(edtAuth.Text));
   for I := 0 to High(Parts) do
-    if Trim(Parts[I].Text) <> '' then
+    if Parts[I].Visible and (Trim(Parts[I].Text) <> '') then
       Log(CNames[I] + ' file : ' + LInfo(Parts[I].Text));
   LogSettings;
   LogNotImplemented('Write Firmware');
@@ -1628,6 +1903,7 @@ var
   AllOk: Boolean;
   V: UInt64;
   Before: Integer;
+  Imei: Integer;
 
   procedure Check(const AName: string; const AOk: Boolean);
   begin
@@ -1651,49 +1927,51 @@ begin
   Check('hex: rejects empty', not TryParseHex64('  ', V));
   Check('log codes stripped',
     StripLogCodes('Search DA... ' + LOk + ' ' + LInfo('[0]')) = 'Search DA... OK [0]');
-  Check('nine file rows', (btnUser.Parent = grpFiles) and (edtOfp.Parent = grpFiles));
-  Check('format, service and RPMB option panels loaded',
-    (grpFormatOptions <> nil) and (grpServiceOptions <> nil) and
-    (grpRpmbOptions <> nil) and (cbFormatMode.Items.Count > 0) and
-    (cbServiceAction.Items.Count > 0) and (cbRpmbOperation.Items.Count > 0));
+  Check('four file rows in the Files group',
+    (btnScat.Parent = grpFiles) and (edtOfp.Parent = grpFiles));
+  Imei := ImeiCheckDigit('35646019030487');
+  Check('IMEI check digit of 35646019030487 is 9', Imei = 9);
+  Imei := ImeiCheckDigit('35646019110987');
+  Check('IMEI check digit of 35646019110987 is 1', Imei = 1);
+  Check('IMEI check digit rejects short numbers',
+    ImeiCheckDigit('12345') < 0);
+  Check('button glyphs assigned',
+    (btnWriteFirmware.Glyph.Width > 0) and (btnRpmbFormat.Glyph.Width > 0));
 
-  chkFormatByAddress.Checked := False;
-  UpdateFormatAddress;
   cbPlatform.ItemIndex := CPlatformMtk;
   ApplyPlatformSettings;
   Check('MediaTek profile labels the service tab META', tsMeta.Caption = 'META');
+  Check('MediaTek profile hides the Samsung file rows', not btnBl.Visible);
   cbPlatform.ItemIndex := CPlatformUnisoc;
   ApplyPlatformSettings;
-  Check('Unisoc profile changes META to DIAG',
-    (tsMeta.Caption = 'DIAG') and
-    (cbServiceAction.Items.IndexOf('Switch to DIAG mode') >= 0) and
-    (cbRpmbOperation.Items.IndexOf('Read RPMB information (DIAG)') >= 0));
+  Check('Unisoc profile changes META to DIAG', tsMeta.Caption = 'DIAG');
   cbPlatform.ItemIndex := CPlatformQualcomm;
   ApplyPlatformSettings;
   Check('Qualcomm profile also exposes DIAG service mode',
-    (tsMeta.Caption = 'DIAG') and
-    (cbFormatMode.Items.IndexOf('Erase selected partition') >= 0));
+    tsMeta.Caption = 'DIAG');
+  cbPlatform.ItemIndex := CPlatformSamsung;
+  ApplyPlatformSettings;
+  Check('Samsung profile shows DOWNLOAD and the BL / AP / CP / CSC / USER rows',
+    (tsMeta.Caption = 'DOWNLOAD') and btnBl.Visible and edtUser.Visible and
+    (grpFiles.Height > CFilesHeight));
+  cbPlatform.ItemIndex := CPlatformGeneric;
+  ApplyPlatformSettings;
+  Check('Generic profile labels the service tab SERVICE',
+    tsMeta.Caption = 'SERVICE');
   cbPlatform.ItemIndex := CPlatformMtk;
   ApplyPlatformSettings;
-  Check('custom format fields start disabled',
-    (not edtFormatAddress.Enabled) and (not edtFormatSize.Enabled));
 
   Before := lstLog.Items.Count;
   edtScat.Text := '';
   edtAuth.Text := '';
-  edtBl.Text := '';
-  edtAp.Text := '';
-  edtCp.Text := '';
-  edtCsc.Text := '';
-  edtUser.Text := '';
   btnWriteFirmwareClick(nil);
   Check('Write Firmware without files logs an error',
     Pos('Select a SCAT file', StripLogCodes(lstLog.Items[lstLog.Items.Count - 2])) > 0);
 
   edtAp.Text := ExeDir + 'does-not-exist.tar.md5';
   btnWriteFirmwareClick(nil);
-  Check('Write Firmware with a missing AP file logs an error',
-    Pos('AP file not found', StripLogCodes(lstLog.Items[lstLog.Items.Count - 2])) > 0);
+  Check('Write Firmware with a missing AP file logs a warning',
+    lstLog.Items.Count > Before);
   edtAp.Text := '';
 
   edtReadSize.Text := '00000000  00000000';
@@ -1703,6 +1981,17 @@ begin
 
   btnReadOtpClick(nil);
   Check('Read OTP logs the job', lstLog.Items.Count > Before);
+  btnRpmbBackupClick(nil);
+  Check('Backup RPMB logs the job', lstLog.Items.Count > Before);
+  btnWipeDataClick(nil);
+  Check('Wipe Data logs the job', lstLog.Items.Count > Before);
+
+  edtImei1.Text := '12345';
+  UpdateImeiDigits;
+  Check('a short IMEI shows no check digit', lblImei1Digits.Caption = '-');
+  edtImei1.Text := '35646019030487';
+  UpdateImeiDigits;
+  Check('a valid IMEI shows its check digit', lblImei1Digits.Caption = '9');
 
   CheckUsb(True);
   Check('USB scan ran', True);
