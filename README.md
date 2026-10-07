@@ -114,7 +114,7 @@ Buttons, group frames and compact tab strips are interactive controls in `Sample
 `.github/workflows/build-fast.yml` runs on pushes to `main`, on `v*` tags, on every pull request, and manually. It runs on GitHub-hosted Windows runners and builds Win32 and Win64 in parallel with **Lazarus 4.4 / Free Pascal 3.2.2**, which is cached after the first run. Each job:
 
 1. Generates the `.lfm` forms from the `.dfm` files (`tools/dfm2lfm.py`). Edit only the `.dfm` files.
-2. Runs the platform-independent UI/resource contracts (`python tools/test_ui_contract.py`, 12 tests) and checks the embedded artwork is up to date.
+2. Runs the platform-independent UI/resource contracts (`python tools/test_ui_contract.py`, 13 tests) and checks the embedded artwork is up to date.
 3. Stamps the commit id into `BuildInfo.inc`, which is shown in Help.
 4. Compiles.
 5. Runs **`DeviceSetup.exe --selftest`**, which:

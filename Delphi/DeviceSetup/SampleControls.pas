@@ -159,6 +159,7 @@ type
     function TabRect(const AIndex: Integer): TRect;
     function HeaderHeight: Integer;
     function ScaleValue(const AValue: Integer): Integer;
+    procedure RefreshLayout;
     property PageCount: Integer read GetPageCount;
     property Pages[const AIndex: Integer]: TSampleTabSheet read GetPage;
     property ActivePageIndex: Integer read GetActivePageIndex
@@ -210,12 +211,14 @@ end;
 procedure TSampleGroupBox.SetTitle(const AValue: string);
 begin
   FTitle := AValue;
+  SetTextBuf(PChar(AValue));
   Invalidate;
 end;
 
 procedure TSampleGroupBox.Paint;
 var
-  Y, X, W: Integer;
+  Y, X, W, I: Integer;
+  E: TEdit;
 begin
   Canvas.Font.Assign(Font);
   Canvas.Brush.Style := bsSolid;
@@ -232,6 +235,17 @@ begin
   Canvas.Brush.Color := Color;
   Canvas.FillRect(Rect(X - 2, 0, X + W + 2, Y * 2));
   Canvas.TextOut(X, 0, FTitle);
+  for I := 0 to ControlCount - 1 do
+    if Controls[I] is TEdit then
+    begin
+      E := TEdit(Controls[I]);
+      if E.BorderStyle = bsNone then
+      begin
+        Canvas.Pen.Color := $00BBBBBB;
+        Canvas.MoveTo(E.Left, E.Top + E.Height);
+        Canvas.LineTo(E.Left + E.Width, E.Top + E.Height);
+      end;
+    end;
 end;
 
 constructor TSampleButton.Create(AOwner: TComponent);
@@ -262,6 +276,7 @@ end;
 procedure TSampleButton.SetTitle(const AValue: string);
 begin
   FTitle := AValue;
+  SetTextBuf(PChar(AValue));
   Invalidate;
 end;
 
@@ -479,6 +494,7 @@ end;
 procedure TSampleTabSheet.SetTitle(const AValue: string);
 begin
   FTitle := AValue;
+  SetTextBuf(PChar(AValue));
   if FPageControl <> nil then
     FPageControl.Invalidate;
 end;
@@ -553,13 +569,15 @@ begin
   if (AIndex < 0) or (AIndex >= PageCount) then
     Exit;
   Canvas.Font.Assign(Font);
-  X := 0;
+  X := ScaleValue(1);
   if FTabWidth > 0 then
     X := ScaleValue(5);
   for I := 0 to AIndex do
   begin
     if FTabWidth > 0 then
       W := ScaleValue(FTabWidth)
+    else if I = 0 then
+      W := ScaleValue(35)
     else
       W := Canvas.TextWidth(Pages[I].Caption) + ScaleValue(14);
     if I = AIndex then
@@ -632,6 +650,25 @@ begin
   Invalidate;
 end;
 
+procedure TSamplePageControl.RefreshLayout;
+var
+  I, J: Integer;
+  C: TControl;
+begin
+  LayoutPages;
+  { At 150% DPI, independently rounded child positions/heights can add a
+    pixel to an Options frame. Keep its actual bottom inside the page; job
+    buttons retain their reference sizes and generous bottom clearance. }
+  for I := 0 to PageCount - 1 do
+    for J := 0 to Pages[I].ControlCount - 1 do
+    begin
+      C := Pages[I].Controls[J];
+      if (C is TSampleGroupBox) and
+        (C.Top + C.Height > Pages[I].ClientHeight) then
+        C.Height := Pages[I].ClientHeight - C.Top;
+    end;
+end;
+
 procedure TSamplePageControl.Resize;
 begin
   inherited Resize;
@@ -650,7 +687,7 @@ const
     small insets match the Flash/Read/Format/IMEI/Locks/Service/RPMB row. }
   CTextInsets: array[0..6] of Integer = (3, 5, 5, 9, 1, 5, 3);
 var
-  I, X: Integer;
+  I, X, Y: Integer;
   R: TRect;
 begin
   Canvas.Brush.Style := bsSolid;
@@ -670,11 +707,19 @@ begin
       Canvas.Brush.Color := $00D0D0D0;
       Canvas.FillRect(R);
     end;
-    X := ScaleValue(6);
+    X := ScaleValue(2);
+    Y := ScaleValue(2);
+    if I = 0 then
+      X := ScaleValue(1);
     if (FTabWidth > 0) and (I <= High(CTextInsets)) then
+    begin
       X := ScaleValue(CTextInsets[I]);
+      Y := ScaleValue(1);
+      if Pages[I].Caption = 'IMEI' then
+        Y := 0;
+    end;
     Canvas.Brush.Style := bsClear;
-    Canvas.TextOut(R.Left + X, ScaleValue(1), Pages[I].Caption);
+    Canvas.TextOut(R.Left + X, Y, Pages[I].Caption);
     Canvas.Brush.Style := bsSolid;
   end;
 end;

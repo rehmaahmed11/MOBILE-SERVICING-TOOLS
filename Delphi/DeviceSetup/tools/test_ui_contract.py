@@ -139,6 +139,14 @@ class UIContractTests(unittest.TestCase):
         self.assertEqual(self.main2["cbDownloadAgent"].bounds[:2], (106, 16))
         self.assertEqual(self.main2["lblDownloadAgent"].bounds[:2], (8, 18))
 
+    def test_imei_inputs_keep_the_full_number_visible(self):
+        for name in ("edtImei1", "edtImei2"):
+            self.assertEqual(self.main2[name].props["Width"], "84")
+            self.assertEqual(self.main2[name].props["BorderStyle"], "bsNone")
+        source = (ROOT / "Main2Form.pas").read_text()
+        self.assertIn("EM_SETMARGINS", source)
+        self.assertIn("pcOperations.RefreshLayout", source)
+
     def test_artwork_is_small_not_full_screen_images(self):
         self.assertEqual(len(self.manifest), 42)
         for name, info in self.manifest.items():

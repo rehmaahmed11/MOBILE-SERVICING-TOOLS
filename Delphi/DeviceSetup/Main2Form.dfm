@@ -1039,8 +1039,8 @@ object frmMain2: TMain2Form
             object edtImei1: TEdit
               Left = 62
               Top = 16
-              Width = 86
-              Height = 18
+              Width = 84
+              Height = 17
               TabOrder = 1
               Text = '35646019030487'
               AutoSize = False
@@ -1050,6 +1050,7 @@ object frmMain2: TMain2Form
               Font.Name = 'Times New Roman'
               Font.Style = []
               ParentFont = False
+              BorderStyle = bsNone
             end
             object lblImei1Digits: TLabel
               Left = 153
@@ -1084,8 +1085,8 @@ object frmMain2: TMain2Form
             object edtImei2: TEdit
               Left = 62
               Top = 38
-              Width = 86
-              Height = 18
+              Width = 84
+              Height = 17
               TabOrder = 3
               Text = '35646019110987'
               AutoSize = False
@@ -1095,6 +1096,7 @@ object frmMain2: TMain2Form
               Font.Name = 'Times New Roman'
               Font.Style = []
               ParentFont = False
+              BorderStyle = bsNone
             end
             object lblImei2Digits: TLabel
               Left = 153

@@ -362,7 +362,7 @@ begin
           Measure.Canvas.Font.Assign(Main2.edtImei1.Font);
           Check('all 14 IMEI digits fit in the visible input',
             Measure.Canvas.TextWidth(Main2.edtImei1.Text) <=
-            Main2.edtImei1.ClientWidth - 4);
+            Main2.edtImei1.ClientWidth);
         finally
           Measure.Free;
         end;

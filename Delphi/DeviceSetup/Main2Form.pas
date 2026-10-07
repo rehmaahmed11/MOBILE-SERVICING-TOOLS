@@ -566,6 +566,10 @@ var
 begin
   if (pcJobs = nil) or not HandleAllocated or (cbStorage = nil) then
     Exit;
+  pcJobs.RefreshLayout;
+  pcOperations.RefreshLayout;
+  SendMessage(edtImei1.Handle, EM_SETMARGINS, EC_LEFTMARGIN or EC_RIGHTMARGIN, 0);
+  SendMessage(edtImei2.Handle, EM_SETMARGINS, EC_LEFTMARGIN or EC_RIGHTMARGIN, 0);
   H := pcJobs.ScaleValue(18);
   CompactCombo(cbPresets, H);
   CompactCombo(cbDownloadAgent, H);
