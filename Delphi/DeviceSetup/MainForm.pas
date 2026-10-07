@@ -703,8 +703,8 @@ begin
       H := MulDiv(H, R.Width - 20, W);
       W := R.Width - 20;
     end;
-    LogoRect := Rect((R.Width - W) div 2 - 2, (R.Height - H) div 2,
-      (R.Width + W) div 2 - 2, (R.Height + H) div 2);
+    LogoRect := Rect((R.Width - W) div 2 - 1, (R.Height - H) div 2 + 1,
+      (R.Width + W) div 2 - 1, (R.Height + H) div 2 + 1);
     DrawSampleBitmap(C, LogoRect, 'UI_OPPO');
     Exit;
   end;

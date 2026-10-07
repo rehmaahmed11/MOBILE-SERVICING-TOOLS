@@ -152,6 +152,12 @@ class UIContractTests(unittest.TestCase):
             self.assertEqual(struct.unpack_from("<ii", data, 18), (w, h), name)
             self.assertEqual(struct.unpack_from("<H", data, 28)[0], 24, name)
 
+    def test_resource_has_standard_win32_format_signature(self):
+        # FPC and Windows resource readers use this exact null entry as magic.
+        self.assertEqual(TARGET.read_bytes()[:32],
+                         bytes.fromhex("00000000 20000000 ffff0000 ffff0000 "
+                                       "00000000 00000000 00000000 00000000"))
+
     def test_resource_is_reproducible_and_all_glyphs_exist(self):
         self.assertEqual(TARGET.read_bytes(), build())
         source = (ROOT / "ToolbarIcons.pas").read_text()

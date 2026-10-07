@@ -25,7 +25,10 @@ def resource(name, data, kind=2):
     identifiers += (struct.pack("<HH", 0xFFFF, name) if isinstance(name, int)
                     else (name + "\0").encode("utf-16-le"))
     identifiers = aligned(identifiers)
-    tail = struct.pack("<IHHII", 0, 0x1030, 0, 0, 0)
+    # The empty first entry must match the standard 32-byte Win32 .res
+    # signature exactly; FPC detects the file format from these bytes.
+    flags = 0 if kind == 0 else 0x1030
+    tail = struct.pack("<IHHII", 0, flags, 0, 0, 0)
     header_size = 8 + len(identifiers) + len(tail)
     return (struct.pack("<II", len(data), header_size) + identifiers + tail +
             aligned(data))
