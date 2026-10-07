@@ -3,11 +3,17 @@ name: Build EXEs (fast)
 # Builds the app on GitHub-hosted Windows runners with the free Lazarus /
 # Free Pascal compiler - no self-hosted runner or Delphi licence needed.
 # Lazarus is cached after the first run, so later runs only compile.
+# Every build runs "DeviceSetup.exe --selftest" (forms load, checks pass,
+# screenshots of the screens are uploaded). Pushes to main publish the EXEs
+# as the "Latest build" release; pushing a tag like v1.1.0 publishes a
+# versioned release.
 
 on:
   push:
     branches:
       - main
+    tags:
+      - 'v*'
   pull_request:
   workflow_dispatch:
 
@@ -62,6 +68,13 @@ jobs:
         shell: pwsh
         run: python tools/dfm2lfm.py
 
+      - name: Stamp build id (shown in Help)
+        shell: pwsh
+        run: |
+          $id = "${{ github.sha }}".Substring(0, 7) + " #${{ github.run_number }}"
+          Set-Content -Path BuildInfo.inc -Value "CAppBuild = '$id';" -Encoding ascii
+          Get-Content BuildInfo.inc
+
       - name: Compile
         shell: pwsh
         run: |
@@ -77,6 +90,47 @@ jobs:
           Copy-Item $exe "artifacts\DeviceSetup-${{ matrix.platform }}.exe"
           Get-Item "artifacts\*.exe" | Format-Table Name, Length
 
+      - name: Self-test (forms load, checks pass, screenshots)
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force selftest-run | Out-Null
+          Copy-Item "artifacts\DeviceSetup-${{ matrix.platform }}.exe" selftest-run\DeviceSetup.exe
+          $p = Start-Process -FilePath selftest-run\DeviceSetup.exe -ArgumentList '--selftest' -PassThru
+          $null = $p.Handle
+          $timedOut = -not $p.WaitForExit(120000)
+          New-Item -ItemType Directory -Force selftest-run\selftest | Out-Null
+          Add-Type -AssemblyName System.Drawing, System.Windows.Forms
+          if ($timedOut) {
+            # something (usually an error dialog) blocked the app: grab the screen
+            $b = [System.Windows.Forms.SystemInformation]::VirtualScreen
+            $shot = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+            [System.Drawing.Graphics]::FromImage($shot).CopyFromScreen($b.Left, $b.Top, 0, 0, $shot.Size)
+            $shot.Save("$PWD\selftest-run\selftest\timeout-screen.png")
+            Stop-Process -Id $p.Id -Force
+          }
+          Get-ChildItem selftest-run\selftest\*.bmp -ErrorAction SilentlyContinue | ForEach-Object {
+            $img = [System.Drawing.Image]::FromFile($_.FullName)
+            $img.Save(($_.FullName -replace '\.bmp$', '.png'), [System.Drawing.Imaging.ImageFormat]::Png)
+            $img.Dispose()
+            Remove-Item $_.FullName
+          }
+          $log = 'selftest-run\selftest\selftest.log'
+          if (Test-Path $log) { Get-Content $log }
+          if ($timedOut) { Write-Output "::error::Self-test did not finish (probably blocked by an error dialog - see timeout-screen.png)"; exit 1 }
+          if (($p.ExitCode -ne 0) -or -not (Test-Path $log) -or -not (Select-String -Path $log -Pattern 'SELFTEST OK' -Quiet)) {
+            Write-Output "::error::Self-test failed (exit code $($p.ExitCode))"
+            exit 1
+          }
+
+      - name: Upload self-test results and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: DeviceSetup-selftest-${{ matrix.platform }}-${{ github.sha }}
+          path: Delphi/DeviceSetup/selftest-run/selftest/
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Upload EXE
         uses: actions/upload-artifact@v4
         with:
@@ -84,3 +138,35 @@ jobs:
           path: Delphi/DeviceSetup/artifacts/*.exe
           if-no-files-found: error
           retention-days: 30
+
+  release:
+    name: Publish release
+    needs: build
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download EXEs
+        uses: actions/download-artifact@v4
+        with:
+          pattern: DeviceSetup-Win*-${{ github.sha }}
+          merge-multiple: true
+          path: exe
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          ls -l exe
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            tag="${GITHUB_REF#refs/tags/}"
+            gh release create "$tag" exe/*.exe --verify-tag \
+              --title "Mobile Servicing Tools $tag" --generate-notes
+          else
+            gh release delete latest-build --yes --cleanup-tag 2>/dev/null || true
+            gh release create latest-build exe/*.exe --target "$GITHUB_SHA" --latest \
+              --title "Latest build (main)" \
+              --notes "Built from ${GITHUB_SHA::7} on main. Download DeviceSetup-Win64.exe (64-bit Windows) or DeviceSetup-Win32.exe (32-bit). This release is replaced on every push to main."
+          fi

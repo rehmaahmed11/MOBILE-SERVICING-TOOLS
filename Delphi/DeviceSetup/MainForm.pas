@@ -48,8 +48,16 @@ type
     miNext: TMenuItem;
     miSaveList: TMenuItem;
     miSeparator: TMenuItem;
+    miReloadModels: TMenuItem;
+    miExportModels: TMenuItem;
+    miSettings: TMenuItem;
+    miSeparator2: TMenuItem;
     miExit: TMenuItem;
     procedure FormCreate(Sender: TObject);
+    procedure FormDestroy(Sender: TObject);
+    procedure miReloadModelsClick(Sender: TObject);
+    procedure miExportModelsClick(Sender: TObject);
+    procedure miSettingsClick(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure pbMenuPaint(Sender: TObject);
     procedure pbNextPaint(Sender: TObject);
@@ -80,6 +88,14 @@ type
     procedure UpdateNextState;
     procedure OpenMain2;
     procedure SaveModelList;
+    procedure UpdateTitle;
+    procedure LoadModelsFile(const AShowResult: Boolean);
+    procedure SelectBrandAndModel(const ABrand, AModel: string);
+    procedure RestoreWindow;
+    procedure SaveWindowAndSelection;
+  public
+    { the models.csv looked for next to the EXE }
+    function ModelsFileName: string;
   end;
 
 var
@@ -94,7 +110,14 @@ implementation
 {$ENDIF}
 
 uses
+{$IFDEF FPC}
+  IniFiles,
+{$ELSE}
+  System.IniFiles,
+{$ENDIF}
+  AppInfo,
   Main2Form,
+  SettingsDialog,
   ToolbarIcons;
 
 const
@@ -118,23 +141,205 @@ end;
 { ---------------------------------------------------------------- form }
 
 procedure TMainForm.FormCreate(Sender: TObject);
-var
-  I: Integer;
 begin
+  LoadOptions;
+  LoadModelsFile(False);
   LoadBrands;
   cbSearch.Text := CSearchPlaceholder;
 
-  { Start on Realme, as in the reference screen. }
-  for I := 0 to lstBrands.Items.Count - 1 do
-    if SameText(lstBrands.Items[I], 'Realme') then
+  { Start on the last used model, or on Realme as in the reference screen. }
+  SelectBrandAndModel(
+    Settings.ReadString('Main1', 'Brand', 'Realme'),
+    Settings.ReadString('Main1', 'Model', ''));
+  RestoreWindow;
+end;
+
+procedure TMainForm.FormDestroy(Sender: TObject);
+begin
+  SaveWindowAndSelection;
+end;
+
+function TMainForm.ModelsFileName: string;
+begin
+  Result := ExeDir + 'models.csv';
+end;
+
+procedure TMainForm.LoadModelsFile(const AShowResult: Boolean);
+var
+  Skipped: Integer;
+  Error, Msg: string;
+begin
+  if not FileExists(ModelsFileName) then
+  begin
+    TDeviceCatalog.ResetToBuiltIn;
+    if AShowResult then
+      MessageDlg('No models.csv next to the EXE - using the built-in list.' +
+        sLineBreak + sLineBreak +
+        'Use Menu > Export models.csv to create one.', mtInformation, [mbOK], 0);
+    Exit;
+  end;
+  if TDeviceCatalog.LoadFromFile(ModelsFileName, Skipped, Error) then
+  begin
+    if AShowResult or (Skipped > 0) then
     begin
-      lstBrands.ItemIndex := I;
-      Break;
+      Msg := Format('Loaded %d models (%d brands) from models.csv.',
+        [TDeviceCatalog.TotalModels, TDeviceCatalog.BrandCount]);
+      if Skipped > 0 then
+        Msg := Msg + sLineBreak + Format('%d line(s) could not be read and ' +
+          'were skipped. Each line should look like: Brand,Model code,Name',
+          [Skipped]);
+      MessageDlg(Msg, mtInformation, [mbOK], 0);
     end;
-  if lstBrands.ItemIndex < 0 then
-    lstBrands.ItemIndex := 0;
-  LoadBrandModels(lstBrands.ItemIndex);
+  end
+  else
+  begin
+    TDeviceCatalog.ResetToBuiltIn;
+    MessageDlg('models.csv could not be used - the built-in list is shown.' +
+      sLineBreak + sLineBreak + Error, mtWarning, [mbOK], 0);
+  end;
+end;
+
+procedure TMainForm.SelectBrandAndModel(const ABrand, AModel: string);
+var
+  I, B: Integer;
+begin
+  B := TDeviceCatalog.FindBrand(ABrand);
+  if B < 0 then
+    B := TDeviceCatalog.FindBrand('Realme');
+  if B < 0 then
+    B := 0;
+  lstBrands.ItemIndex := B;
+  LoadBrandModels(B);
+  if AModel <> '' then
+    for I := 0 to lstModels.Items.Count - 1 do
+      if lstModels.Items[I] = AModel then
+      begin
+        lstModels.ItemIndex := I;
+        Break;
+      end;
   UpdateNextState;
+end;
+
+procedure TMainForm.RestoreWindow;
+var
+  Ini: TMemIniFile;
+  L, T, W, H: Integer;
+begin
+  Ini := Settings;
+  W := Ini.ReadInteger('Main1', 'Width', 0);
+  H := Ini.ReadInteger('Main1', 'Height', 0);
+  if (W < Constraints.MinWidth) or (H < Constraints.MinHeight) then
+    Exit;
+  L := Ini.ReadInteger('Main1', 'Left', 0);
+  T := Ini.ReadInteger('Main1', 'Top', 0);
+  { only if the window would still be on a screen }
+  if (L + 100 > Screen.DesktopLeft + Screen.DesktopWidth) or
+     (T + 50 > Screen.DesktopTop + Screen.DesktopHeight) or
+     (L + W < Screen.DesktopLeft + 100) or (T < Screen.DesktopTop - 10) then
+    Exit;
+  Position := poDesigned;
+  SetBounds(L, T, W, H);
+  if Ini.ReadBool('Main1', 'Maximized', False) then
+    WindowState := wsMaximized;
+end;
+
+procedure TMainForm.SaveWindowAndSelection;
+var
+  Ini: TMemIniFile;
+  B, M: Integer;
+begin
+  Ini := Settings;
+  if SelectedDevice(B, M) then
+  begin
+    Ini.WriteString('Main1', 'Brand', TDeviceCatalog.BrandName(B));
+    Ini.WriteString('Main1', 'Model', TDeviceCatalog.ModelName(B, M));
+  end
+  else if lstBrands.ItemIndex >= 0 then
+  begin
+    Ini.WriteString('Main1', 'Brand', lstBrands.Items[lstBrands.ItemIndex]);
+    Ini.WriteString('Main1', 'Model', '');
+  end;
+  Ini.WriteBool('Main1', 'Maximized', WindowState = wsMaximized);
+  if WindowState = wsNormal then
+  begin
+    Ini.WriteInteger('Main1', 'Left', Left);
+    Ini.WriteInteger('Main1', 'Top', Top);
+    Ini.WriteInteger('Main1', 'Width', Width);
+    Ini.WriteInteger('Main1', 'Height', Height);
+  end;
+  FlushSettings;
+end;
+
+procedure TMainForm.UpdateTitle;
+var
+  Info: string;
+begin
+  if SearchText <> '' then
+    Info := Format('%d result(s) for "%s"', [lstModels.Items.Count, SearchText])
+  else if lstBrands.ItemIndex >= 0 then
+    Info := Format('%s : %d model(s)', [lstBrands.Items[lstBrands.ItemIndex],
+      lstModels.Items.Count])
+  else
+    Info := '';
+  if Info <> '' then
+    Caption := AppTitle + '  -  ' + Info
+  else
+    Caption := AppTitle;
+end;
+
+procedure TMainForm.miReloadModelsClick(Sender: TObject);
+var
+  B, M: Integer;
+  Brand, Model: string;
+begin
+  Brand := 'Realme';
+  Model := '';
+  if SelectedDevice(B, M) then
+  begin
+    Brand := TDeviceCatalog.BrandName(B);
+    Model := TDeviceCatalog.ModelName(B, M);
+  end
+  else if lstBrands.ItemIndex >= 0 then
+    Brand := lstBrands.Items[lstBrands.ItemIndex];
+  LoadModelsFile(True);
+  FUpdating := True;
+  try
+    cbSearch.Text := CSearchPlaceholder;
+  finally
+    FUpdating := False;
+  end;
+  LoadBrands;
+  SelectBrandAndModel(Brand, Model);
+end;
+
+procedure TMainForm.miExportModelsClick(Sender: TObject);
+var
+  Dialog: TSaveDialog;
+begin
+  Dialog := TSaveDialog.Create(Self);
+  try
+    Dialog.Title := 'Export model list';
+    Dialog.Filter := 'CSV files (*.csv)|*.csv|All files (*.*)|*.*';
+    Dialog.DefaultExt := 'csv';
+    Dialog.Options := Dialog.Options + [ofOverwritePrompt];
+    Dialog.InitialDir := ExeDir;
+    Dialog.FileName := 'models.csv';
+    if not Dialog.Execute then
+      Exit;
+    TDeviceCatalog.ExportToFile(Dialog.FileName);
+    MessageDlg(Format('Saved %d models to:', [TDeviceCatalog.TotalModels]) +
+      sLineBreak + Dialog.FileName + sLineBreak + sLineBreak +
+      'Edit it in Notepad or Excel (Brand,Model code,Name), keep it next to ' +
+      'the EXE as models.csv, then use Menu > Reload models.',
+      mtInformation, [mbOK], 0);
+  finally
+    Dialog.Free;
+  end;
+end;
+
+procedure TMainForm.miSettingsClick(Sender: TObject);
+begin
+  ShowSettingsDialog(Self);
 end;
 
 procedure TMainForm.FormShow(Sender: TObject);
@@ -196,6 +401,7 @@ begin
     FUpdating := False;
   end;
   UpdateNextState;
+  UpdateTitle;
 end;
 
 procedure TMainForm.LoadSearchResults(const AText: string);
@@ -224,6 +430,7 @@ begin
     FUpdating := False;
   end;
   UpdateNextState;
+  UpdateTitle;
 end;
 
 function TMainForm.SearchText: string;
@@ -376,17 +583,20 @@ end;
 
 procedure TMainForm.pbMenuPaint(Sender: TObject);
 begin
-  DrawMenuIcon(pbMenu.Canvas, pbMenu.ClientRect);
+  PaintIcon(pbMenu.Canvas, pbMenu.ClientRect, DrawMenuIcon);
 end;
 
 procedure TMainForm.pbNextPaint(Sender: TObject);
 begin
-  DrawNextIcon(pbNext.Canvas, pbNext.ClientRect, pbNext.Enabled);
+  if pbNext.Enabled then
+    PaintIcon(pbNext.Canvas, pbNext.ClientRect, DrawNextIconEnabled)
+  else
+    PaintIcon(pbNext.Canvas, pbNext.ClientRect, DrawNextIconDisabled);
 end;
 
 procedure TMainForm.pbDownloadPaint(Sender: TObject);
 begin
-  DrawDownloadIcon(pbDownload.Canvas, pbDownload.ClientRect);
+  PaintIcon(pbDownload.Canvas, pbDownload.ClientRect, DrawDownloadIcon);
 end;
 
 procedure TMainForm.pbMenuClick(Sender: TObject);
@@ -448,6 +658,7 @@ begin
     Exit;
   end;
 
+  SaveWindowAndSelection;
   Screen2 := TMain2Form.Create(Self);
   try
     Screen2.SetDevice(TDeviceCatalog.BrandName(B),

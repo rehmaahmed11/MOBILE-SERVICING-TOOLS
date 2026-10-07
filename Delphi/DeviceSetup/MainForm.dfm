@@ -18,6 +18,7 @@ object frmMain: TMainForm
   ShowHint = True
   ActiveControl = cbSearch
   OnCreate = FormCreate
+  OnDestroy = FormDestroy
   OnShow = FormShow
   PixelsPerInch = 96
   TextHeight = 13
@@ -111,6 +112,21 @@ object frmMain: TMainForm
       OnClick = pbDownloadClick
     end
     object miSeparator: TMenuItem
+      Caption = '-'
+    end
+    object miReloadModels: TMenuItem
+      Caption = 'Reload models'
+      OnClick = miReloadModelsClick
+    end
+    object miExportModels: TMenuItem
+      Caption = 'Export models.csv...'
+      OnClick = miExportModelsClick
+    end
+    object miSettings: TMenuItem
+      Caption = 'Settings...'
+      OnClick = miSettingsClick
+    end
+    object miSeparator2: TMenuItem
       Caption = '-'
     end
     object miExit: TMenuItem
