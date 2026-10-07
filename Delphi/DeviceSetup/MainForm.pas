@@ -80,7 +80,8 @@ implementation
 {$R *.dfm}
 
 uses
-  Main2Form;
+  Main2Form,
+  ToolbarIcons;
 
 const
   CSearchPlaceholder = 'Quick search';
@@ -98,80 +99,6 @@ begin
   Value := NativeInt(Pointer(ARef));
   ABrandIndex := Integer(Value div CRefFactor);
   AModelIndex := Integer(Value mod CRefFactor);
-end;
-
-{ ---------------------------------------------------------------- icons }
-
-procedure DrawMenuIcon(ACanvas: TCanvas; const R: TRect);
-var
-  I, Y: Integer;
-begin
-  ACanvas.Brush.Style := bsSolid;
-  ACanvas.Brush.Color := clBtnFace;
-  ACanvas.FillRect(R);
-  ACanvas.Pen.Color := RGB(16, 82, 168);
-  ACanvas.Brush.Color := RGB(36, 120, 214);
-  for I := 0 to 2 do
-  begin
-    Y := R.Top + 3 + I * 8;
-    ACanvas.RoundRect(R.Left + 3, Y, R.Right - 3, Y + 7, 4, 4);
-  end;
-end;
-
-procedure DrawNextIcon(ACanvas: TCanvas; const R: TRect; const AEnabled: Boolean);
-var
-  L, T: Integer;
-  Frame, Fill, Arrow, ArrowEdge: TColor;
-begin
-  ACanvas.Brush.Style := bsSolid;
-  ACanvas.Brush.Color := clBtnFace;
-  ACanvas.FillRect(R);
-  L := R.Left;
-  T := R.Top;
-  if AEnabled then
-  begin
-    Frame := RGB(70, 70, 70);
-    Fill := clWhite;
-    Arrow := RGB(38, 170, 64);
-    ArrowEdge := RGB(22, 118, 42);
-  end
-  else
-  begin
-    Frame := RGB(150, 150, 150);
-    Fill := RGB(235, 235, 235);
-    Arrow := RGB(170, 200, 175);
-    ArrowEdge := RGB(140, 165, 145);
-  end;
-
-  { window }
-  ACanvas.Pen.Color := Frame;
-  ACanvas.Brush.Color := Fill;
-  ACanvas.Rectangle(L + 3, T + 3, L + 21, T + 21);
-  ACanvas.Brush.Color := Frame;
-  ACanvas.FillRect(Rect(L + 3, T + 3, L + 21, T + 7));
-
-  { green play arrow }
-  ACanvas.Pen.Color := ArrowEdge;
-  ACanvas.Brush.Color := Arrow;
-  ACanvas.Polygon([Point(L + 12, T + 10), Point(L + 12, T + 26),
-    Point(L + 25, T + 18)]);
-end;
-
-procedure DrawDownloadIcon(ACanvas: TCanvas; const R: TRect);
-var
-  L, T: Integer;
-begin
-  ACanvas.Brush.Style := bsSolid;
-  ACanvas.Brush.Color := clBtnFace;
-  ACanvas.FillRect(R);
-  L := R.Left;
-  T := R.Top;
-  ACanvas.Pen.Color := RGB(200, 60, 20);
-  ACanvas.Brush.Color := RGB(242, 92, 34);
-  ACanvas.Rectangle(L + 11, T + 2, L + 18, T + 12);
-  ACanvas.Polygon([Point(L + 5, T + 12), Point(L + 23, T + 12),
-    Point(L + 14, T + 21)]);
-  ACanvas.Rectangle(L + 4, T + 23, L + 25, T + 27);
 end;
 
 { ---------------------------------------------------------------- form }
@@ -507,9 +434,9 @@ begin
   try
     Screen2.SetDevice(TDeviceCatalog.BrandName(B),
       TDeviceCatalog.ModelName(B, M));
-    Screen2.Position := poDesigned;
-    Screen2.BoundsRect := BoundsRect;
-    Screen2.WindowState := WindowState;
+    Screen2.Position := poOwnerFormCenter;
+    if WindowState = wsMaximized then
+      Screen2.WindowState := wsMaximized;
     Screen2.ShowModal;
   finally
     Screen2.Free;

@@ -16,7 +16,30 @@ Laid out to match the MAIN 1 reference screenshot:
 
 ### MAIN 2 — opened by Next (`Main2Form.pas` / `Main2Form.dfm`)
 
-Shows the brand, model name and model code selected on MAIN 1. The back icon, **< Back** button or **Esc** returns to MAIN 1. This is a placeholder layout until the MAIN 2 reference screenshot is provided.
+Laid out to match the MAIN 2 reference screenshot:
+
+- **Toolbar:**
+  - **Menu** (left): *Change device*, *Save log*, *Clear log*, *Exit*.
+  - Right side, in order:
+    - **green play**: runs *Write Firmware*
+    - **orange arrow**: saves the log
+    - **phone**: changes device (back to MAIN 1)
+    - **gear**: settings (placeholder)
+    - **Facebook**
+    - **help**
+- **Left side:** *Presets*. *Files* has **SCAT**, **AUTH**, **BIN** and **OFP** browse buttons with path boxes; BIN only turns on when *Advanced write* is ticked. Below that are the *Log* and the red progress bar.
+- **Right side:**
+  - **Jobs** tab:
+    - *Connections* group: download agent `MTK_AllInOne_DA.bin`, BROM/Preloader authorization, Force BROM, Read EMI and Read Phone Info, plus USB speed and battery.
+    - *Storage* group: type, and a region list that changes with the type.
+    - **Flash** tab: *Options* group with the mode list, **Write Firmware**, **Restore from backup**, *Advanced write* with a start/length hex address, **Write BIN** and **Write OFP**.
+  - **META**, **Read**, **Format**, **IMEI**, **Locks**, **Service** and **RPMB** tabs: placeholders for now.
+  - Device status phone icon (bottom-right).
+- **Esc** or the phone icon goes back to MAIN 1.
+
+> **Device communication is not implemented.** The action buttons check their inputs (the file is chosen and exists, the address is valid hex) and write the job details to the log. They do not talk to a phone.
+
+Toolbar icons and button glyphs are drawn in code (`ToolbarIcons.pas`), so the project needs no image resources.
 
 ## Delphi project
 

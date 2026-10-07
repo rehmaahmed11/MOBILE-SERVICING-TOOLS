@@ -43,6 +43,7 @@
       <Form>frmMain2</Form>
     </DCCReference>
     <DCCReference Include="DeviceCatalog.pas" />
+    <DCCReference Include="ToolbarIcons.pas" />
   </ItemGroup>
 
   <ProjectExtensions>
