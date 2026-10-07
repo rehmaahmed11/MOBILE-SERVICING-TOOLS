@@ -366,8 +366,6 @@ end;
 
 { ------------------------------------------------------------ external data }
 
-procedure ApplyGroupedLines(ALines: TStrings); forward;
-
 procedure SetBrandModels(const ABrandName: string; AModels: TStrings);
 var
   Idx, I: Integer;
@@ -406,6 +404,39 @@ begin
     {$ENDIF}
   except
     ALines.Clear;
+  end;
+end;
+
+{ Turns "Brand<TAB>CODE : Name" lines (already sorted by brand) into catalog
+  entries. }
+procedure ApplyGroupedLines(ALines: TStrings);
+var
+  I, TabPos: Integer;
+  Models: TStringList;
+  BrandName, Line: string;
+begin
+  Models := TStringList.Create;
+  try
+    BrandName := '';
+    for I := 0 to ALines.Count - 1 do
+    begin
+      Line := ALines[I];
+      TabPos := Pos(#9, Line);
+      if TabPos <= 0 then
+        Continue;
+      if Copy(Line, 1, TabPos - 1) <> BrandName then
+      begin
+        if (BrandName <> '') and (Models.Count > 0) then
+          SetBrandModels(BrandName, Models);
+        BrandName := Copy(Line, 1, TabPos - 1);
+        Models.Clear;
+      end;
+      Models.Add(Trim(Copy(Line, TabPos + 1, Length(Line))));
+    end;
+    if (BrandName <> '') and (Models.Count > 0) then
+      SetBrandModels(BrandName, Models);
+  finally
+    Models.Free;
   end;
 end;
 
@@ -482,39 +513,6 @@ begin
   finally
     Lines.Free;
     Brands.Free;
-  end;
-end;
-
-{ Turns "Brand<TAB>CODE : Name" lines (already sorted by brand) into catalog
-  entries. }
-procedure ApplyGroupedLines(ALines: TStrings);
-var
-  I, TabPos: Integer;
-  Models: TStringList;
-  BrandName, Line: string;
-begin
-  Models := TStringList.Create;
-  try
-    BrandName := '';
-    for I := 0 to ALines.Count - 1 do
-    begin
-      Line := ALines[I];
-      TabPos := Pos(#9, Line);
-      if TabPos <= 0 then
-        Continue;
-      if Copy(Line, 1, TabPos - 1) <> BrandName then
-      begin
-        if (BrandName <> '') and (Models.Count > 0) then
-          SetBrandModels(BrandName, Models);
-        BrandName := Copy(Line, 1, TabPos - 1);
-        Models.Clear;
-      end;
-      Models.Add(Trim(Copy(Line, TabPos + 1, Length(Line))));
-    end;
-    if (BrandName <> '') and (Models.Count > 0) then
-      SetBrandModels(BrandName, Models);
-  finally
-    Models.Free;
   end;
 end;
 

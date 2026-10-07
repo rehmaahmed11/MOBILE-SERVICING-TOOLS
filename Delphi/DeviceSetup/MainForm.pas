@@ -687,7 +687,7 @@ begin
   if E is EAbort then
     Exit;
   TAppSettings.WriteErrorReport('Unhandled error',
-    E.ClassName + ': ' + E.Message);
+    string(E.ClassName) + ': ' + E.Message);
   MessageDlg(CAppName + ' hit an unexpected problem.' + sLineBreak + sLineBreak +
     E.Message + sLineBreak + sLineBreak +
     'A report was written to:' + sLineBreak + TAppSettings.LogDir,

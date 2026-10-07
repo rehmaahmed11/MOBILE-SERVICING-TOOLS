@@ -139,7 +139,8 @@ var
 begin
   if GConfigDir = '' then
   begin
-    Base := StripSlash(GetEnvironmentVariable('APPDATA'));
+    { Qualified: the Windows unit also exports a GetEnvironmentVariable. }
+    Base := StripSlash(SysUtils.GetEnvironmentVariable('APPDATA'));
     if Base = '' then
       Base := StripSlash(ExeFolder);
     GConfigDir := IncludeTrailingPathDelimiter(Base + PathDelim + CAppFolderName);

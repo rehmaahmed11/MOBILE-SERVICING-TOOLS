@@ -389,17 +389,17 @@ end;
 
 procedure TMain2Form.DevicesChanged(Sender: TObject);
 var
-  Text: string;
+  HintText: string;
 begin
   if FWatcher = nil then
     Exit;
   FDeviceConnected := FWatcher.Connected;
   if FDeviceConnected then
-    Text := FWatcher.Summary
+    HintText := FWatcher.Summary
   else
-    Text := 'No device connected';
-  pbDeviceState.Hint := Text;
-  pnlDeviceState.Hint := Text;
+    HintText := 'No device connected';
+  pbDeviceState.Hint := HintText;
+  pnlDeviceState.Hint := HintText;
   pbDeviceState.Invalidate;
 end;
 
