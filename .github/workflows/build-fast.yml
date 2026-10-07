@@ -154,6 +154,9 @@ jobs:
       - name: Report self-test as annotations
         if: always()
         shell: pwsh
+        env:
+          GH_WANT_SHOTS: ${{ inputs.screenshots }}
+          GH_PR: ${{ github.event_name == 'pull_request' }}
         run: |
           $dir = 'selftest-run\selftest'
           $log = "$dir\selftest.log"
@@ -163,11 +166,12 @@ jobs:
           } else {
             Write-Output "::notice title=selftest-${{ matrix.platform }}::no selftest.log"
           }
-          # Optional (manual run with "screenshots" ticked, or the file
-          # .github/ci-screenshots present in the commit): screenshots as
-          # neutral check runs (base64 GIF chunks, readable through the GitHub
-          # API) so they can be reviewed without downloading artifacts.
-          $wantShots = ('${{ inputs.screenshots }}' -eq 'true') -or (Test-Path '../../.github/ci-screenshots')
+          # Screenshots as neutral check runs (base64 GIF chunks, readable
+          # through the GitHub API) so the screens can be reviewed without
+          # downloading artifacts. They are published for every pull request,
+          # for manual runs with "screenshots" ticked, and for any commit that
+          # contains the marker file .github/ci-screenshots (useful on main).
+          $wantShots = ($env:GH_WANT_SHOTS -eq 'true') -or ($env:GH_PR -eq 'true') -or (Test-Path '../../.github/ci-screenshots')
           if (('${{ matrix.platform }}' -eq 'Win64') -and $wantShots) {
             $env:GH_TOKEN = '${{ github.token }}'
             $sha = '${{ github.event.pull_request.head.sha || github.sha }}'
