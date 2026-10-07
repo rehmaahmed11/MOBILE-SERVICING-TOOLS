@@ -252,29 +252,40 @@ begin
         Pump;
         Check('MAIN 2 self-test', Main2.SelfTest(Out));
         Main2.ShowDemoLog;
+        { the screen order follows UI SAMPLE/S2.png ... S10.png }
+        Main2.pcJobs.ActivePage := Main2.tsJobs;
+        Main2.pcOperations.ActivePage := Main2.tsImei;
+        Capture(Main2, 'main2-imei');
         Main2.pcOperations.ActivePage := Main2.tsFlash;
         Capture(Main2, 'main2-flash');
         Main2.pcOperations.ActivePage := Main2.tsRead;
         Capture(Main2, 'main2-read');
         Main2.pcOperations.ActivePage := Main2.tsFormat;
         Capture(Main2, 'main2-format');
+        Main2.pcOperations.ActivePage := Main2.tsLocks;
+        Capture(Main2, 'main2-locks');
         Main2.pcOperations.ActivePage := Main2.tsService;
         Capture(Main2, 'main2-service');
         Main2.pcOperations.ActivePage := Main2.tsRpmb;
         Capture(Main2, 'main2-rpmb');
+        Main2.pcJobs.ActivePage := Main2.tsMeta;
+        Capture(Main2, 'main2-meta');
         Main2.cbPlatform.ItemIndex := 1;
         Main2.cbPlatformChange(nil);
-        Main2.pcJobs.ActivePage := Main2.tsMeta;
         Capture(Main2, 'main2-unisoc-diag');
         Main2.cbPlatform.ItemIndex := 0;
         Main2.cbPlatformChange(nil);
         Main2.pcJobs.ActivePage := Main2.tsJobs;
-        Main2.Progress := 40;
         Main2.chkAdvancedWrite.Checked := True;
+        Main2.chkAdvancedWriteClick(nil);
         Main2.pcOperations.ActivePage := Main2.tsFlash;
         Capture(Main2, 'main2-flash-advanced');
-        Main2.Progress := 0;
         Main2.chkAdvancedWrite.Checked := False;
+        Main2.chkAdvancedWriteClick(nil);
+        Main2.pcOperations.ActivePage := Main2.tsImei;
+        Main2.Progress := 40;
+        Capture(Main2, 'main2-progress');
+        Main2.Progress := 0;
       finally
         Main2.Free;  { saves settings + session log }
       end;
