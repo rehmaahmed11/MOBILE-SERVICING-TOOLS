@@ -29,10 +29,22 @@ begin
   Application.Initialize;
   Application.MainFormOnTaskBar := True;
   if SelfTestRequested then
+  begin
     InstallSelfTestHandler;
-  Application.CreateForm(TMainForm, frmMain);
-  if SelfTestRequested then
-    RunSelfTest
+    try
+      Application.CreateForm(TMainForm, frmMain);
+    except
+      on E: TObject do
+      begin
+        ReportSelfTestCrash('creating MAIN 1', E);
+        Halt(4);
+      end;
+    end;
+    RunSelfTest;
+  end
   else
+  begin
+    Application.CreateForm(TMainForm, frmMain);
     Application.Run;
+  end;
 end.

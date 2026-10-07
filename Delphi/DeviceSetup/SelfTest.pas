@@ -16,6 +16,8 @@ interface
 function SelfTestRequested: Boolean;
 procedure InstallSelfTestHandler;
 procedure RunSelfTest;
+{ Writes an exception that stopped the self-test before it could start. }
+procedure ReportSelfTestCrash(const AWhere: string; E: TObject);
 
 implementation
 
@@ -72,6 +74,25 @@ begin
     L.Free;
   end;
   Halt(3);
+end;
+
+procedure ReportSelfTestCrash(const AWhere: string; E: TObject);
+var
+  L: TStringList;
+begin
+  L := TStringList.Create;
+  try
+    if E is Exception then
+      L.Add('EXCEPTION in ' + AWhere + ': ' + E.ClassName + ': ' +
+        Exception(E).Message)
+    else
+      L.Add('EXCEPTION in ' + AWhere);
+    L.Add('SELFTEST FAILED');
+    ForceDirectories(OutDir);
+    L.SaveToFile(OutDir + 'selftest.log');
+  finally
+    L.Free;
+  end;
 end;
 
 procedure InstallSelfTestHandler;
