@@ -23,13 +23,12 @@ implementation
 
 uses
 {$IFDEF FPC}
-  Windows, Classes, SysUtils, Forms, Graphics,
+  Windows, Classes, SysUtils, Forms,
 {$ELSE}
   Winapi.Windows,
   System.Classes,
   System.SysUtils,
   Vcl.Forms,
-  Vcl.Graphics,
 {$ENDIF}
   AppInfo,
   DeviceCatalog,
@@ -122,23 +121,62 @@ begin
   end;
 end;
 
+{ Captures the window with plain GDI calls and writes a 24-bit BMP
+  (an LCL TBitmap does not pick up what PrintWindow draws into its DC). }
 procedure Capture(AForm: TForm; const AName: string);
 var
-  Bmp: TBitmap;
   R: TRect;
+  W, H, RowSize: Integer;
+  ScreenDC, MemDC: HDC;
+  Bmp, OldBmp: HBITMAP;
+  Info: TBitmapInfo;
+  Pixels: array of Byte;
+  FileHdr: TBitmapFileHeader;
+  Stream: TFileStream;
 begin
+  AForm.BringToFront;
   Pump;
   GetWindowRect(AForm.Handle, R);
-  Bmp := TBitmap.Create;
+  W := R.Right - R.Left;
+  H := R.Bottom - R.Top;
+  if (W <= 0) or (H <= 0) then
+    Exit;
+  ScreenDC := GetDC(0);
+  MemDC := CreateCompatibleDC(ScreenDC);
+  Bmp := CreateCompatibleBitmap(ScreenDC, W, H);
+  OldBmp := SelectObject(MemDC, Bmp);
   try
-    Bmp.PixelFormat := pf24bit;
-    Bmp.SetSize(R.Right - R.Left, R.Bottom - R.Top);
-    Bmp.Canvas.Brush.Color := clWhite;
-    Bmp.Canvas.FillRect(Rect(0, 0, Bmp.Width, Bmp.Height));
-    PrintWindow(AForm.Handle, Bmp.Canvas.Handle, PW_RENDERFULLCONTENT);
-    Bmp.SaveToFile(OutDir + AName + '.bmp');
+    if not PrintWindow(AForm.Handle, MemDC, PW_RENDERFULLCONTENT) then
+      BitBlt(MemDC, 0, 0, W, H, ScreenDC, R.Left, R.Top, SRCCOPY);
+    SelectObject(MemDC, OldBmp);
+
+    FillChar(Info, SizeOf(Info), 0);
+    Info.bmiHeader.biSize := SizeOf(TBitmapInfoHeader);
+    Info.bmiHeader.biWidth := W;
+    Info.bmiHeader.biHeight := H;  { bottom-up, as BMP files expect }
+    Info.bmiHeader.biPlanes := 1;
+    Info.bmiHeader.biBitCount := 24;
+    Info.bmiHeader.biCompression := BI_RGB;
+    RowSize := ((W * 3) + 3) and not 3;
+    SetLength(Pixels, RowSize * H);
+    GetDIBits(MemDC, Bmp, 0, H, @Pixels[0], Info, DIB_RGB_COLORS);
+
+    FillChar(FileHdr, SizeOf(FileHdr), 0);
+    FileHdr.bfType := $4D42;  { 'BM' }
+    FileHdr.bfOffBits := SizeOf(TBitmapFileHeader) + SizeOf(TBitmapInfoHeader);
+    FileHdr.bfSize := FileHdr.bfOffBits + DWORD(Length(Pixels));
+    Stream := TFileStream.Create(OutDir + AName + '.bmp', fmCreate);
+    try
+      Stream.WriteBuffer(FileHdr, SizeOf(FileHdr));
+      Stream.WriteBuffer(Info.bmiHeader, SizeOf(TBitmapInfoHeader));
+      Stream.WriteBuffer(Pixels[0], Length(Pixels));
+    finally
+      Stream.Free;
+    end;
   finally
-    Bmp.Free;
+    DeleteObject(Bmp);
+    DeleteDC(MemDC);
+    ReleaseDC(0, ScreenDC);
   end;
 end;
 
