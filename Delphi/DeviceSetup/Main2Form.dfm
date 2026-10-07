@@ -33,6 +33,30 @@ object frmMain2: TMain2Form
     OnClick = pbMenuClick
     OnPaint = pbMenuPaint
   end
+  object lblPlatform: TLabel
+    Left = 53
+    Top = 11
+    Width = 48
+    Height = 13
+    Caption = 'Platform:'
+  end
+  object cbPlatform: TComboBox
+    Left = 105
+    Top = 6
+    Width = 178
+    Height = 22
+    Hint = 'Choose the chipset family. Unisoc changes META to DIAG.'
+    Style = csDropDownList
+    ItemIndex = 0
+    TabOrder = 5
+    OnChange = cbPlatformChange
+    Items.Strings = (
+      'MediaTek (MTK)'
+      'Unisoc / Spreadtrum'
+      'Qualcomm'
+      'Samsung'
+      'Other / Generic')
+  end
   object pbSettings: TPaintBox
     Left = 636
     Top = 5
@@ -667,12 +691,123 @@ object frmMain2: TMain2Form
         object tsFormat: TTabSheet
           Caption = 'Format'
           ImageIndex = 2
-          object lblFormatInfo: TLabel
-            Left = 8
-            Top = 8
-            Width = 270
-            Height = 13
-            Caption = 'Format options are not available yet.'
+          object grpFormatOptions: TGroupBox
+            Left = 2
+            Top = 2
+            Width = 367
+            Height = 262
+            Caption = 'Format options'
+            TabOrder = 0
+            object lblFormatMode: TLabel
+              Left = 14
+              Top = 14
+              Width = 68
+              Height = 13
+              Caption = 'Format mode'
+            end
+            object cbFormatMode: TComboBox
+              Left = 14
+              Top = 30
+              Width = 335
+              Height = 21
+              Style = csDropDownList
+              ItemIndex = 0
+              TabOrder = 0
+              Items.Strings = (
+                'Safe format (preserve calibration)'
+                'Format user data'
+                'Format selected partition')
+            end
+            object lblFormatTarget: TLabel
+              Left = 14
+              Top = 56
+              Width = 35
+              Height = 13
+              Caption = 'Target'
+            end
+            object cbFormatTarget: TComboBox
+              Left = 14
+              Top = 72
+              Width = 335
+              Height = 21
+              Style = csDropDownList
+              ItemIndex = 0
+              TabOrder = 1
+              Items.Strings = (
+                'USERDATA'
+                'CACHE'
+                'METADATA'
+                'CUSTOM PARTITION')
+            end
+            object chkPreserveCalibration: TCheckBox
+              Left = 14
+              Top = 99
+              Width = 330
+              Height = 17
+              Caption = 'Preserve calibration / NV data'
+              Checked = True
+              State = cbChecked
+              TabOrder = 2
+            end
+            object chkFormatByAddress: TCheckBox
+              Left = 14
+              Top = 119
+              Width = 250
+              Height = 17
+              Caption = 'Use custom address range'
+              TabOrder = 3
+              OnClick = chkFormatByAddressClick
+            end
+            object lblFormatAddress: TLabel
+              Left = 14
+              Top = 143
+              Width = 53
+              Height = 13
+              Caption = 'Address 0x'
+            end
+            object lblFormatSize: TLabel
+              Left = 174
+              Top = 143
+              Width = 37
+              Height = 13
+              Caption = 'Size 0x'
+            end
+            object edtFormatAddress: TEdit
+              Left = 14
+              Top = 159
+              Width = 145
+              Height = 21
+              Enabled = False
+              TabOrder = 4
+              Text = '00000000  00000000'
+            end
+            object edtFormatSize: TEdit
+              Left = 174
+              Top = 159
+              Width = 145
+              Height = 21
+              Enabled = False
+              TabOrder = 5
+              Text = '00000000  00000000'
+            end
+            object btnFormat: TButton
+              Left = 14
+              Top = 188
+              Width = 335
+              Height = 32
+              Caption = 'Format'
+              TabOrder = 6
+              OnClick = btnFormatClick
+            end
+            object lblFormatInfo: TLabel
+              Left = 14
+              Top = 225
+              Width = 335
+              Height = 30
+              AutoSize = False
+              WordWrap = True
+              Caption = 'Options are platform-specific. No formatting is performed in this build.'
+            end
           end
         end
         object tsImei: TTabSheet
@@ -700,23 +835,131 @@ object frmMain2: TMain2Form
         object tsService: TTabSheet
           Caption = 'Service'
           ImageIndex = 5
-          object lblServiceInfo: TLabel
-            Left = 8
-            Top = 8
-            Width = 270
-            Height = 13
-            Caption = 'Service options are not available yet.'
+          object grpServiceOptions: TGroupBox
+            Left = 2
+            Top = 2
+            Width = 367
+            Height = 262
+            Caption = 'Service options'
+            TabOrder = 0
+            object lblServiceAction: TLabel
+              Left = 14
+              Top = 14
+              Width = 66
+              Height = 13
+              Caption = 'Service action'
+            end
+            object cbServiceAction: TComboBox
+              Left = 14
+              Top = 30
+              Width = 335
+              Height = 21
+              Style = csDropDownList
+              ItemIndex = 0
+              TabOrder = 0
+              Items.Strings = (
+                'Read device info'
+                'Switch to META mode'
+                'Restart device')
+            end
+            object chkServiceVerbose: TCheckBox
+              Left = 14
+              Top = 60
+              Width = 330
+              Height = 17
+              Caption = 'Include diagnostic details in the log'
+              Checked = True
+              State = cbChecked
+              TabOrder = 1
+            end
+            object btnRunService: TButton
+              Left = 14
+              Top = 88
+              Width = 335
+              Height = 32
+              Caption = 'Run service action'
+              TabOrder = 2
+              OnClick = btnRunServiceClick
+            end
+            object lblServiceInfo: TLabel
+              Left = 14
+              Top = 132
+              Width = 335
+              Height = 94
+              AutoSize = False
+              WordWrap = True
+              Caption = 'MediaTek service actions use the META profile. Actions are log-only.'
+            end
           end
         end
         object tsRpmb: TTabSheet
           Caption = 'RPMB'
           ImageIndex = 6
-          object lblRpmbInfo: TLabel
-            Left = 8
-            Top = 8
-            Width = 270
-            Height = 13
-            Caption = 'RPMB options are not available yet.'
+          object grpRpmbOptions: TGroupBox
+            Left = 2
+            Top = 2
+            Width = 367
+            Height = 262
+            Caption = 'RPMB options'
+            TabOrder = 0
+            object lblRpmbOperation: TLabel
+              Left = 14
+              Top = 14
+              Width = 76
+              Height = 13
+              Caption = 'Operation'
+            end
+            object cbRpmbOperation: TComboBox
+              Left = 14
+              Top = 30
+              Width = 335
+              Height = 21
+              Style = csDropDownList
+              ItemIndex = 0
+              TabOrder = 0
+              Items.Strings = (
+                'Read RPMB information'
+                'Read RPMB counter'
+                'Back up RPMB region')
+            end
+            object lblRpmbTarget: TLabel
+              Left = 14
+              Top = 60
+              Width = 35
+              Height = 13
+              Caption = 'Target'
+            end
+            object cbRpmbTarget: TComboBox
+              Left = 14
+              Top = 76
+              Width = 335
+              Height = 21
+              Style = csDropDownList
+              ItemIndex = 0
+              TabOrder = 1
+              Items.Strings = (
+                'Auto detect (eMMC / UFS)'
+                'eMMC RPMB'
+                'UFS RPMB')
+            end
+            object btnRunRpmb: TButton
+              Left = 14
+              Top = 108
+              Width = 335
+              Height = 32
+              Caption = 'Run RPMB task'
+              TabOrder = 2
+              OnClick = btnRunRpmbClick
+            end
+            object lblRpmbInfo: TLabel
+              Left = 14
+              Top = 152
+              Width = 335
+              Height = 92
+              AutoSize = False
+              WordWrap = True
+              Caption = 'RPMB actions are read / backup planning only. Key writes are not exposed.'
+            end
           end
         end
       end
@@ -727,9 +970,11 @@ object frmMain2: TMain2Form
       object lblMetaInfo: TLabel
         Left = 8
         Top = 8
-        Width = 270
-        Height = 13
-        Caption = 'META mode options are not available yet.'
+        Width = 355
+        Height = 70
+        AutoSize = False
+        WordWrap = True
+        Caption = 'MediaTek service profile. META mode and DA options are shown. This build does not communicate with a phone.'
       end
     end
   end

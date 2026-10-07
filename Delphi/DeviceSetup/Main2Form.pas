@@ -7,12 +7,13 @@ unit Main2Form;
 
 { MAIN 2 - opened from MAIN 1 when the user presses Next.
   Layout follows the MAIN 2 reference screenshot:
-    - toolbar: menu (left); settings, Facebook, help, change device, save
-      log and start (right)
+    - toolbar: menu and platform selector (left); settings, Facebook, help,
+      change device, save log and start (right)
     - left: Presets, Files (SCAT / AUTH / BIN / OFP / BL / AP / CP / CSC /
       USER), colour log and progress
-    - right: Jobs / META tabs with Connections and Storage groups, then the
-      Flash / Read / Format / IMEI / Locks / Service / RPMB tabs
+    - right: Jobs / platform service-mode tabs (META / DIAG / DOWNLOAD),
+      Connections and Storage groups, then the Flash / Read / Format / IMEI /
+      Locks / Service / RPMB tabs
     - USB device state (bottom right)
   Device communication (flashing, reading, etc.) is NOT implemented: the
   action buttons check their inputs and write to the log. USB detection only
@@ -47,6 +48,8 @@ type
   TMain2Form = class(TForm)
     { toolbar }
     pbMenu: TPaintBox;
+    lblPlatform: TLabel;
+    cbPlatform: TComboBox;
     pbSettings: TPaintBox;
     pbFacebook: TPaintBox;
     pbHelp: TPaintBox;
@@ -144,6 +147,29 @@ type
     lblLocksInfo: TLabel;
     lblServiceInfo: TLabel;
     lblRpmbInfo: TLabel;
+    grpFormatOptions: TGroupBox;
+    lblFormatMode: TLabel;
+    cbFormatMode: TComboBox;
+    lblFormatTarget: TLabel;
+    cbFormatTarget: TComboBox;
+    chkPreserveCalibration: TCheckBox;
+    chkFormatByAddress: TCheckBox;
+    lblFormatAddress: TLabel;
+    edtFormatAddress: TEdit;
+    lblFormatSize: TLabel;
+    edtFormatSize: TEdit;
+    btnFormat: TButton;
+    grpServiceOptions: TGroupBox;
+    lblServiceAction: TLabel;
+    cbServiceAction: TComboBox;
+    chkServiceVerbose: TCheckBox;
+    btnRunService: TButton;
+    grpRpmbOptions: TGroupBox;
+    lblRpmbOperation: TLabel;
+    cbRpmbOperation: TComboBox;
+    lblRpmbTarget: TLabel;
+    cbRpmbTarget: TComboBox;
+    btnRunRpmb: TButton;
     { device state }
     pnlDeviceState: TPanel;
     lblDeviceState: TLabel;
@@ -152,6 +178,11 @@ type
     procedure FormDestroy(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure cbPlatformChange(Sender: TObject);
+    procedure chkFormatByAddressClick(Sender: TObject);
+    procedure btnFormatClick(Sender: TObject);
+    procedure btnRunServiceClick(Sender: TObject);
+    procedure btnRunRpmbClick(Sender: TObject);
     procedure pbMenuPaint(Sender: TObject);
     procedure pbNextPaint(Sender: TObject);
     procedure pbDownloadPaint(Sender: TObject);
@@ -220,6 +251,9 @@ type
     function AskSaveFile(const ATitle, ADefaultName: string;
       out AFileName: string): Boolean;
     procedure UpdateAdvancedWrite;
+    procedure ApplyPlatformSettings;
+    procedure UpdateFormatAddress;
+    function PlatformName: string;
     procedure SetProgress(const AValue: Integer);
     procedure UsbTimerTick(Sender: TObject);
     procedure CheckUsb(const AInitial: Boolean);
@@ -271,6 +305,36 @@ const
   CFilterAll = '|All files (*.*)|*.*';
   CFilterSamsung = 'Samsung firmware (*.tar.md5;*.tar;*.md5)|*.tar.md5;*.tar;*.md5' +
     CFilterAll;
+  CPlatformMtk = 0;
+  CPlatformUnisoc = 1;
+  CPlatformQualcomm = 2;
+  CPlatformSamsung = 3;
+  CPlatformGeneric = 4;
+
+procedure ReplaceComboItems(ACombo: TComboBox; const AItems: array of string);
+var
+  SelectedText: string;
+  I, SelectedIndex: Integer;
+begin
+  SelectedText := ACombo.Text;
+  SelectedIndex := 0;
+  ACombo.Items.BeginUpdate;
+  try
+    ACombo.Items.Clear;
+    for I := 0 to High(AItems) do
+    begin
+      ACombo.Items.Add(AItems[I]);
+      if (SelectedText <> '') and SameText(AItems[I], SelectedText) then
+        SelectedIndex := I;
+    end;
+  finally
+    ACombo.Items.EndUpdate;
+  end;
+  if ACombo.Items.Count = 0 then
+    ACombo.ItemIndex := -1
+  else
+    ACombo.ItemIndex := SelectedIndex;
+end;
 
 { ---------------------------------------------------------------- helpers }
 
@@ -356,7 +420,9 @@ begin
   FDeviceSig := '';
 
   LoadState;
+  ApplyPlatformSettings;
   UpdateAdvancedWrite;
+  UpdateFormatAddress;
 
   FUsbTimer := TTimer.Create(Self);
   FUsbTimer.Enabled := False;
@@ -385,6 +451,154 @@ begin
   AutoSaveSessionLog;
   FSessionLog.Free;
   FMeasure.Free;
+end;
+
+function TMain2Form.PlatformName: string;
+begin
+  case cbPlatform.ItemIndex of
+    CPlatformMtk: Result := 'MediaTek (MTK)';
+    CPlatformUnisoc: Result := 'Unisoc / Spreadtrum';
+    CPlatformQualcomm: Result := 'Qualcomm';
+    CPlatformSamsung: Result := 'Samsung';
+  else
+    Result := 'Other / Generic';
+  end;
+end;
+
+procedure TMain2Form.ApplyPlatformSettings;
+var
+  I: Integer;
+begin
+  I := cbPlatform.ItemIndex;
+  if I < CPlatformMtk then
+    I := CPlatformMtk;
+  if I > CPlatformGeneric then
+    I := CPlatformGeneric;
+
+  case I of
+    CPlatformMtk:
+      begin
+        tsMeta.Caption := 'META';
+        lblMetaInfo.Caption := 'MediaTek service profile. META mode and DA options are shown. ' +
+          'This build only validates selections; it does not communicate with a phone.';
+        ReplaceComboItems(cbDownloadAgent, ['MTK_AllInOne_DA.bin']);
+        chkAuthBrom.Caption := 'Advanced Authorization [BROM]';
+        chkAuthPreloader.Caption := 'Advanced Authorization [Preloader]';
+        chkForceBrom.Caption := 'Force BROM Mode';
+        chkReadEmi.Caption := 'Read EMI from phone';
+        lblServiceInfo.Caption := 'MediaTek service actions use the META profile. ' +
+          'Actions are logged for review and are not sent to a connected device.';
+        lblRpmbInfo.Caption := 'MTK RPMB options are read / backup planning only. ' +
+          'Key programming, write and erase operations are intentionally not exposed.';
+        ReplaceComboItems(cbFormatMode, ['Safe format (preserve calibration)',
+          'Format user data', 'Format selected partition']);
+        ReplaceComboItems(cbFormatTarget, ['USERDATA', 'CACHE', 'METADATA',
+          'CUSTOM PARTITION']);
+        ReplaceComboItems(cbServiceAction, ['Read device info',
+          'Switch to META mode', 'Restart device']);
+        ReplaceComboItems(cbRpmbOperation, ['Read RPMB information',
+          'Read RPMB counter', 'Back up RPMB region']);
+      end;
+    CPlatformUnisoc:
+      begin
+        tsMeta.Caption := 'DIAG';
+        lblMetaInfo.Caption := 'Unisoc / Spreadtrum service profile. The top service tab is DIAG ' +
+          'instead of META. This build does not communicate with a phone.';
+        ReplaceComboItems(cbDownloadAgent, ['Unisoc FDL1 / FDL2 (firmware supplied)']);
+        chkAuthBrom.Caption := 'Secure-boot authorization [BootROM]';
+        chkAuthPreloader.Caption := 'Load signed FDL1 / FDL2';
+        chkForceBrom.Caption := 'Force download / BootROM mode';
+        chkReadEmi.Caption := 'Read calibration / NV data';
+        lblServiceInfo.Caption := 'Unisoc service actions use the DIAG profile. ' +
+          'Use only firmware and service files intended for the exact device.' + sLineBreak +
+          'Actions are log-only in this build.';
+        lblRpmbInfo.Caption := 'Unisoc RPMB choices are limited to information and backup planning ' +
+          'through the selected DIAG profile. No RPMB write or key operation is available.';
+        ReplaceComboItems(cbFormatMode, ['Format user data (DIAG)',
+          'Reset selected partition', 'Format selected region']);
+        ReplaceComboItems(cbFormatTarget, ['USERDATA', 'CACHE', 'METADATA',
+          'CUSTOM PARTITION']);
+        ReplaceComboItems(cbServiceAction, ['Read device info',
+          'Switch to DIAG mode', 'Restart device']);
+        ReplaceComboItems(cbRpmbOperation, ['Read RPMB information (DIAG)',
+          'Back up RPMB region (DIAG)']);
+      end;
+    CPlatformQualcomm:
+      begin
+        tsMeta.Caption := 'DIAG';
+        lblMetaInfo.Caption := 'Qualcomm service profile. DIAG is selected for the service-mode ' +
+          'tab. This build does not communicate with a phone.';
+        ReplaceComboItems(cbDownloadAgent, ['Qualcomm programmer (user supplied)']);
+        chkAuthBrom.Caption := 'Programmer authorization';
+        chkAuthPreloader.Caption := 'Load signed programmer';
+        chkForceBrom.Caption := 'Enter EDL mode';
+        chkReadEmi.Caption := 'Read calibration / NV data';
+        lblServiceInfo.Caption := 'Qualcomm service actions use the DIAG profile. ' +
+          'Actions are logged for review and are not sent to a connected device.';
+        lblRpmbInfo.Caption := 'Qualcomm RPMB options are limited to information, counter and backup ' +
+          'planning. No RPMB write or key operation is available.';
+        ReplaceComboItems(cbFormatMode, ['Format user data',
+          'Erase selected partition', 'Format selected region']);
+        ReplaceComboItems(cbFormatTarget, ['USERDATA', 'METADATA',
+          'CUSTOM PARTITION']);
+        ReplaceComboItems(cbServiceAction, ['Read device info',
+          'Switch to DIAG mode', 'Restart device']);
+        ReplaceComboItems(cbRpmbOperation, ['Read RPMB information',
+          'Read RPMB counter', 'Back up RPMB region']);
+      end;
+    CPlatformSamsung:
+      begin
+        tsMeta.Caption := 'DOWNLOAD';
+        lblMetaInfo.Caption := 'Samsung download-mode profile. The top service tab is DOWNLOAD ' +
+          'instead of META. This build does not communicate with a phone.';
+        ReplaceComboItems(cbDownloadAgent, ['Samsung download-mode package']);
+        chkAuthBrom.Caption := 'Download-mode authorization';
+        chkAuthPreloader.Caption := 'Use signed firmware package';
+        chkForceBrom.Caption := 'Enter DOWNLOAD mode';
+        chkReadEmi.Caption := 'Read device information';
+        lblServiceInfo.Caption := 'Samsung service actions use the DOWNLOAD profile. ' +
+          'Actions are logged for review and are not sent to a connected device.';
+        lblRpmbInfo.Caption := 'Samsung RPMB choices are limited to information and backup planning. ' +
+          'No RPMB write or key operation is available.';
+        ReplaceComboItems(cbFormatMode, ['Factory reset', 'Format user data',
+          'Format selected partition']);
+        ReplaceComboItems(cbFormatTarget, ['USERDATA', 'CACHE',
+          'CUSTOM PARTITION']);
+        ReplaceComboItems(cbServiceAction, ['Read device info',
+          'Enter DOWNLOAD mode', 'Restart device']);
+        ReplaceComboItems(cbRpmbOperation, ['Read RPMB information',
+          'Back up RPMB region']);
+      end;
+  else
+    begin
+      tsMeta.Caption := 'SERVICE';
+      lblMetaInfo.Caption := 'Generic service profile. Choose the correct platform family above ' +
+        'before using a device-specific workflow. No phone communication is implemented.';
+      ReplaceComboItems(cbDownloadAgent, ['Platform-specific agent / loader']);
+      chkAuthBrom.Caption := 'Platform authorization';
+      chkAuthPreloader.Caption := 'Load signed agent / loader';
+      chkForceBrom.Caption := 'Force service mode';
+      chkReadEmi.Caption := 'Read calibration / NV data';
+      lblServiceInfo.Caption := 'Generic service actions are informational only. ' +
+        'Choose a supported platform family for device-specific options.';
+      lblRpmbInfo.Caption := 'Only generic RPMB information is listed for this platform. ' +
+        'No RPMB write or key operation is available.';
+      ReplaceComboItems(cbFormatMode, ['Format user data',
+        'Format selected partition', 'Format selected region']);
+      ReplaceComboItems(cbFormatTarget, ['USERDATA', 'CUSTOM PARTITION']);
+      ReplaceComboItems(cbServiceAction, ['Read device info', 'Restart device']);
+      ReplaceComboItems(cbRpmbOperation, ['Read RPMB information']);
+    end;
+  end;
+
+  cbDownloadAgent.Enabled := True;
+  chkAuthBrom.Enabled := (I = CPlatformMtk) or (I = CPlatformUnisoc) or
+    (I = CPlatformQualcomm);
+  chkAuthPreloader.Enabled := (I = CPlatformMtk) or (I = CPlatformUnisoc) or
+    (I = CPlatformQualcomm);
+  chkForceBrom.Enabled := False;
+  chkReadEmi.Enabled := False;
+  UpdateFormatAddress;
 end;
 
 procedure TMain2Form.AssignGlyph(AButton: TBitBtn; const AKind: TActionGlyph);
@@ -487,6 +701,8 @@ begin
   if not GOptions.RememberFiles then
     Exit;
   Ini := Settings;
+  LoadCombo(cbPlatform, 'Platform');
+  ApplyPlatformSettings;
   LoadEdit(edtScat, 'ScatFile');
   LoadEdit(edtAuth, 'AuthFile');
   LoadEdit(edtBin, 'BinFile');
@@ -500,6 +716,16 @@ begin
   LoadCheck(chkAuthPreloader, 'AuthPreloader');
   LoadCheck(chkReadPhoneInfo, 'ReadPhoneInfo');
   LoadCheck(chkAdvancedWrite, 'AdvancedWrite');
+  LoadCheck(chkPreserveCalibration, 'PreserveCalibration');
+  LoadCheck(chkFormatByAddress, 'FormatByAddress');
+  LoadCheck(chkServiceVerbose, 'ServiceVerbose');
+  LoadCombo(cbFormatMode, 'FormatMode');
+  LoadCombo(cbFormatTarget, 'FormatTarget');
+  LoadCombo(cbServiceAction, 'ServiceAction');
+  LoadCombo(cbRpmbOperation, 'RpmbOperation');
+  LoadCombo(cbRpmbTarget, 'RpmbTarget');
+  LoadEdit(edtFormatAddress, 'FormatAddress');
+  LoadEdit(edtFormatSize, 'FormatSize');
   LoadCombo(cbUsbSpeed, 'UsbSpeed');
   LoadCombo(cbBattery, 'Battery');
   LoadCombo(cbStorage, 'Storage');
@@ -514,6 +740,10 @@ begin
     edtReadAddress.Text := '00000000  00000000';
   if not TryParseHex64(edtReadSize.Text, Dummy) then
     edtReadSize.Text := '00000000  00000000';
+  if not TryParseHex64(edtFormatAddress.Text, Dummy) then
+    edtFormatAddress.Text := '00000000  00000000';
+  if not TryParseHex64(edtFormatSize.Text, Dummy) then
+    edtFormatSize.Text := '00000000  00000000';
   Tab := Ini.ReadInteger(CSection, 'OperationTab', 0);
   if (Tab >= 0) and (Tab < pcOperations.PageCount) then
     pcOperations.ActivePageIndex := Tab;
@@ -539,6 +769,17 @@ begin
   Ini.WriteBool(CSection, 'AuthPreloader', chkAuthPreloader.Checked);
   Ini.WriteBool(CSection, 'ReadPhoneInfo', chkReadPhoneInfo.Checked);
   Ini.WriteBool(CSection, 'AdvancedWrite', chkAdvancedWrite.Checked);
+  Ini.WriteBool(CSection, 'PreserveCalibration', chkPreserveCalibration.Checked);
+  Ini.WriteBool(CSection, 'FormatByAddress', chkFormatByAddress.Checked);
+  Ini.WriteBool(CSection, 'ServiceVerbose', chkServiceVerbose.Checked);
+  Ini.WriteInteger(CSection, 'Platform', cbPlatform.ItemIndex);
+  Ini.WriteInteger(CSection, 'FormatMode', cbFormatMode.ItemIndex);
+  Ini.WriteInteger(CSection, 'FormatTarget', cbFormatTarget.ItemIndex);
+  Ini.WriteInteger(CSection, 'ServiceAction', cbServiceAction.ItemIndex);
+  Ini.WriteInteger(CSection, 'RpmbOperation', cbRpmbOperation.ItemIndex);
+  Ini.WriteInteger(CSection, 'RpmbTarget', cbRpmbTarget.ItemIndex);
+  Ini.WriteString(CSection, 'FormatAddress', edtFormatAddress.Text);
+  Ini.WriteString(CSection, 'FormatSize', edtFormatSize.Text);
   Ini.WriteInteger(CSection, 'UsbSpeed', cbUsbSpeed.ItemIndex);
   Ini.WriteInteger(CSection, 'Battery', cbBattery.ItemIndex);
   Ini.WriteInteger(CSection, 'Storage', cbStorage.ItemIndex);
@@ -612,6 +853,8 @@ end;
 
 procedure TMain2Form.LogSettings;
 begin
+  Log('Platform : ' + LInfo(PlatformName) + '  Service tab : ' +
+    LInfo(tsMeta.Caption));
   Log('Download agent : ' + LInfo(cbDownloadAgent.Text));
   Log('USB speed : ' + LInfo(cbUsbSpeed.Text) + ',  Battery : ' +
     LInfo(cbBattery.Text));
@@ -903,11 +1146,16 @@ begin
   pcJobs.ActivePage := tsJobs;
   if pcOperations.ActivePage = tsRead then
     btnReadInfoClick(btnReadInfo)
+  else if pcOperations.ActivePage = tsFormat then
+    btnFormatClick(btnFormat)
+  else if pcOperations.ActivePage = tsService then
+    btnRunServiceClick(btnRunService)
+  else if pcOperations.ActivePage = tsRpmb then
+    btnRunRpmbClick(btnRunRpmb)
+  else if pcOperations.ActivePage = tsFlash then
+    btnWriteFirmwareClick(btnWriteFirmware)
   else
-  begin
-    pcOperations.ActivePage := tsFlash;
-    btnWriteFirmwareClick(btnWriteFirmware);
-  end;
+    Log('Choose an operation tab with an available job.');
 end;
 
 procedure TMain2Form.pbDownloadClick(Sender: TObject);
@@ -1117,6 +1365,80 @@ end;
 procedure TMain2Form.chkAdvancedWriteClick(Sender: TObject);
 begin
   UpdateAdvancedWrite;
+end;
+
+procedure TMain2Form.cbPlatformChange(Sender: TObject);
+begin
+  ApplyPlatformSettings;
+  Log('Platform profile : ' + LInfo(PlatformName) +
+    '  [' + tsMeta.Caption + ']');
+end;
+
+procedure TMain2Form.UpdateFormatAddress;
+var
+  Enabled: Boolean;
+begin
+  Enabled := chkFormatByAddress.Checked;
+  lblFormatAddress.Enabled := Enabled;
+  edtFormatAddress.Enabled := Enabled;
+  lblFormatSize.Enabled := Enabled;
+  edtFormatSize.Enabled := Enabled;
+  cbFormatTarget.Enabled := not Enabled;
+end;
+
+procedure TMain2Form.chkFormatByAddressClick(Sender: TObject);
+begin
+  UpdateFormatAddress;
+end;
+
+procedure TMain2Form.btnFormatClick(Sender: TObject);
+var
+  StartAddress, Size: UInt64;
+begin
+  Log('[Format] ' + LInfo(cbFormatMode.Text));
+  if chkFormatByAddress.Checked then
+  begin
+    if not TryParseHex64(edtFormatAddress.Text, StartAddress) then
+    begin
+      LogError('Enter the format start address in hex, e.g. 00000000 00100000');
+      Exit;
+    end;
+    if (not TryParseHex64(edtFormatSize.Text, Size)) or (Size = 0) then
+    begin
+      LogError('Enter a non-zero format size in hex, e.g. 00000000 00400000');
+      Exit;
+    end;
+    Log('Address : ' + LInfo('0x' + Hex64(StartAddress)) +
+      '  Size : ' + LInfo('0x' + Hex64(Size)));
+  end
+  else
+    Log('Target : ' + LInfo(cbFormatTarget.Text));
+
+  if chkPreserveCalibration.Checked then
+    Log('Calibration / NV data : ' + LOk('preserve'))
+  else
+    Log('Calibration / NV data : ' + LWarn('not preserved'));
+  LogSettings;
+  LogNotImplemented('Format');
+end;
+
+procedure TMain2Form.btnRunServiceClick(Sender: TObject);
+begin
+  Log('[Service] ' + LInfo(cbServiceAction.Text));
+  Log('Service mode : ' + LInfo(tsMeta.Caption));
+  if chkServiceVerbose.Checked then
+    Log('Diagnostic detail logging : ' + LOk('enabled'));
+  LogSettings;
+  LogNotImplemented('Service - ' + cbServiceAction.Text);
+end;
+
+procedure TMain2Form.btnRunRpmbClick(Sender: TObject);
+begin
+  Log('[RPMB] ' + LInfo(cbRpmbOperation.Text));
+  Log('RPMB target : ' + LInfo(cbRpmbTarget.Text));
+  Log('Platform service mode : ' + LInfo(tsMeta.Caption));
+  LogSettings;
+  LogNotImplemented('RPMB - ' + cbRpmbOperation.Text);
 end;
 
 { ---------------------------------------------------------------- Flash tab }
@@ -1330,6 +1652,31 @@ begin
   Check('log codes stripped',
     StripLogCodes('Search DA... ' + LOk + ' ' + LInfo('[0]')) = 'Search DA... OK [0]');
   Check('nine file rows', (btnUser.Parent = grpFiles) and (edtOfp.Parent = grpFiles));
+  Check('format, service and RPMB option panels loaded',
+    (grpFormatOptions <> nil) and (grpServiceOptions <> nil) and
+    (grpRpmbOptions <> nil) and (cbFormatMode.Items.Count > 0) and
+    (cbServiceAction.Items.Count > 0) and (cbRpmbOperation.Items.Count > 0));
+
+  chkFormatByAddress.Checked := False;
+  UpdateFormatAddress;
+  cbPlatform.ItemIndex := CPlatformMtk;
+  ApplyPlatformSettings;
+  Check('MediaTek profile labels the service tab META', tsMeta.Caption = 'META');
+  cbPlatform.ItemIndex := CPlatformUnisoc;
+  ApplyPlatformSettings;
+  Check('Unisoc profile changes META to DIAG',
+    (tsMeta.Caption = 'DIAG') and
+    (cbServiceAction.Items.IndexOf('Switch to DIAG mode') >= 0) and
+    (cbRpmbOperation.Items.IndexOf('Read RPMB information (DIAG)') >= 0));
+  cbPlatform.ItemIndex := CPlatformQualcomm;
+  ApplyPlatformSettings;
+  Check('Qualcomm profile also exposes DIAG service mode',
+    (tsMeta.Caption = 'DIAG') and
+    (cbFormatMode.Items.IndexOf('Erase selected partition') >= 0));
+  cbPlatform.ItemIndex := CPlatformMtk;
+  ApplyPlatformSettings;
+  Check('custom format fields start disabled',
+    (not edtFormatAddress.Enabled) and (not edtFormatSize.Enabled));
 
   Before := lstLog.Items.Count;
   edtScat.Text := '';
