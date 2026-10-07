@@ -15,3 +15,11 @@ __history/
 Win32/
 Win64/
 artifacts/
+# Lazarus / Free Pascal
+*.lfm
+*.lps
+*.o
+*.ppu
+*.compiled
+lazbuild-out/
+backup/

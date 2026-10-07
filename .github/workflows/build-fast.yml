@@ -1,0 +1,86 @@
+name: Build EXEs (fast)
+
+# Builds the app on GitHub-hosted Windows runners with the free Lazarus /
+# Free Pascal compiler - no self-hosted runner or Delphi licence needed.
+# Lazarus is cached after the first run, so later runs only compile.
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-fast-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build ${{ matrix.platform }}
+    runs-on: windows-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: Win64
+            cpu_os: x86_64-win64
+            installer: "Lazarus%20Windows%2064%20bits/Lazarus%204.4/lazarus-4.4-fpc-3.2.2-win64.exe"
+          - platform: Win32
+            cpu_os: i386-win32
+            installer: "Lazarus%20Windows%2032%20bits/Lazarus%204.4/lazarus-4.4-fpc-3.2.2-win32.exe"
+    defaults:
+      run:
+        working-directory: Delphi/DeviceSetup
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Restore cached Lazarus
+        id: lazcache
+        uses: actions/cache@v4
+        with:
+          path: C:\lazarus
+          key: lazarus-4.4-${{ matrix.platform }}-v2
+
+      - name: Install Lazarus 4.4 (first run only)
+        if: steps.lazcache.outputs.cache-hit != 'true'
+        shell: pwsh
+        working-directory: ${{ runner.temp }}
+        run: |
+          $url = "https://downloads.sourceforge.net/project/lazarus/${{ matrix.installer }}"
+          curl.exe -L --fail --retry 5 --retry-delay 5 -o lazarus-setup.exe $url
+          if ($LASTEXITCODE -ne 0) { Write-Output "::error::Lazarus download failed"; exit 1 }
+          Start-Process -Wait -FilePath .\lazarus-setup.exe -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/SP-','/DIR=C:\lazarus'
+          if (-not (Test-Path C:\lazarus\lazbuild.exe)) { Write-Output "::error::lazbuild.exe not found after install"; exit 1 }
+
+      - name: Generate .lfm forms from .dfm
+        shell: pwsh
+        run: python tools/dfm2lfm.py
+
+      - name: Compile
+        shell: pwsh
+        run: |
+          & C:\lazarus\lazbuild.exe --build-all --lazarusdir=C:\lazarus DeviceSetup.lpi *>&1 | Tee-Object -FilePath build.log
+          if ($LASTEXITCODE -ne 0) {
+            # surface compiler errors as annotations
+            Select-String -Path build.log -Pattern 'Error|Fatal' | Select-Object -First 20 | ForEach-Object { Write-Output "::error::$($_.Line)" }
+            exit 1
+          }
+          $exe = "lazbuild-out\${{ matrix.cpu_os }}\DeviceSetup.exe"
+          if (-not (Test-Path $exe)) { Write-Error "EXE not produced: $exe"; exit 1 }
+          New-Item -ItemType Directory -Force artifacts | Out-Null
+          Copy-Item $exe "artifacts\DeviceSetup-${{ matrix.platform }}.exe"
+          Get-Item "artifacts\*.exe" | Format-Table Name, Length
+
+      - name: Upload EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: DeviceSetup-${{ matrix.platform }}-${{ github.sha }}
+          path: Delphi/DeviceSetup/artifacts/*.exe
+          if-no-files-found: error
+          retention-days: 30
