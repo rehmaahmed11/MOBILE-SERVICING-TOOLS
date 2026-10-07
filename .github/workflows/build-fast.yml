@@ -28,11 +28,11 @@ jobs:
       matrix:
         include:
           - platform: Win64
-            choco_args: ""
             cpu_os: x86_64-win64
+            installer: "Lazarus%20Windows%2064%20bits/Lazarus%204.4/lazarus-4.4-fpc-3.2.2-win64.exe"
           - platform: Win32
-            choco_args: "--x86"
             cpu_os: i386-win32
+            installer: "Lazarus%20Windows%2032%20bits/Lazarus%204.4/lazarus-4.4-fpc-3.2.2-win32.exe"
     defaults:
       run:
         working-directory: Delphi/DeviceSetup
@@ -45,12 +45,18 @@ jobs:
         uses: actions/cache@v4
         with:
           path: C:\lazarus
-          key: lazarus-choco-${{ matrix.platform }}-v1
+          key: lazarus-4.4-${{ matrix.platform }}-v2
 
-      - name: Install Lazarus (first run only)
+      - name: Install Lazarus 4.4 (first run only)
         if: steps.lazcache.outputs.cache-hit != 'true'
         shell: pwsh
-        run: choco install lazarus ${{ matrix.choco_args }} -y --no-progress
+        working-directory: ${{ runner.temp }}
+        run: |
+          $url = "https://downloads.sourceforge.net/project/lazarus/${{ matrix.installer }}"
+          curl.exe -L --fail --retry 5 --retry-delay 5 -o lazarus-setup.exe $url
+          if ($LASTEXITCODE -ne 0) { Write-Output "::error::Lazarus download failed"; exit 1 }
+          Start-Process -Wait -FilePath .\lazarus-setup.exe -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/SP-','/DIR=C:\lazarus'
+          if (-not (Test-Path C:\lazarus\lazbuild.exe)) { Write-Output "::error::lazbuild.exe not found after install"; exit 1 }
 
       - name: Generate .lfm forms from .dfm
         shell: pwsh
@@ -59,8 +65,12 @@ jobs:
       - name: Compile
         shell: pwsh
         run: |
-          & C:\lazarus\lazbuild.exe --build-all --lazarusdir=C:\lazarus DeviceSetup.lpi
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & C:\lazarus\lazbuild.exe --build-all --lazarusdir=C:\lazarus DeviceSetup.lpi *>&1 | Tee-Object -FilePath build.log
+          if ($LASTEXITCODE -ne 0) {
+            # surface compiler errors as annotations
+            Select-String -Path build.log -Pattern 'Error|Fatal' | Select-Object -First 20 | ForEach-Object { Write-Output "::error::$($_.Line)" }
+            exit 1
+          }
           $exe = "lazbuild-out\${{ matrix.cpu_os }}\DeviceSetup.exe"
           if (-not (Test-Path $exe)) { Write-Error "EXE not produced: $exe"; exit 1 }
           New-Item -ItemType Directory -Force artifacts | Out-Null
