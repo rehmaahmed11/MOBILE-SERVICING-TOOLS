@@ -16,6 +16,11 @@ on:
       - 'v*'
   pull_request:
   workflow_dispatch:
+    inputs:
+      screenshots:
+        description: 'Also publish self-test screenshots as check runs (for review without downloading artifacts)'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -158,9 +163,10 @@ jobs:
           } else {
             Write-Output "::notice title=selftest-${{ matrix.platform }}::no selftest.log"
           }
-          # Screenshots as neutral check runs (base64 GIF, readable through the
-          # GitHub API) so they can be reviewed without downloading artifacts.
-          if (('${{ matrix.platform }}' -eq 'Win64') -and ('${{ vars.CI_SCREENSHOT_CHECKS }}' -ne 'off')) {
+          # Optional (manual run with "screenshots" ticked): screenshots as
+          # neutral check runs (base64 GIF chunks, readable through the GitHub
+          # API) so they can be reviewed without downloading artifacts.
+          if (('${{ matrix.platform }}' -eq 'Win64') -and ('${{ inputs.screenshots }}' -eq 'true')) {
             $env:GH_TOKEN = '${{ github.token }}'
             $sha = '${{ github.event.pull_request.head.sha || github.sha }}'
             Add-Type -AssemblyName System.Drawing
