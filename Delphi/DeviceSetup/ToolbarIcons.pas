@@ -412,7 +412,8 @@ begin
   ACanvas.Pen.Color := RGB(120, 120, 120);
   ACanvas.Brush.Color := clWhite;
   ACanvas.Rectangle(0, 2, 24, 22);
-  ACanvas.Brush.Color := clBlack;
+  { not pure black: the LCL can treat clBlack glyph pixels as transparent }
+  ACanvas.Brush.Color := RGB(25, 25, 25);
   X := 2;
   for I := Low(Bars) to High(Bars) do
   begin

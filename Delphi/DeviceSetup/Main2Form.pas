@@ -205,6 +205,7 @@ type
     FUsbTimer: TTimer;
     FMeasure: TBitmap;
     FSessionLog: TStringList;
+    FLayoutFixed: Boolean;
     procedure AssignGlyph(AButton: TBitBtn; const AKind: TActionGlyph);
     procedure SetupLogFont;
     procedure AddLogLine(const ALine: string);
@@ -366,6 +367,11 @@ end;
 
 procedure TMain2Form.FormShow(Sender: TObject);
 begin
+  if not FLayoutFixed then
+  begin
+    FLayoutFixed := True;
+    FixGroupBoxLayout(Self, grpFiles);
+  end;
   ApplyOptions;
   if GOptions.DetectUsb then
     CheckUsb(True);

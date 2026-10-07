@@ -321,7 +321,7 @@ object frmMain2: TMain2Form
   object pcJobs: TPageControl
     Left = 530
     Top = 40
-    Width = 362
+    Width = 387
     Height = 584
     ActivePage = tsJobs
     Anchors = [akTop, akRight]
@@ -332,7 +332,7 @@ object frmMain2: TMain2Form
       object grpConnections: TGroupBox
         Left = 4
         Top = 2
-        Width = 346
+        Width = 371
         Height = 190
         Caption = 'Connections'
         TabOrder = 0
@@ -360,7 +360,7 @@ object frmMain2: TMain2Form
         object cbDownloadAgent: TComboBox
           Left = 18
           Top = 30
-          Width = 308
+          Width = 333
           Height = 21
           Style = csDropDownList
           Enabled = False
@@ -446,14 +446,14 @@ object frmMain2: TMain2Form
       object grpStorage: TGroupBox
         Left = 4
         Top = 196
-        Width = 346
+        Width = 371
         Height = 50
         Caption = 'Storage'
         TabOrder = 1
         object cbStorage: TComboBox
           Left = 12
           Top = 18
-          Width = 322
+          Width = 347
           Height = 21
           Style = csDropDownList
           ItemIndex = 0
@@ -468,7 +468,7 @@ object frmMain2: TMain2Form
       object pcOperations: TPageControl
         Left = 0
         Top = 250
-        Width = 354
+        Width = 379
         Height = 300
         ActivePage = tsFlash
         Style = tsFlatButtons
@@ -478,7 +478,7 @@ object frmMain2: TMain2Form
           object grpOptions: TGroupBox
             Left = 2
             Top = 2
-            Width = 342
+            Width = 367
             Height = 262
             Caption = 'Options'
             TabOrder = 0
@@ -492,7 +492,7 @@ object frmMain2: TMain2Form
             object cbFlashMode: TComboBox
               Left = 14
               Top = 16
-              Width = 310
+              Width = 335
               Height = 21
               Style = csDropDownList
               ItemIndex = 0
@@ -505,7 +505,7 @@ object frmMain2: TMain2Form
             object btnWriteFirmware: TBitBtn
               Left = 14
               Top = 42
-              Width = 310
+              Width = 335
               Height = 32
               Caption = 'Write Firmware'
               Margin = 6
@@ -516,7 +516,7 @@ object frmMain2: TMain2Form
             object btnRestoreBackup: TBitBtn
               Left = 14
               Top = 78
-              Width = 310
+              Width = 335
               Height = 32
               Caption = 'Restore from backup'
               Margin = 6
@@ -545,7 +545,7 @@ object frmMain2: TMain2Form
             object btnWriteBin: TBitBtn
               Left = 14
               Top = 162
-              Width = 310
+              Width = 335
               Height = 32
               Caption = 'Write BIN'
               Enabled = False
@@ -557,7 +557,7 @@ object frmMain2: TMain2Form
             object btnWriteOfp: TBitBtn
               Left = 14
               Top = 198
-              Width = 310
+              Width = 335
               Height = 32
               Caption = 'Write OFP'
               Margin = 6
@@ -573,7 +573,7 @@ object frmMain2: TMain2Form
           object grpReadOptions: TGroupBox
             Left = 2
             Top = 2
-            Width = 342
+            Width = 367
             Height = 262
             Caption = 'Options'
             TabOrder = 0
@@ -594,7 +594,7 @@ object frmMain2: TMain2Form
             object btnReadInfo: TBitBtn
               Left = 14
               Top = 16
-              Width = 310
+              Width = 335
               Height = 32
               Caption = 'Read Flash Info'
               Margin = 6
@@ -605,7 +605,7 @@ object frmMain2: TMain2Form
             object btnReadPartitions: TBitBtn
               Left = 14
               Top = 52
-              Width = 310
+              Width = 335
               Height = 32
               Caption = 'Read Partitions'
               Margin = 6
@@ -632,7 +632,7 @@ object frmMain2: TMain2Form
             object btnReadBin: TBitBtn
               Left = 14
               Top = 132
-              Width = 310
+              Width = 335
               Height = 32
               Caption = 'Read BIN'
               Margin = 6
@@ -643,7 +643,7 @@ object frmMain2: TMain2Form
             object btnReadRegion: TBitBtn
               Left = 14
               Top = 168
-              Width = 310
+              Width = 335
               Height = 32
               Caption = 'Read Region'
               Margin = 6
@@ -654,7 +654,7 @@ object frmMain2: TMain2Form
             object btnReadOtp: TBitBtn
               Left = 14
               Top = 204
-              Width = 310
+              Width = 335
               Height = 32
               Caption = 'Read OTP'
               Margin = 6
@@ -736,7 +736,7 @@ object frmMain2: TMain2Form
   object pnlDeviceState: TPanel
     Left = 530
     Top = 630
-    Width = 362
+    Width = 387
     Height = 44
     Anchors = [akRight, akBottom]
     BevelOuter = bvNone
@@ -744,14 +744,14 @@ object frmMain2: TMain2Form
     object lblDeviceState: TLabel
       Left = 0
       Top = 15
-      Width = 322
+      Width = 347
       Height = 13
       Alignment = taRightJustify
       AutoSize = False
       Caption = 'No device'
     end
     object pbDeviceState: TPaintBox
-      Left = 330
+      Left = 355
       Top = 8
       Width = 28
       Height = 28

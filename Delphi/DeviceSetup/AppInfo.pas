@@ -17,12 +17,14 @@ interface
 
 uses
 {$IFDEF FPC}
-  Windows, Classes, SysUtils, IniFiles, Forms;
+  Windows, Classes, SysUtils, IniFiles, Controls, StdCtrls, Forms;
 {$ELSE}
   Winapi.Windows,
   System.Classes,
   System.SysUtils,
   System.IniFiles,
+  Vcl.Controls,
+  Vcl.StdCtrls,
   Vcl.Forms;
 {$ENDIF}
 
@@ -56,6 +58,13 @@ procedure FlushSettings;
 
 procedure LoadOptions;
 procedure SaveOptions;
+
+{ Lazarus only (no-op in Delphi): in the LCL a group box's client area starts
+  below its caption, while the .dfm positions are measured from the top of
+  the box (VCL). This moves the contents of every group box on the form back
+  up so both builds look the same. AReference must be a visible group box.
+  Call once, when the form is shown. }
+procedure FixGroupBoxLayout(AForm: TForm; AReference: TGroupBox);
 
 implementation
 
@@ -170,6 +179,54 @@ begin
   Ini.WriteBool('Options', 'DetectUsb', GOptions.DetectUsb);
   FlushSettings;
 end;
+
+procedure FixGroupBoxLayout(AForm: TForm; AReference: TGroupBox);
+{$IFDEF FPC}
+var
+  P: TPoint;
+  DX, DY, Shift, MinTop, I, J: Integer;
+  G: TGroupBox;
+  C: TControl;
+begin
+  P := AReference.Parent.ClientToScreen(Point(AReference.Left, AReference.Top));
+  DY := AReference.ClientOrigin.Y - P.Y;
+  DX := AReference.ClientOrigin.X - P.X;
+  if (DY <= 0) or (DY > 40) then
+    Exit;  { client area already starts at the top: nothing to fix }
+  if (DX < 0) or (DX > 8) then
+    DX := 0;
+  for I := 0 to AForm.ComponentCount - 1 do
+    if AForm.Components[I] is TGroupBox then
+    begin
+      G := TGroupBox(AForm.Components[I]);
+      { never move a control above the client area }
+      MinTop := MaxInt;
+      for J := 0 to G.ControlCount - 1 do
+        if (G.Controls[J].Align = alNone) and (G.Controls[J].Top < MinTop) then
+          MinTop := G.Controls[J].Top;
+      if MinTop = MaxInt then
+        Continue;
+      Shift := DY;
+      if Shift > MinTop then
+        Shift := MinTop;
+      G.DisableAlign;
+      try
+        for J := 0 to G.ControlCount - 1 do
+        begin
+          C := G.Controls[J];
+          if C.Align = alNone then
+            C.SetBounds(C.Left - DX, C.Top - Shift, C.Width, C.Height);
+        end;
+      finally
+        G.EnableAlign;
+      end;
+    end;
+end;
+{$ELSE}
+begin
+  { VCL: positions already match the .dfm }
+end;
+{$ENDIF}
 
 initialization
 
