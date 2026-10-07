@@ -1,0 +1,583 @@
+{
+  "UI_MENU": {
+    "sample": "S1.png",
+    "rect": [
+      6,
+      0,
+      34,
+      28
+    ],
+    "masked": false,
+    "size": [
+      28,
+      28
+    ]
+  },
+  "UI_START": {
+    "sample": "S1.png",
+    "rect": [
+      725,
+      0,
+      753,
+      28
+    ],
+    "masked": false,
+    "size": [
+      28,
+      28
+    ]
+  },
+  "UI_DOWNLOAD": {
+    "sample": "S1.png",
+    "rect": [
+      769,
+      0,
+      797,
+      28
+    ],
+    "masked": false,
+    "size": [
+      28,
+      28
+    ]
+  },
+  "UI_DOCUMENT": {
+    "sample": "S1.png",
+    "rect": [
+      813,
+      0,
+      841,
+      28
+    ],
+    "masked": false,
+    "size": [
+      28,
+      28
+    ]
+  },
+  "UI_SETTINGS": {
+    "sample": "S1.png",
+    "rect": [
+      856,
+      0,
+      884,
+      28
+    ],
+    "masked": false,
+    "size": [
+      28,
+      28
+    ]
+  },
+  "UI_REPORT": {
+    "sample": "S1.png",
+    "rect": [
+      901,
+      0,
+      929,
+      28
+    ],
+    "masked": false,
+    "size": [
+      28,
+      28
+    ]
+  },
+  "UI_FACEBOOK": {
+    "sample": "S1.png",
+    "rect": [
+      946,
+      0,
+      974,
+      28
+    ],
+    "masked": false,
+    "size": [
+      28,
+      28
+    ]
+  },
+  "UI_HELP": {
+    "sample": "S1.png",
+    "rect": [
+      990,
+      0,
+      1018,
+      28
+    ],
+    "masked": false,
+    "size": [
+      28,
+      28
+    ]
+  },
+  "UI_OPPO": {
+    "sample": "S1.png",
+    "rect": [
+      587,
+      274,
+      857,
+      322
+    ],
+    "masked": false,
+    "size": [
+      270,
+      48
+    ]
+  },
+  "UI_SELECT": {
+    "sample": "S1.png",
+    "rect": [
+      183,
+      502,
+      211,
+      530
+    ],
+    "masked": true,
+    "size": [
+      28,
+      28
+    ]
+  },
+  "UI_WRITE_FIRMWARE": {
+    "sample": "S3.png",
+    "rect": [
+      697,
+      317,
+      725,
+      345
+    ],
+    "masked": true,
+    "size": [
+      28,
+      28
+    ]
+  },
+  "UI_RESTORE": {
+    "sample": "S3.png",
+    "rect": [
+      697,
+      353,
+      725,
+      381
+    ],
+    "masked": true,
+    "size": [
+      28,
+      28
+    ]
+  },
+  "UI_WRITE_BIN": {
+    "sample": "S3.png",
+    "rect": [
+      697,
+      429,
+      725,
+      457
+    ],
+    "masked": true,
+    "size": [
+      28,
+      28
+    ]
+  },
+  "UI_WRITE_OFP": {
+    "sample": "S3.png",
+    "rect": [
+      697,
+      466,
+      725,
+      494
+    ],
+    "masked": true,
+    "size": [
+      28,
+      28
+    ]
+  },
+  "UI_READ_INFO": {
+    "sample": "S5.png",
+    "rect": [
+      695,
+      298,
+      723,
+      326
+    ],
+    "masked": true,
+    "size": [
+      28,
+      28
+    ]
+  },
+  "UI_READ_PARTITIONS": {
+    "sample": "S5.png",
+    "rect": [
+      695,
+      334,
+      723,
+      362
+    ],
+    "masked": true,
+    "size": [
+      28,
+      28
+    ]
+  },
+  "UI_READ_BIN": {
+    "sample": "S5.png",
+    "rect": [
+      695,
+      410,
+      723,
+      438
+    ],
+    "masked": true,
+    "size": [
+      28,
+      28
+    ]
+  },
+  "UI_READ_REGION": {
+    "sample": "S5.png",
+    "rect": [
+      695,
+      447,
+      723,
+      475
+    ],
+    "masked": true,
+    "size": [
+      28,
+      28
+    ]
+  },
+  "UI_READ_OTP": {
+    "sample": "S5.png",
+    "rect": [
+      695,
+      483,
+      723,
+      511
+    ],
+    "masked": true,
+    "size": [
+      28,
+      28
+    ]
+  },
+  "UI_FORMAT": {
+    "sample": "S6.png",
+    "rect": [
+      689,
+      362,
+      717,
+      390
+    ],
+    "masked": true,
+    "size": [
+      28,
+      28
+    ]
+  },
+  "UI_WIPE_DATA": {
+    "sample": "S6.png",
+    "rect": [
+      689,
+      416,
+      717,
+      444
+    ],
+    "masked": true,
+    "size": [
+      28,
+      28
+    ]
+  },
+  "UI_WIPE_PARTITIONS": {
+    "sample": "S6.png",
+    "rect": [
+      689,
+      452,
+      717,
+      480
+    ],
+    "masked": true,
+    "size": [
+      28,
+      28
+    ]
+  },
+  "UI_ERASE_FRP": {
+    "sample": "S6.png",
+    "rect": [
+      689,
+      488,
+      717,
+      516
+    ],
+    "masked": true,
+    "size": [
+      28,
+      28
+    ]
+  },
+  "UI_ERASE_FRP_WIPE": {
+    "sample": "S6.png",
+    "rect": [
+      689,
+      525,
+      717,
+      553
+    ],
+    "masked": true,
+    "size": [
+      28,
+      28
+    ]
+  },
+  "UI_REPAIR": {
+    "sample": "S2.png",
+    "rect": [
+      696,
+      357,
+      724,
+      385
+    ],
+    "masked": true,
+    "size": [
+      28,
+      28
+    ]
+  },
+  "UI_READ_IMEI": {
+    "sample": "S2.png",
+    "rect": [
+      696,
+      393,
+      724,
+      421
+    ],
+    "masked": true,
+    "size": [
+      28,
+      28
+    ]
+  },
+  "UI_UNLOCK_BOOTLOADER": {
+    "sample": "S8.png",
+    "rect": [
+      694,
+      299,
+      722,
+      327
+    ],
+    "masked": true,
+    "size": [
+      28,
+      28
+    ]
+  },
+  "UI_RELOCK_BOOTLOADER": {
+    "sample": "S8.png",
+    "rect": [
+      694,
+      335,
+      722,
+      363
+    ],
+    "masked": true,
+    "size": [
+      28,
+      28
+    ]
+  },
+  "UI_UNLOCK_NETWORK": {
+    "sample": "S8.png",
+    "rect": [
+      694,
+      372,
+      722,
+      400
+    ],
+    "masked": true,
+    "size": [
+      28,
+      28
+    ]
+  },
+  "UI_READ_CODES": {
+    "sample": "S8.png",
+    "rect": [
+      694,
+      409,
+      722,
+      437
+    ],
+    "masked": true,
+    "size": [
+      28,
+      28
+    ]
+  },
+  "UI_RESET_PASSWORD": {
+    "sample": "S8.png",
+    "rect": [
+      694,
+      445,
+      722,
+      473
+    ],
+    "masked": true,
+    "size": [
+      28,
+      28
+    ]
+  },
+  "UI_RESET_ACCOUNT": {
+    "sample": "S8.png",
+    "rect": [
+      694,
+      481,
+      722,
+      509
+    ],
+    "masked": true,
+    "size": [
+      28,
+      28
+    ]
+  },
+  "UI_REBOOT_RECOVERY": {
+    "sample": "S9.png",
+    "rect": [
+      692,
+      299,
+      720,
+      327
+    ],
+    "masked": true,
+    "size": [
+      28,
+      28
+    ]
+  },
+  "UI_DISABLE_OTA": {
+    "sample": "S9.png",
+    "rect": [
+      692,
+      336,
+      720,
+      364
+    ],
+    "masked": true,
+    "size": [
+      28,
+      28
+    ]
+  },
+  "UI_RESET_DM_VERITY": {
+    "sample": "S9.png",
+    "rect": [
+      692,
+      373,
+      720,
+      401
+    ],
+    "masked": true,
+    "size": [
+      28,
+      28
+    ]
+  },
+  "UI_DISABLE_ORANGE_STATE": {
+    "sample": "S9.png",
+    "rect": [
+      692,
+      410,
+      720,
+      438
+    ],
+    "masked": true,
+    "size": [
+      28,
+      28
+    ]
+  },
+  "UI_SWITCH_SLOT": {
+    "sample": "S9.png",
+    "rect": [
+      692,
+      446,
+      720,
+      474
+    ],
+    "masked": true,
+    "size": [
+      28,
+      28
+    ]
+  },
+  "UI_FIX_DL_IMAGE": {
+    "sample": "S9.png",
+    "rect": [
+      692,
+      483,
+      720,
+      511
+    ],
+    "masked": true,
+    "size": [
+      28,
+      28
+    ]
+  },
+  "UI_RPMB_BACKUP": {
+    "sample": "S10.png",
+    "rect": [
+      692,
+      298,
+      720,
+      326
+    ],
+    "masked": true,
+    "size": [
+      28,
+      28
+    ]
+  },
+  "UI_RPMB_WRITE": {
+    "sample": "S10.png",
+    "rect": [
+      692,
+      357,
+      720,
+      385
+    ],
+    "masked": true,
+    "size": [
+      28,
+      28
+    ]
+  },
+  "UI_RPMB_FORMAT": {
+    "sample": "S10.png",
+    "rect": [
+      692,
+      394,
+      720,
+      422
+    ],
+    "masked": true,
+    "size": [
+      28,
+      28
+    ]
+  },
+  "UI_START_DISABLED": {
+    "derived_from": "UI_START",
+    "size": [
+      28,
+      28
+    ]
+  }
+}

@@ -83,10 +83,19 @@ begin
     '5024D : Alcatel 1S',
     '5029Y : Alcatel 3L',
     '6025H : Alcatel 1S 2021']);
-  AddBrand('Asus', [
+  AddBrand('Alps', []);
+  AddBrand('Amazon', []);
+  AddBrand('ASUS', [
     'ASUS_X00TD : Zenfone Max Pro M1',
     'ASUS_X01BD : Zenfone Max Pro M2',
     'ASUS_I006D : Zenfone 8']);
+  AddBrand('ATT', []);
+  AddBrand('Black Fox', []);
+  AddBrand('Blackview', []);
+  AddBrand('BLU', []);
+  AddBrand('Bluboo', []);
+  AddBrand('Bmobile', []);
+  AddBrand('Boost', []);
   AddBrand('BQ', [
     'BQ-5518G : Jeans',
     'BQ-5533G : Fresh',
@@ -95,6 +104,7 @@ begin
     'CP3705A : Legacy Go',
     'CP3322A : Legacy SR',
     '1851 : Cool 5']);
+  AddBrand('CORN', []);
   AddBrand('Cricket', [
     'EC211001 : Cricket Icon 3',
     'U705AC : Cricket Ovation',
@@ -136,6 +146,7 @@ begin
     'X669 : Infinix Hot 30i',
     'X6831 : Infinix Hot 30',
     'X6833B : Infinix Note 30']);
+  AddBrand('INOI', []);
   AddBrand('Itel', [
     'A507LS : Itel A23 Pro',
     'A665L : Itel A70',
@@ -186,7 +197,33 @@ begin
     'IN2013 : OnePlus 8',
     'AC2003 : OnePlus Nord',
     'CPH2581 : OnePlus 12']);
+  { Visible entries from S1, followed by the existing starter models. }
   AddBrand('Oppo', [
+    'A37m',
+    'A59',
+    'A59m : OPPO A59',
+    'A59s',
+    'A59st : OPPO A59s',
+    'A59t : OPPO A59',
+    'A8 Mini',
+    'CPH1605 : OPPO A39',
+    'CPH1609 : OPPO F3',
+    'CPH1717 : OPPO A71',
+    'CPH1723 : OPPO F5',
+    'CPH1725 : OPPO F5 Youth / A73',
+    'CPH1727 : OPPO F5',
+    'CPH1729 : OPPO A83',
+    'CPH1819 : OPPO F7',
+    'CPH1821 : OPPO F7',
+    'CPH1823 : OPPO F9',
+    'CPH1825 : OPPO F9',
+    'CPH1827 : OPPO A83',
+    'CPH1835 : OPPO R15',
+    'CPH1837 : OPPO A3',
+    'CPH1859 : OPPO F7 Youth',
+    'CPH1881 : OPPO F9',
+    'CPH1909 : OPPO A5s',
+    'CPH1911 : OPPO F11',
     'CPH2269 : Oppo A16',
     'CPH2387 : Oppo A57',
     'CPH2477 : Oppo A17',
@@ -359,7 +396,8 @@ begin
     Exit;
   ACode := Unquote(Copy(Rest, 1, P - 1));
   AName := Unquote(Copy(Rest, P + 1, MaxInt));
-  Result := (ABrand <> '') and ((ACode <> '') or (AName <> ''));
+  { Brand,, preserves an empty category from the reference brand list. }
+  Result := ABrand <> '';
 end;
 
 function NewBrandIndex(var ABrands: TBrandList; const AName: string): Integer;
@@ -453,13 +491,15 @@ begin
       end;
       if SameText(Brand, 'Brand') then
         Continue;  { header line }
+      B := NewBrandIndex(NewList, Brand);
+      if (Code = '') and (Name = '') then
+        Continue;  { a category only, not an invented device model }
       if Code = '' then
         Entry := Name
       else if Name = '' then
         Entry := Code
       else
         Entry := Code + ' : ' + Name;
-      B := NewBrandIndex(NewList, Brand);
       SetLength(NewList[B].Models, Length(NewList[B].Models) + 1);
       NewList[B].Models[High(NewList[B].Models)] := Entry;
       Inc(Valid);
@@ -493,6 +533,9 @@ begin
     Lines.Add('# or use Menu > Reload models.');
     Lines.Add('Brand,Model code,Name');
     for B := 0 to High(GBrands) do
+    begin
+      if Length(GBrands[B].Models) = 0 then
+        Lines.Add(GBrands[B].Name + ',,');
       for M := 0 to High(GBrands[B].Models) do
       begin
         Entry := GBrands[B].Models[M];
@@ -509,6 +552,7 @@ begin
         end;
         Lines.Add(GBrands[B].Name + ',' + Code + ',' + Name);
       end;
+    end;
     {$IFDEF FPC}
     Lines.SaveToFile(AFileName);
     {$ELSE}

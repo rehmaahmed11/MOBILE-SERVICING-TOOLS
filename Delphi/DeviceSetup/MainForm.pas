@@ -37,6 +37,7 @@ uses
   Vcl.Buttons,
   Vcl.ExtCtrls,
 {$ENDIF}
+  SampleControls,
   DeviceCatalog;
 
 type
@@ -53,7 +54,7 @@ type
     cbSearch: TComboBox;
     lstBrands: TListBox;
     lstModels: TListBox;
-    btnSelect: TBitBtn;
+    btnSelect: TSampleButton;
     pmMain: TPopupMenu;
     miNext: TMenuItem;
     miSaveList: TMenuItem;
@@ -92,6 +93,8 @@ type
       Shift: TShiftState);
     procedure lstBrandsClick(Sender: TObject);
     procedure lstModelsClick(Sender: TObject);
+    procedure lstCatalogDrawItem(Control: TWinControl; Index: Integer;
+      ARect: TRect; State: TOwnerDrawState);
     procedure lstModelsDblClick(Sender: TObject);
     procedure lstModelsKeyDown(Sender: TObject; var Key: Word;
       Shift: TShiftState);
@@ -140,6 +143,7 @@ uses
   AppInfo,
   Main2Form,
   SettingsDialog,
+  SampleAssets,
   ToolbarIcons;
 
 const
@@ -210,10 +214,12 @@ begin
     Glyph.Free;
   end;
 
-  { Start on the last used model, or on Realme as in the reference screen. }
+  { Keep the remembered selection; on a fresh install show the OPPO state
+    from S1, including the selected A5s model and the top of the brand list. }
   SelectBrandAndModel(
-    Settings.ReadString('Main1', 'Brand', 'Realme'),
-    Settings.ReadString('Main1', 'Model', ''));
+    Settings.ReadString('Main1', 'Brand', 'Oppo'),
+    Settings.ReadString('Main1', 'Model', 'CPH1909 : OPPO A5s'));
+  lstBrands.TopIndex := 0;
   RestoreWindow;
 end;
 
@@ -384,6 +390,10 @@ end;
 
 procedure TMainForm.FormShow(Sender: TObject);
 begin
+  CompactCombo(cbSearch, MulDiv(18, btnSelect.Height, 31));
+  { Selection scrolls the native list when its handle is first created. }
+  if lstBrands.Handle <> 0 then
+    lstBrands.TopIndex := 0;
   if cbSearch.CanFocus then
   begin
     cbSearch.SetFocus;
@@ -611,6 +621,27 @@ begin
   UpdateNextState;
 end;
 
+procedure TMainForm.lstCatalogDrawItem(Control: TWinControl; Index: Integer;
+  ARect: TRect; State: TOwnerDrawState);
+var
+  List: TListBox;
+begin
+  List := TListBox(Control);
+  List.Canvas.Font.Assign(List.Font);
+  if odSelected in State then
+  begin
+    List.Canvas.Brush.Color := clHighlight;
+    List.Canvas.Font.Color := clHighlightText;
+  end
+  else
+  begin
+    List.Canvas.Brush.Color := clWhite;
+    List.Canvas.Font.Color := clWindowText;
+  end;
+  List.Canvas.FillRect(ARect);
+  List.Canvas.TextOut(ARect.Left + 1, ARect.Top, List.Items[Index]);
+end;
+
 procedure TMainForm.lstModelsDblClick(Sender: TObject);
 begin
   if lstModels.ItemIndex >= 0 then
@@ -676,43 +707,52 @@ end;
 procedure TMainForm.pbLogoPaint(Sender: TObject);
 var
   C: TCanvas;
-  R: TRect;
-  Size, I: Integer;
+  R, LogoRect: TRect;
+  Size, W, H: Integer;
   S: string;
+  B: TBitmap;
 begin
   C := pbLogo.Canvas;
   R := pbLogo.ClientRect;
-  if (R.Right <= 0) or (R.Bottom <= 0) then
-    Exit;
+  C.Brush.Style := bsSolid;
   C.Brush.Color := Color;
   C.FillRect(R);
-  if FCurrentBrand = '' then
+  if (R.Right <= 0) or (R.Bottom <= 0) or (FCurrentBrand = '') then
     Exit;
+  if SameText(FCurrentBrand, 'Oppo') then
+  begin
+    { Actual lowercase manufacturer wordmark, not an uppercase font proxy. }
+    B := SampleBitmap('UI_OPPO');
+    W := MulDiv(B.Width, btnSelect.Height, 31);
+    H := MulDiv(B.Height, btnSelect.Height, 31);
+    if W > R.Width - 20 then
+    begin
+      H := MulDiv(H, R.Width - 20, W);
+      W := R.Width - 20;
+    end;
+    LogoRect := Rect((R.Width - W) div 2 - 1, (R.Height - H) div 2 + 1,
+      (R.Width + W) div 2 - 1, (R.Height + H) div 2 + 1);
+    DrawSampleBitmap(C, LogoRect, 'UI_OPPO');
+    Exit;
+  end;
 
+  { Other catalog brands retain their own wordmark, colour and selection. }
   S := UpperCase(FCurrentBrand);
   C.Font.Name := 'Segoe UI';
   C.Font.Style := [fsBold];
-  C.Brush.Style := bsClear;
+  C.Font.Color := BrandColor(FCurrentBrand);
   Size := R.Height div 4;
   if Size > 64 then
     Size := 64;
-  if Size < 18 then
-    Size := 18;
   repeat
     C.Font.Height := -Size;
     if C.TextWidth(S) <= R.Width - 40 then
       Break;
     Dec(Size, 2);
   until Size <= 14;
-
-  { soft shadow, like a logo drop shadow }
-  C.Font.Color := RGB(215, 215, 215);
-  for I := 1 to 2 do
-    C.TextOut(R.Left + (R.Width - C.TextWidth(S)) div 2 + I,
-      R.Top + (R.Height - C.TextHeight(S)) div 2 + I, S);
-  C.Font.Color := BrandColor(FCurrentBrand);
-  C.TextOut(R.Left + (R.Width - C.TextWidth(S)) div 2,
-    R.Top + (R.Height - C.TextHeight(S)) div 2, S);
+  C.Brush.Style := bsClear;
+  C.TextOut((R.Width - C.TextWidth(S)) div 2,
+    (R.Height - C.TextHeight(S)) div 2, S);
   C.Brush.Style := bsSolid;
 end;
 

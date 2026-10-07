@@ -76,6 +76,14 @@ jobs:
         shell: pwsh
         run: python tools/dfm2lfm.py
 
+      - name: Check UI layout and embedded artwork contracts
+        shell: pwsh
+        run: |
+          python tools/make_ui_resources.py --check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/test_ui_contract.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Stamp build id (shown in Help)
         shell: pwsh
         run: |
@@ -166,7 +174,7 @@ jobs:
           } else {
             Write-Output "::notice title=selftest-${{ matrix.platform }}::no selftest.log"
           }
-          # Screenshots as neutral check runs (base64 GIF chunks, readable
+          # Screenshots as neutral check runs (lossless base64 PNG chunks, readable
           # through the GitHub API) so the screens can be reviewed without
           # downloading artifacts. They are published for every pull request,
           # for manual runs with "screenshots" ticked, and for any commit that
@@ -177,18 +185,15 @@ jobs:
             $sha = '${{ github.event.pull_request.head.sha || github.sha }}'
             Add-Type -AssemblyName System.Drawing
             Get-ChildItem "$dir\*.png" -ErrorAction SilentlyContinue | ForEach-Object {
-              $img = [System.Drawing.Image]::FromFile($_.FullName)
-              $gif = $_.FullName -replace '\.png$', '.gif'
-              $img.Save($gif, [System.Drawing.Imaging.ImageFormat]::Gif)
-              $img.Dispose()
-              $b64 = [Convert]::ToBase64String([IO.File]::ReadAllBytes($gif))
-              Remove-Item $gif
+              # Do not quantize to GIF: its 256-colour palette introduced
+              # dithering that obscured the actual font and background colours.
+              $b64 = [Convert]::ToBase64String([IO.File]::ReadAllBytes($_.FullName))
               $size = 60000
               $n = [Math]::Ceiling($b64.Length / $size)
               for ($i = 0; $i -lt $n; $i++) {
                 $chunk = $b64.Substring($i * $size, [Math]::Min($size, $b64.Length - $i * $size))
                 $body = @{ name = "ci-shot $($_.BaseName) $($i + 1)/$n"; head_sha = $sha; status = 'completed'; conclusion = 'neutral';
-                           output = @{ title = 'self-test screenshot'; summary = 'base64 GIF chunk'; text = $chunk } } | ConvertTo-Json -Depth 4
+                           output = @{ title = 'self-test screenshot'; summary = 'base64 PNG chunk'; text = $chunk } } | ConvertTo-Json -Depth 4
                 $body | gh api "repos/${{ github.repository }}/check-runs" --input - --silent
               }
             }

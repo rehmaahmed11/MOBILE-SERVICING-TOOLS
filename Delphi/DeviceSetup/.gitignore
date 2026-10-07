@@ -28,3 +28,10 @@ DeviceSetup.ini
 logs/
 selftest/
 selftest-run/
+
+# Small, required UI artwork resource (not a compiler output)
+!SampleAssets.res
+
+# Python maintainer/test caches
+__pycache__/
+*.pyc

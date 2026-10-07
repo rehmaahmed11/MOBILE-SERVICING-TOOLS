@@ -41,6 +41,7 @@ uses
   Vcl.Menus,
   Vcl.StdCtrls,
 {$ENDIF}
+  SampleControls,
   ToolbarIcons,
   UsbDetect;
 
@@ -63,28 +64,28 @@ type
     miSeparator: TMenuItem;
     miExit: TMenuItem;
     { left side }
-    grpPresets: TGroupBox;
+    grpPresets: TSampleGroupBox;
     cbPresets: TComboBox;
-    grpFiles: TGroupBox;
-    btnScat: TButton;
+    grpFiles: TSampleGroupBox;
+    btnScat: TSampleButton;
     edtScat: TEdit;
-    btnAuth: TButton;
+    btnAuth: TSampleButton;
     edtAuth: TEdit;
-    btnBin: TButton;
+    btnBin: TSampleButton;
     edtBin: TEdit;
-    btnOfp: TButton;
+    btnOfp: TSampleButton;
     edtOfp: TEdit;
-    btnBl: TButton;
+    btnBl: TSampleButton;
     edtBl: TEdit;
-    btnAp: TButton;
+    btnAp: TSampleButton;
     edtAp: TEdit;
-    btnCp: TButton;
+    btnCp: TSampleButton;
     edtCp: TEdit;
-    btnCsc: TButton;
+    btnCsc: TSampleButton;
     edtCsc: TEdit;
-    btnUser: TButton;
+    btnUser: TSampleButton;
     edtUser: TEdit;
-    grpLog: TGroupBox;
+    grpLog: TSampleGroupBox;
     lstLog: TListBox;
     pmLog: TPopupMenu;
     miLogCopy: TMenuItem;
@@ -95,16 +96,16 @@ type
     miLogClear: TMenuItem;
     pbProgress: TPaintBox;
     { right side - Jobs / service-mode tabs }
-    pcJobs: TPageControl;
-    tsJobs: TTabSheet;
-    tsMeta: TTabSheet;
-    grpPlatform: TGroupBox;
+    pcJobs: TSamplePageControl;
+    tsJobs: TSampleTabSheet;
+    tsMeta: TSampleTabSheet;
+    grpPlatform: TSampleGroupBox;
     lblPlatform: TLabel;
     cbPlatform: TComboBox;
     lblServiceMode: TLabel;
     lblServiceModeValue: TLabel;
     lblMetaInfo: TLabel;
-    grpConnections: TGroupBox;
+    grpConnections: TSampleGroupBox;
     lblDownloadAgent: TLabel;
     cbDownloadAgent: TComboBox;
     chkAuthBrom: TCheckBox;
@@ -119,45 +120,47 @@ type
     lblStorage: TLabel;
     cbStorage: TComboBox;
     { right side - operations }
-    pcOperations: TPageControl;
-    tsFlash: TTabSheet;
-    tsRead: TTabSheet;
-    tsFormat: TTabSheet;
-    tsImei: TTabSheet;
-    tsLocks: TTabSheet;
-    tsService: TTabSheet;
-    tsRpmb: TTabSheet;
-    lblOptionsFlash: TLabel;
+    pcOperations: TSamplePageControl;
+    tsFlash: TSampleTabSheet;
+    tsRead: TSampleTabSheet;
+    tsFormat: TSampleTabSheet;
+    tsImei: TSampleTabSheet;
+    tsLocks: TSampleTabSheet;
+    tsService: TSampleTabSheet;
+    tsRpmb: TSampleTabSheet;
+    grpOptionsFlash: TSampleGroupBox;
     cbFlashMode: TComboBox;
-    btnWriteFirmware: TBitBtn;
-    btnRestoreBackup: TBitBtn;
+    btnWriteFirmware: TSampleButton;
+    btnRestoreBackup: TSampleButton;
     chkAdvancedWrite: TCheckBox;
     lblAddress: TLabel;
     edtAddress: TEdit;
-    btnWriteBin: TBitBtn;
-    btnWriteOfp: TBitBtn;
-    lblOptionsRead: TLabel;
-    btnReadInfo: TBitBtn;
-    btnReadPartitions: TBitBtn;
+    btnWriteBin: TSampleButton;
+    btnWriteOfp: TSampleButton;
+    grpOptionsRead: TSampleGroupBox;
+    btnReadInfo: TSampleButton;
+    btnReadPartitions: TSampleButton;
     lblReadAddress: TLabel;
     edtReadAddress: TEdit;
     lblReadSize: TLabel;
     edtReadSize: TEdit;
-    btnReadBin: TBitBtn;
-    btnReadRegion: TBitBtn;
-    btnReadOtp: TBitBtn;
-    lblOptionsFormat: TLabel;
+    btnReadBin: TSampleButton;
+    btnReadRegion: TSampleButton;
+    btnReadOtp: TSampleButton;
+    grpOptionsFormat: TSampleGroupBox;
+    pnlFormatMode: TPanel;
+    pnlFormatRange: TPanel;
     rbAutoFormat: TRadioButton;
     rbManualFormat: TRadioButton;
     rbFormatAiFlash: TRadioButton;
     rbFormatAiExceptBootloader: TRadioButton;
-    btnFormat: TBitBtn;
+    btnFormat: TSampleButton;
     chkCreateDefaultFs: TCheckBox;
-    btnWipeData: TBitBtn;
-    btnWipePartitions: TBitBtn;
-    btnEraseFrp: TBitBtn;
-    btnEraseFrpAndWipe: TBitBtn;
-    lblOptionsImei: TLabel;
+    btnWipeData: TSampleButton;
+    btnWipePartitions: TSampleButton;
+    btnEraseFrp: TSampleButton;
+    btnEraseFrpAndWipe: TSampleButton;
+    grpOptionsImei: TSampleGroupBox;
     chkImei1: TCheckBox;
     edtImei1: TEdit;
     lblImei1Digits: TLabel;
@@ -165,34 +168,35 @@ type
     edtImei2: TEdit;
     lblImei2Digits: TLabel;
     lblAdvancedSettings: TLabel;
-    btnRepair: TBitBtn;
-    btnReadImei: TBitBtn;
-    lblOptionsLocks: TLabel;
-    btnUnlockBootloader: TBitBtn;
-    btnRelockBootloader: TBitBtn;
-    btnUnlockNetwork: TBitBtn;
-    btnReadCodes: TBitBtn;
-    btnResetPassword: TBitBtn;
-    btnResetAccount: TBitBtn;
-    lblOptionsService: TLabel;
-    btnRebootRecovery: TBitBtn;
-    btnDisableOta: TBitBtn;
-    btnResetDmVerity: TBitBtn;
-    btnDisableOrangeState: TBitBtn;
-    btnSwitchSlot: TBitBtn;
-    btnFixDlImage: TBitBtn;
-    lblOptionsRpmb: TLabel;
-    btnRpmbBackup: TBitBtn;
+    btnRepair: TSampleButton;
+    btnReadImei: TSampleButton;
+    grpOptionsLocks: TSampleGroupBox;
+    btnUnlockBootloader: TSampleButton;
+    btnRelockBootloader: TSampleButton;
+    btnUnlockNetwork: TSampleButton;
+    btnReadCodes: TSampleButton;
+    btnResetPassword: TSampleButton;
+    btnResetAccount: TSampleButton;
+    grpOptionsService: TSampleGroupBox;
+    btnRebootRecovery: TSampleButton;
+    btnDisableOta: TSampleButton;
+    btnResetDmVerity: TSampleButton;
+    btnDisableOrangeState: TSampleButton;
+    btnSwitchSlot: TSampleButton;
+    btnFixDlImage: TSampleButton;
+    grpOptionsRpmb: TSampleGroupBox;
+    btnRpmbBackup: TSampleButton;
     lblRpmbAddress: TLabel;
     edtRpmbAddress: TEdit;
-    btnRpmbWrite: TBitBtn;
-    btnRpmbFormat: TBitBtn;
+    btnRpmbWrite: TSampleButton;
+    btnRpmbFormat: TSampleButton;
     { device state }
     lblDeviceState: TLabel;
     pbDeviceState: TPaintBox;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure FormShow(Sender: TObject);
+    procedure FormResize(Sender: TObject);
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure cbPlatformChange(Sender: TObject);
     procedure pbMenuPaint(Sender: TObject);
@@ -275,10 +279,9 @@ type
     FUsbTimer: TTimer;
     FMeasure: TBitmap;
     FSessionLog: TStringList;
-    FLayoutFixed: Boolean;
     FManualFormat: Boolean;
     FAiExceptBootloader: Boolean;
-    procedure AssignGlyph(AButton: TBitBtn; const AKind: TActionGlyph);
+    procedure AssignGlyph(AButton: TSampleButton; const AKind: TActionGlyph);
     procedure SetupLogFont;
     procedure AddLogLine(const ALine: string);
     procedure LogSettings;
@@ -360,8 +363,8 @@ const
 
   { Files group: four rows are always visible, the Samsung BL / AP / CP /
     CSC / USER rows follow on a Samsung profile. }
-  CFileRowPitch = 23;
-  CFilesHeight = 104;
+  CFileRowPitch = 21;
+  CFilesHeight = 98;
 
 procedure ReplaceComboItems(ACombo: TComboBox; const AItems: array of string);
 var
@@ -476,6 +479,9 @@ end;
 procedure TMain2Form.FormCreate(Sender: TObject);
 begin
   Caption := AppTitle;
+  { Never shrink the reference layout until its tabs or Format buttons clip. }
+  Constraints.MinWidth := ClientWidth + (Width - ClientWidth);
+  Constraints.MinHeight := ClientHeight + (Height - ClientHeight);
   pcJobs.ActivePage := tsJobs;
   pcOperations.ActivePage := tsFlash;
 
@@ -548,14 +554,29 @@ end;
 
 procedure TMain2Form.FormShow(Sender: TObject);
 begin
-  if not FLayoutFixed then
-  begin
-    FLayoutFixed := True;
-    FixGroupBoxLayout(Self, grpFiles);
-  end;
+  FormResize(nil);
   ApplyOptions;
   if GOptions.DetectUsb then
     CheckUsb(True);
+end;
+
+procedure TMain2Form.FormResize(Sender: TObject);
+var
+  H: Integer;
+begin
+  if (pcJobs = nil) or not HandleAllocated or (cbStorage = nil) then
+    Exit;
+  pcJobs.RefreshLayout;
+  pcOperations.RefreshLayout;
+  SendMessage(edtImei1.Handle, EM_SETMARGINS, EC_LEFTMARGIN or EC_RIGHTMARGIN, 0);
+  SendMessage(edtImei2.Handle, EM_SETMARGINS, EC_LEFTMARGIN or EC_RIGHTMARGIN, 0);
+  H := pcJobs.ScaleValue(18);
+  CompactCombo(cbPresets, H);
+  CompactCombo(cbDownloadAgent, H);
+  CompactCombo(cbUsbSpeed, H);
+  CompactCombo(cbBattery, H);
+  CompactCombo(cbStorage, H);
+  CompactCombo(cbFlashMode, H);
 end;
 
 procedure TMain2Form.FormDestroy(Sender: TObject);
@@ -603,7 +624,7 @@ begin
   if grpFiles.Height <> CFilesHeight + Extra then
   begin
     grpFiles.Height := CFilesHeight + Extra;
-    grpLog.Top := grpFiles.Top + grpFiles.Height + 4;
+    grpLog.Top := grpFiles.Top + grpFiles.Height + 3;
     I := pbProgress.Top - 4;
     if I > grpLog.Top + 120 then
       grpLog.Height := I - grpLog.Top;
@@ -696,12 +717,12 @@ begin
   chkAuthBrom.Enabled := (I = CPlatformMtk) or (I = CPlatformUnisoc) or
     (I = CPlatformQualcomm);
   chkAuthPreloader.Enabled := chkAuthBrom.Enabled;
-  chkForceBrom.Enabled := False;
-  chkReadEmi.Enabled := False;
+  chkForceBrom.Enabled := I <> CPlatformGeneric;
+  chkReadEmi.Enabled := I <> CPlatformGeneric;
   chkReadPhoneInfo.Enabled := True;
 end;
 
-procedure TMain2Form.AssignGlyph(AButton: TBitBtn; const AKind: TActionGlyph);
+procedure TMain2Form.AssignGlyph(AButton: TSampleButton; const AKind: TActionGlyph);
 var
   Glyph: TBitmap;
 begin
@@ -740,11 +761,8 @@ begin
   end;
 
   Caption := AppTitle + ' - ' + FModelName;
-  Log('Brand : ' + LInfo(FBrand));
-  if FModelCode <> '' then
-    Log('Model : ' + LInfo(FModelCode + ' : ' + FModelName))
-  else
-    Log('Model : ' + LInfo(FModelName));
+  { The reference log is empty until an operation or a USB event occurs.
+    Model context is recorded with jobs, not on opening the form. }
 end;
 
 procedure TMain2Form.FormKeyDown(Sender: TObject; var Key: Word;
@@ -885,7 +903,7 @@ var
   FileName: string;
 begin
   if (not GOptions.AutoSaveLog) or (FSessionLog = nil) or
-     (FSessionLog.Count <= 2) then  { brand + model lines only: nothing done }
+     (FSessionLog.Count = 0) then
     Exit;
   try
     ForceDirectories(LogsDir);
@@ -942,6 +960,8 @@ end;
 
 procedure TMain2Form.LogSettings;
 begin
+  Log('Brand : ' + LInfo(FBrand));
+  Log('Model : ' + LInfo(FModelCode + ' : ' + FModelName));
   Log('Platform : ' + LInfo(PlatformName) + '  Service tab : ' +
     LInfo(tsMeta.Caption));
   Log('Download agent : ' + LInfo(cbDownloadAgent.Text));
@@ -1108,27 +1128,32 @@ procedure TMain2Form.pbProgressPaint(Sender: TObject);
 var
   C: TCanvas;
   R: TRect;
-  Fill, BarTop: Integer;
+  Fill: Integer;
   S: string;
 begin
   C := pbProgress.Canvas;
   R := pbProgress.ClientRect;
-  { progress strip along the bottom, as in the samples }
+  { Erase the old percentage before painting a new one. }
+  C.Brush.Style := bsSolid;
+  C.Brush.Color := Color;
+  C.FillRect(R);
   C.Brush.Color := RGB(226, 226, 226);
-  C.FillRect(Rect(R.Left, R.Bottom - 4, R.Right, R.Bottom));
+  C.FillRect(Rect(R.Left, R.Bottom - 2, R.Right, R.Bottom));
   if FProgress > 0 then
   begin
     Fill := R.Left + MulDiv(R.Right - R.Left, FProgress, 100);
     C.Brush.Color := RGB(232, 0, 18);
-    C.FillRect(Rect(R.Left, R.Bottom - 4, Fill, R.Bottom));
+    C.FillRect(Rect(R.Left, R.Bottom - 2, Fill, R.Bottom));
   end;
 
   S := IntToStr(FProgress) + '%';
   C.Brush.Style := bsClear;
   C.Font.Assign(Font);
+  C.Font.Height := -pcJobs.ScaleValue(9);
   C.Font.Color := clWindowText;
-  C.TextOut(R.Left + (R.Right - R.Left - C.TextWidth(S)) div 2,
-    R.Top + (R.Bottom - R.Top - 4 - C.TextHeight(S)) div 2, S);
+  C.TextOut(R.Left + (R.Right - R.Left - C.TextWidth(S)) div 2 +
+    pcJobs.ScaleValue(12),
+    R.Top + (R.Bottom - R.Top - 2 - C.TextHeight(S)) div 2, S);
   C.Brush.Style := bsSolid;
 end;
 
@@ -1192,8 +1217,6 @@ begin
     if not Known then
       Log('Device found... ' + LInfo(DescribeDevice(NewDevices[I])));
   end;
-  if AInitial and (Length(NewDevices) = 0) then
-    Log(LMuted('Waiting for device... (connect the phone by USB)'));
 
   FDevices := NewDevices;
   FDeviceSig := Sig;
@@ -1459,10 +1482,20 @@ var
   Enable: Boolean;
 begin
   Enable := chkAdvancedWrite.Checked;
-  edtAddress.Enabled := Enable;
+  edtAddress.Enabled := True;
+  edtAddress.ReadOnly := not Enable;
+  edtAddress.TabStop := Enable;
+  edtAddress.Color := clWhite;
+  if Enable then
+    edtAddress.Font.Color := clWindowText
+  else
+    edtAddress.Font.Color := clGrayText;
   btnWriteBin.Enabled := Enable;
   btnBin.Enabled := Enable;
-  edtBin.Enabled := Enable;
+  edtBin.Enabled := True;
+  edtBin.ReadOnly := not Enable;
+  edtBin.TabStop := Enable;
+  edtBin.Color := clWhite;
 end;
 
 procedure TMain2Form.chkAdvancedWriteClick(Sender: TObject);

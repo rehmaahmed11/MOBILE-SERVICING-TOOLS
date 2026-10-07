@@ -10,8 +10,8 @@ object frmMain2: TMain2Form
   DoubleBuffered = True
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
-  Font.Height = -12
-  Font.Name = 'Segoe UI'
+  Font.Height = -10
+  Font.Name = 'Tahoma'
   Font.Style = []
   KeyPreview = True
   OldCreateOrder = False
@@ -23,9 +23,10 @@ object frmMain2: TMain2Form
   OnShow = FormShow
   PixelsPerInch = 96
   TextHeight = 15
+  OnResize = FormResize
   object pbMenu: TPaintBox
-    Left = 12
-    Top = 3
+    Left = 7
+    Top = 0
     Width = 28
     Height = 28
     Cursor = crHandPoint
@@ -35,7 +36,7 @@ object frmMain2: TMain2Form
   end
   object pbNext: TPaintBox
     Left = 727
-    Top = 3
+    Top = 0
     Width = 28
     Height = 28
     Cursor = crHandPoint
@@ -46,7 +47,7 @@ object frmMain2: TMain2Form
   end
   object pbDownload: TPaintBox
     Left = 771
-    Top = 3
+    Top = 0
     Width = 28
     Height = 28
     Cursor = crHandPoint
@@ -57,7 +58,7 @@ object frmMain2: TMain2Form
   end
   object pbChangeDevice: TPaintBox
     Left = 814
-    Top = 3
+    Top = 0
     Width = 28
     Height = 28
     Cursor = crHandPoint
@@ -68,7 +69,7 @@ object frmMain2: TMain2Form
   end
   object pbSettings: TPaintBox
     Left = 858
-    Top = 3
+    Top = 0
     Width = 28
     Height = 28
     Cursor = crHandPoint
@@ -79,7 +80,7 @@ object frmMain2: TMain2Form
   end
   object pbContact: TPaintBox
     Left = 902
-    Top = 3
+    Top = 0
     Width = 28
     Height = 28
     Cursor = crHandPoint
@@ -90,7 +91,7 @@ object frmMain2: TMain2Form
   end
   object pbFacebook: TPaintBox
     Left = 946
-    Top = 3
+    Top = 0
     Width = 28
     Height = 28
     Cursor = crHandPoint
@@ -101,7 +102,7 @@ object frmMain2: TMain2Form
   end
   object pbHelp: TPaintBox
     Left = 990
-    Top = 3
+    Top = 0
     Width = 28
     Height = 28
     Cursor = crHandPoint
@@ -110,202 +111,294 @@ object frmMain2: TMain2Form
     OnClick = pbHelpClick
     OnPaint = pbHelpPaint
   end
-  object grpPresets: TGroupBox
-    Left = 2
-    Top = 41
-    Width = 656
-    Height = 39
+  object grpPresets: TSampleGroupBox
+    Left = 3
+    Top = 36
+    Width = 661
+    Height = 45
     Anchors = [akLeft, akTop, akRight]
     Caption = 'Presets'
     TabOrder = 0
+    CaptionInset = 6
     object cbPresets: TComboBox
-      Left = 8
-      Top = 15
-      Width = 640
-      Height = 23
+      Left = 7
+      Top = 18
+      Width = 648
+      Height = 18
       Style = csDropDownList
       Anchors = [akLeft, akTop, akRight]
       TabOrder = 0
     end
   end
-  object grpFiles: TGroupBox
-    Left = 2
-    Top = 84
-    Width = 656
-    Height = 104
+  object grpFiles: TSampleGroupBox
+    Left = 3
+    Top = 82
+    Width = 661
+    Height = 98
     Anchors = [akLeft, akTop, akRight]
     Caption = 'Files'
     TabOrder = 1
-    object btnScat: TButton
-      Left = 8
-      Top = 13
+    CaptionInset = 6
+    object btnScat: TSampleButton
+      Left = 7
+      Top = 14
       Width = 47
-      Height = 21
+      Height = 18
       Caption = 'SCAT'
       TabOrder = 0
       OnClick = btnScatClick
+      Margin = 2
+      Spacing = 8
+      Font.Charset = DEFAULT_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -9
+      Font.Name = 'Tahoma'
+      Font.Style = []
+      ParentFont = False
+      ReferenceHeight = 18
     end
     object edtScat: TEdit
-      Left = 58
-      Top = 13
-      Width = 590
-      Height = 23
+      Left = 55
+      Top = 14
+      Width = 600
+      Height = 18
       Anchors = [akLeft, akTop, akRight]
       TabOrder = 1
+      AutoSize = False
     end
-    object btnAuth: TButton
-      Left = 8
-      Top = 36
+    object btnAuth: TSampleButton
+      Left = 7
+      Top = 35
       Width = 47
-      Height = 21
+      Height = 18
       Caption = 'AUTH'
       TabOrder = 2
       OnClick = btnAuthClick
+      Margin = 2
+      Spacing = 8
+      Font.Charset = DEFAULT_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -9
+      Font.Name = 'Tahoma'
+      Font.Style = []
+      ParentFont = False
+      ReferenceHeight = 18
     end
     object edtAuth: TEdit
-      Left = 58
-      Top = 36
-      Width = 590
-      Height = 23
+      Left = 55
+      Top = 35
+      Width = 600
+      Height = 18
       Anchors = [akLeft, akTop, akRight]
       TabOrder = 3
+      AutoSize = False
     end
-    object btnBin: TButton
-      Left = 8
-      Top = 59
+    object btnBin: TSampleButton
+      Left = 7
+      Top = 56
       Width = 47
-      Height = 21
+      Height = 18
       Hint = 'Tick "Advanced write" on the Flash tab to use a BIN file'
       Caption = 'BIN'
       TabOrder = 4
       OnClick = btnBinClick
+      Margin = 2
+      Spacing = 8
+      Font.Charset = DEFAULT_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -9
+      Font.Name = 'Tahoma'
+      Font.Style = []
+      ParentFont = False
+      ReferenceHeight = 18
     end
     object edtBin: TEdit
-      Left = 58
-      Top = 59
-      Width = 590
-      Height = 23
+      Left = 55
+      Top = 56
+      Width = 600
+      Height = 18
       Anchors = [akLeft, akTop, akRight]
       TabOrder = 5
+      AutoSize = False
     end
-    object btnOfp: TButton
-      Left = 8
-      Top = 82
+    object btnOfp: TSampleButton
+      Left = 7
+      Top = 77
       Width = 47
-      Height = 21
+      Height = 18
       Caption = 'OFP'
       TabOrder = 6
       OnClick = btnOfpClick
+      Margin = 2
+      Spacing = 8
+      Font.Charset = DEFAULT_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -9
+      Font.Name = 'Tahoma'
+      Font.Style = []
+      ParentFont = False
+      ReferenceHeight = 18
     end
     object edtOfp: TEdit
-      Left = 58
-      Top = 82
-      Width = 590
-      Height = 23
+      Left = 55
+      Top = 77
+      Width = 600
+      Height = 18
       Anchors = [akLeft, akTop, akRight]
       TabOrder = 7
+      AutoSize = False
     end
-    object btnBl: TButton
-      Left = 8
-      Top = 105
+    object btnBl: TSampleButton
+      Left = 7
+      Top = 98
       Width = 47
-      Height = 21
+      Height = 18
       Caption = 'BL'
       TabOrder = 8
       OnClick = btnBlClick
+      Margin = 2
+      Spacing = 8
+      Font.Charset = DEFAULT_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -9
+      Font.Name = 'Tahoma'
+      Font.Style = []
+      ParentFont = False
+      ReferenceHeight = 18
     end
     object edtBl: TEdit
-      Left = 58
-      Top = 105
-      Width = 590
-      Height = 23
+      Left = 55
+      Top = 98
+      Width = 600
+      Height = 18
       Anchors = [akLeft, akTop, akRight]
       TabOrder = 9
+      AutoSize = False
     end
-    object btnAp: TButton
-      Left = 8
-      Top = 128
+    object btnAp: TSampleButton
+      Left = 7
+      Top = 119
       Width = 47
-      Height = 21
+      Height = 18
       Caption = 'AP'
       TabOrder = 10
       OnClick = btnApClick
+      Margin = 2
+      Spacing = 8
+      Font.Charset = DEFAULT_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -9
+      Font.Name = 'Tahoma'
+      Font.Style = []
+      ParentFont = False
+      ReferenceHeight = 18
     end
     object edtAp: TEdit
-      Left = 58
-      Top = 128
-      Width = 590
-      Height = 23
+      Left = 55
+      Top = 119
+      Width = 600
+      Height = 18
       Anchors = [akLeft, akTop, akRight]
       TabOrder = 11
+      AutoSize = False
     end
-    object btnCp: TButton
-      Left = 8
-      Top = 151
+    object btnCp: TSampleButton
+      Left = 7
+      Top = 140
       Width = 47
-      Height = 21
+      Height = 18
       Caption = 'CP'
       TabOrder = 12
       OnClick = btnCpClick
+      Margin = 2
+      Spacing = 8
+      Font.Charset = DEFAULT_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -9
+      Font.Name = 'Tahoma'
+      Font.Style = []
+      ParentFont = False
+      ReferenceHeight = 18
     end
     object edtCp: TEdit
-      Left = 58
-      Top = 151
-      Width = 590
-      Height = 23
+      Left = 55
+      Top = 140
+      Width = 600
+      Height = 18
       Anchors = [akLeft, akTop, akRight]
       TabOrder = 13
+      AutoSize = False
     end
-    object btnCsc: TButton
-      Left = 8
-      Top = 174
+    object btnCsc: TSampleButton
+      Left = 7
+      Top = 161
       Width = 47
-      Height = 21
+      Height = 18
       Caption = 'CSC'
       TabOrder = 14
       OnClick = btnCscClick
+      Margin = 2
+      Spacing = 8
+      Font.Charset = DEFAULT_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -9
+      Font.Name = 'Tahoma'
+      Font.Style = []
+      ParentFont = False
+      ReferenceHeight = 18
     end
     object edtCsc: TEdit
-      Left = 58
-      Top = 174
-      Width = 590
-      Height = 23
+      Left = 55
+      Top = 161
+      Width = 600
+      Height = 18
       Anchors = [akLeft, akTop, akRight]
       TabOrder = 15
+      AutoSize = False
     end
-    object btnUser: TButton
-      Left = 8
-      Top = 197
+    object btnUser: TSampleButton
+      Left = 7
+      Top = 182
       Width = 47
-      Height = 21
+      Height = 18
       Caption = 'USER'
       TabOrder = 16
       OnClick = btnUserClick
+      Margin = 2
+      Spacing = 8
+      Font.Charset = DEFAULT_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -9
+      Font.Name = 'Tahoma'
+      Font.Style = []
+      ParentFont = False
+      ReferenceHeight = 18
     end
     object edtUser: TEdit
-      Left = 58
-      Top = 197
-      Width = 590
-      Height = 23
+      Left = 55
+      Top = 182
+      Width = 600
+      Height = 18
       Anchors = [akLeft, akTop, akRight]
       TabOrder = 17
+      AutoSize = False
     end
   end
-  object grpLog: TGroupBox
-    Left = 2
-    Top = 192
-    Width = 656
-    Height = 370
+  object grpLog: TSampleGroupBox
+    Left = 3
+    Top = 183
+    Width = 661
+    Height = 379
     Anchors = [akLeft, akTop, akRight, akBottom]
     Caption = 'Log'
     TabOrder = 2
+    CaptionInset = 6
     object lstLog: TListBox
-      Left = 2
-      Top = 17
-      Width = 652
-      Height = 351
+      Left = 4
+      Top = 13
+      Width = 650
+      Height = 362
       Style = lbOwnerDrawFixed
-      Align = alClient
       BorderStyle = bsNone
       Color = clWhite
       Font.Charset = DEFAULT_CHARSET
@@ -320,827 +413,1130 @@ object frmMain2: TMain2Form
       TabOrder = 0
       OnDrawItem = lstLogDrawItem
       OnKeyDown = lstLogKeyDown
+      Anchors = [akLeft, akTop, akRight, akBottom]
     end
   end
   object pbProgress: TPaintBox
-    Left = 2
+    Left = 3
     Top = 566
-    Width = 656
-    Height = 16
+    Width = 661
+    Height = 17
     Anchors = [akLeft, akRight, akBottom]
     OnPaint = pbProgressPaint
   end
-  object pcJobs: TPageControl
-    Left = 660
-    Top = 28
-    Width = 364
-    Height = 553
+  object pcJobs: TSamplePageControl
+    Left = 672
+    Top = 37
+    Width = 337
+    Height = 526
     ActivePage = tsJobs
     Anchors = [akTop, akRight, akBottom]
-    Style = tsFlatButtons
     TabOrder = 3
-    object tsJobs: TTabSheet
+    object tsJobs: TSampleTabSheet
       Caption = 'Jobs'
-      object grpConnections: TGroupBox
-        Left = 1
-        Top = 14
-        Width = 344
-        Height = 225
+      object grpConnections: TSampleGroupBox
+        Left = 8
+        Top = 3
+        Width = 328
+        Height = 190
         Caption = 'Connections'
         TabOrder = 0
+        Anchors = [akLeft, akTop, akRight]
         object lblDownloadAgent: TLabel
-          Left = 14
-          Top = 10
-          Width = 78
+          Left = 8
+          Top = 18
+          Width = 90
           Height = 13
           Caption = 'Download agent'
         end
         object cbDownloadAgent: TComboBox
-          Left = 14
-          Top = 24
-          Width = 316
-          Height = 23
+          Left = 106
+          Top = 16
+          Width = 208
+          Height = 18
           Style = csDropDownList
           Enabled = False
           TabOrder = 0
           Items.Strings = (
-            'MTK_AllInOne_DA.bin')
+          'MTK_AllInOne_DA.bin')
+          ItemIndex = 0
         end
         object chkAuthBrom: TCheckBox
-          Left = 14
-          Top = 50
-          Width = 316
-          Height = 17
+          Left = 8
+          Top = 37
+          Width = 306
+          Height = 16
           Caption = 'Advanced Authorization [BROM]'
           TabOrder = 1
-        end
-        object chkAuthPreloader: TCheckBox
-          Left = 14
-          Top = 68
-          Width = 316
-          Height = 17
-          Caption = 'Advanced Authorization [Preloader]'
           Checked = True
           State = cbChecked
+        end
+        object chkAuthPreloader: TCheckBox
+          Left = 8
+          Top = 53
+          Width = 306
+          Height = 16
+          Caption = 'Advanced Authorization [Preloader]'
           TabOrder = 2
         end
         object chkForceBrom: TCheckBox
-          Left = 14
-          Top = 86
-          Width = 316
-          Height = 17
+          Left = 8
+          Top = 69
+          Width = 306
+          Height = 16
           Caption = 'Force BROM Mode'
-          Enabled = False
+          Enabled = True
           TabOrder = 3
         end
         object chkReadEmi: TCheckBox
-          Left = 14
-          Top = 104
-          Width = 316
-          Height = 17
+          Left = 8
+          Top = 85
+          Width = 306
+          Height = 16
           Caption = 'Read EMI from phone'
           Checked = True
-          Enabled = False
+          Enabled = True
           State = cbChecked
           TabOrder = 4
         end
         object chkReadPhoneInfo: TCheckBox
-          Left = 14
-          Top = 122
-          Width = 316
-          Height = 17
+          Left = 8
+          Top = 101
+          Width = 306
+          Height = 16
           Caption = 'Read Phone Info'
           Checked = True
           State = cbChecked
           TabOrder = 5
         end
         object lblUsbSpeed: TLabel
-          Left = 14
-          Top = 152
-          Width = 51
+          Left = 8
+          Top = 122
+          Width = 90
           Height = 13
           Caption = 'USB Speed'
         end
         object cbUsbSpeed: TComboBox
-          Left = 118
-          Top = 148
-          Width = 212
-          Height = 23
+          Left = 106
+          Top = 118
+          Width = 208
+          Height = 18
           Style = csDropDownList
           TabOrder = 6
           Items.Strings = (
-            'High speed'
-            'Full speed')
+          'High speed'
+          'Full speed')
+          ItemIndex = 0
         end
         object lblBattery: TLabel
-          Left = 14
-          Top = 178
-          Width = 36
+          Left = 8
+          Top = 144
+          Width = 90
           Height = 13
           Caption = 'Battery'
         end
         object cbBattery: TComboBox
-          Left = 118
-          Top = 174
-          Width = 212
-          Height = 23
+          Left = 106
+          Top = 140
+          Width = 208
+          Height = 18
           Style = csDropDownList
           TabOrder = 7
           Items.Strings = (
-            'With battery'
-            'Without battery'
-            'Auto detect')
+          'With battery'
+          'Without battery'
+          'Auto detect')
+          ItemIndex = 0
         end
         object lblStorage: TLabel
-          Left = 14
-          Top = 204
-          Width = 35
+          Left = 8
+          Top = 166
+          Width = 90
           Height = 13
           Caption = 'Storage'
         end
         object cbStorage: TComboBox
-          Left = 118
-          Top = 200
-          Width = 212
-          Height = 23
+          Left = 106
+          Top = 162
+          Width = 208
+          Height = 18
           Style = csDropDownList
           TabOrder = 8
           Items.Strings = (
-            'EMMC(USER) || UFS(LU2)'
-            'EMMC(BOOT1) || UFS(LU0)'
-            'EMMC(BOOT2) || UFS(LU1)'
-            'EMMC(RPMB) || UFS(RPMB)')
+          'EMMC(USER) || UFS(LU2)'
+          'EMMC(BOOT1) || UFS(LU0)'
+          'EMMC(BOOT2) || UFS(LU1)'
+          'EMMC(RPMB) || UFS(RPMB)')
+          ItemIndex = 0
         end
       end
-      object pcOperations: TPageControl
+      object pcOperations: TSamplePageControl
         Left = 0
-        Top = 241
-        Width = 352
-        Height = 291
+        Top = 201
+        Width = 337
+        Height = 305
         ActivePage = tsFlash
-        Style = tsFlatButtons
         TabOrder = 1
-        object tsFlash: TTabSheet
+        Anchors = [akLeft, akTop, akRight, akBottom]
+        TabWidth = 47
+        object tsFlash: TSampleTabSheet
           Caption = 'Flash'
-          object lblOptionsFlash: TLabel
-            Left = 2
-            Top = 4
-            Width = 41
-            Height = 13
+          object grpOptionsFlash: TSampleGroupBox
+            Left = 8
+            Top = 3
+            Width = 328
+            Height = 226
             Caption = 'Options'
-          end
-          object cbFlashMode: TComboBox
-            Left = 2
-            Top = 20
-            Width = 336
-            Height = 23
-            Style = csDropDownList
+            Anchors = [akLeft, akTop, akRight]
             TabOrder = 0
-            Items.Strings = (
+            CaptionInset = 6
+            object cbFlashMode: TComboBox
+              Left = 14
+              Top = 17
+              Width = 300
+              Height = 18
+              Style = csDropDownList
+              TabOrder = 0
+              Items.Strings = (
               'Download only'
-              'Firmware upgrade'
-              'Format all + Download')
-          end
-          object btnWriteFirmware: TBitBtn
-            Left = 2
-            Top = 46
-            Width = 336
-            Height = 32
-            Caption = 'Write Firmware'
-            Margin = 6
-            Spacing = 14
-            TabOrder = 1
-            OnClick = btnWriteFirmwareClick
-          end
-          object btnRestoreBackup: TBitBtn
-            Left = 2
-            Top = 82
-            Width = 336
-            Height = 32
-            Caption = 'Restore from backup'
-            Margin = 6
-            Spacing = 14
-            TabOrder = 2
-            OnClick = btnRestoreBackupClick
-          end
-          object chkAdvancedWrite: TCheckBox
-            Left = 2
-            Top = 120
-            Width = 200
-            Height = 17
-            Caption = 'Advanced write'
-            TabOrder = 3
-            OnClick = chkAdvancedWriteClick
-          end
-          object lblAddress: TLabel
-            Left = 2
-            Top = 143
-            Width = 53
-            Height = 13
-            Caption = 'Address 0x'
-          end
-          object edtAddress: TEdit
-            Left = 62
-            Top = 139
-            Width = 124
-            Height = 23
-            Enabled = False
-            TabOrder = 4
-            Text = '00000000  00000000'
-          end
-          object btnWriteBin: TBitBtn
-            Left = 2
-            Top = 166
-            Width = 336
-            Height = 32
-            Caption = 'Write BIN'
-            Enabled = False
-            Margin = 6
-            Spacing = 14
-            TabOrder = 5
-            OnClick = btnWriteBinClick
-          end
-          object btnWriteOfp: TBitBtn
-            Left = 2
-            Top = 202
-            Width = 336
-            Height = 32
-            Caption = 'Write OFP'
-            Margin = 6
-            Spacing = 14
-            TabOrder = 6
-            OnClick = btnWriteOfpClick
+              'Upgrade'
+              'Format all + download')
+              ItemIndex = 0
+            end
+            object btnWriteFirmware: TSampleButton
+              Left = 14
+              Top = 38
+              Width = 300
+              Height = 34
+              Caption = 'Write Firmware'
+              Margin = 2
+              Spacing = 8
+              TabOrder = 1
+              OnClick = btnWriteFirmwareClick
+              Font.Charset = DEFAULT_CHARSET
+              Font.Color = clWindowText
+              Font.Height = -9
+              Font.Name = 'Tahoma'
+              Font.Style = []
+              ParentFont = False
+            end
+            object btnRestoreBackup: TSampleButton
+              Left = 14
+              Top = 74
+              Width = 300
+              Height = 34
+              Caption = 'Restore from backup'
+              Margin = 2
+              Spacing = 8
+              TabOrder = 2
+              OnClick = btnRestoreBackupClick
+              Font.Charset = DEFAULT_CHARSET
+              Font.Color = clWindowText
+              Font.Height = -9
+              Font.Name = 'Tahoma'
+              Font.Style = []
+              ParentFont = False
+            end
+            object chkAdvancedWrite: TCheckBox
+              Left = 14
+              Top = 110
+              Width = 200
+              Height = 17
+              Caption = 'Advanced write'
+              TabOrder = 3
+              OnClick = chkAdvancedWriteClick
+            end
+            object lblAddress: TLabel
+              Left = 14
+              Top = 129
+              Width = 53
+              Height = 13
+              Caption = 'Address 0x'
+            end
+            object edtAddress: TEdit
+              Left = 68
+              Top = 127
+              Width = 101
+              Height = 18
+              Enabled = False
+              TabOrder = 4
+              Text = '00000000  00000000'
+              AutoSize = False
+              Font.Charset = DEFAULT_CHARSET
+              Font.Color = clWindowText
+              Font.Height = -9
+              Font.Name = 'Tahoma'
+              Font.Style = []
+              ParentFont = False
+            end
+            object btnWriteBin: TSampleButton
+              Left = 14
+              Top = 150
+              Width = 300
+              Height = 34
+              Caption = 'Write BIN'
+              Enabled = False
+              Margin = 2
+              Spacing = 8
+              TabOrder = 5
+              OnClick = btnWriteBinClick
+              Font.Charset = DEFAULT_CHARSET
+              Font.Color = clWindowText
+              Font.Height = -9
+              Font.Name = 'Tahoma'
+              Font.Style = []
+              ParentFont = False
+            end
+            object btnWriteOfp: TSampleButton
+              Left = 14
+              Top = 186
+              Width = 300
+              Height = 34
+              Caption = 'Write OFP'
+              Margin = 2
+              Spacing = 8
+              TabOrder = 6
+              OnClick = btnWriteOfpClick
+              Font.Charset = DEFAULT_CHARSET
+              Font.Color = clWindowText
+              Font.Height = -9
+              Font.Name = 'Tahoma'
+              Font.Style = []
+              ParentFont = False
+            end
           end
         end
-        object tsRead: TTabSheet
+        object tsRead: TSampleTabSheet
           Caption = 'Read'
           ImageIndex = 1
-          object lblOptionsRead: TLabel
-            Left = 2
-            Top = 4
-            Width = 41
-            Height = 13
+          object grpOptionsRead: TSampleGroupBox
+            Left = 8
+            Top = 3
+            Width = 328
+            Height = 242
             Caption = 'Options'
-          end
-          object btnReadInfo: TBitBtn
-            Left = 2
-            Top = 20
-            Width = 336
-            Height = 32
-            Caption = 'Read Flash info'
-            Margin = 6
-            Spacing = 14
+            Anchors = [akLeft, akTop, akRight]
             TabOrder = 0
-            OnClick = btnReadInfoClick
-          end
-          object btnReadPartitions: TBitBtn
-            Left = 2
-            Top = 56
-            Width = 336
-            Height = 32
-            Caption = 'Read Partitions'
-            Margin = 6
-            Spacing = 14
-            TabOrder = 1
-            OnClick = btnReadPartitionsClick
-          end
-          object lblReadAddress: TLabel
-            Left = 2
-            Top = 94
-            Width = 53
-            Height = 13
-            Caption = 'Address 0x'
-          end
-          object edtReadAddress: TEdit
-            Left = 2
-            Top = 110
-            Width = 124
-            Height = 23
-            TabOrder = 2
-            Text = '00000000  00000000'
-          end
-          object lblReadSize: TLabel
-            Left = 150
-            Top = 94
-            Width = 37
-            Height = 13
-            Caption = 'Size 0x'
-          end
-          object edtReadSize: TEdit
-            Left = 150
-            Top = 110
-            Width = 124
-            Height = 23
-            TabOrder = 3
-            Text = '00000000  00000000'
-          end
-          object btnReadBin: TBitBtn
-            Left = 2
-            Top = 140
-            Width = 336
-            Height = 32
-            Caption = 'Read BIN'
-            Margin = 6
-            Spacing = 14
-            TabOrder = 4
-            OnClick = btnReadBinClick
-          end
-          object btnReadRegion: TBitBtn
-            Left = 2
-            Top = 176
-            Width = 336
-            Height = 32
-            Caption = 'Read Region'
-            Margin = 6
-            Spacing = 14
-            TabOrder = 5
-            OnClick = btnReadRegionClick
-          end
-          object btnReadOtp: TBitBtn
-            Left = 2
-            Top = 212
-            Width = 336
-            Height = 32
-            Caption = 'Read OTP'
-            Margin = 6
-            Spacing = 14
-            TabOrder = 6
-            OnClick = btnReadOtpClick
+            CaptionInset = 6
+            object btnReadInfo: TSampleButton
+              Left = 14
+              Top = 18
+              Width = 300
+              Height = 34
+              Caption = 'Read Flash info'
+              Margin = 2
+              Spacing = 8
+              TabOrder = 0
+              OnClick = btnReadInfoClick
+              Font.Charset = DEFAULT_CHARSET
+              Font.Color = clWindowText
+              Font.Height = -9
+              Font.Name = 'Tahoma'
+              Font.Style = []
+              ParentFont = False
+            end
+            object btnReadPartitions: TSampleButton
+              Left = 14
+              Top = 54
+              Width = 300
+              Height = 34
+              Caption = 'Read Partitions'
+              Margin = 2
+              Spacing = 8
+              TabOrder = 1
+              OnClick = btnReadPartitionsClick
+              Font.Charset = DEFAULT_CHARSET
+              Font.Color = clWindowText
+              Font.Height = -9
+              Font.Name = 'Tahoma'
+              Font.Style = []
+              ParentFont = False
+            end
+            object lblReadAddress: TLabel
+              Left = 14
+              Top = 92
+              Width = 80
+              Height = 13
+              Caption = 'Address 0x'
+            end
+            object edtReadAddress: TEdit
+              Left = 14
+              Top = 106
+              Width = 100
+              Height = 18
+              TabOrder = 2
+              Text = '00000000  00000000'
+              AutoSize = False
+              Font.Charset = DEFAULT_CHARSET
+              Font.Color = clWindowText
+              Font.Height = -9
+              Font.Name = 'Tahoma'
+              Font.Style = []
+              ParentFont = False
+            end
+            object lblReadSize: TLabel
+              Left = 141
+              Top = 92
+              Width = 50
+              Height = 13
+              Caption = 'Size 0x'
+            end
+            object edtReadSize: TEdit
+              Left = 141
+              Top = 106
+              Width = 100
+              Height = 18
+              TabOrder = 3
+              Text = '00000000  00000000'
+              AutoSize = False
+              Font.Charset = DEFAULT_CHARSET
+              Font.Color = clWindowText
+              Font.Height = -9
+              Font.Name = 'Tahoma'
+              Font.Style = []
+              ParentFont = False
+            end
+            object btnReadBin: TSampleButton
+              Left = 14
+              Top = 130
+              Width = 300
+              Height = 34
+              Caption = 'Read BIN'
+              Margin = 2
+              Spacing = 8
+              TabOrder = 4
+              OnClick = btnReadBinClick
+              Font.Charset = DEFAULT_CHARSET
+              Font.Color = clWindowText
+              Font.Height = -9
+              Font.Name = 'Tahoma'
+              Font.Style = []
+              ParentFont = False
+            end
+            object btnReadRegion: TSampleButton
+              Left = 14
+              Top = 166
+              Width = 300
+              Height = 34
+              Caption = 'Read Region'
+              Margin = 2
+              Spacing = 8
+              TabOrder = 5
+              OnClick = btnReadRegionClick
+              Font.Charset = DEFAULT_CHARSET
+              Font.Color = clWindowText
+              Font.Height = -9
+              Font.Name = 'Tahoma'
+              Font.Style = []
+              ParentFont = False
+            end
+            object btnReadOtp: TSampleButton
+              Left = 14
+              Top = 202
+              Width = 300
+              Height = 34
+              Caption = 'Read OTP'
+              Margin = 2
+              Spacing = 8
+              TabOrder = 6
+              OnClick = btnReadOtpClick
+              Font.Charset = DEFAULT_CHARSET
+              Font.Color = clWindowText
+              Font.Height = -9
+              Font.Name = 'Tahoma'
+              Font.Style = []
+              ParentFont = False
+            end
           end
         end
-        object tsFormat: TTabSheet
+        object tsFormat: TSampleTabSheet
           Caption = 'Format'
           ImageIndex = 2
-          object lblOptionsFormat: TLabel
-            Left = 2
-            Top = 4
-            Width = 41
-            Height = 13
+          object grpOptionsFormat: TSampleGroupBox
+            Left = 8
+            Top = 3
+            Width = 328
+            Height = 284
             Caption = 'Options'
-          end
-          object rbAutoFormat: TRadioButton
-            Left = 2
-            Top = 20
-            Width = 100
-            Height = 17
-            Caption = 'Auto Format'
-            Checked = True
+            Anchors = [akLeft, akTop, akRight]
             TabOrder = 0
-          end
-          object rbManualFormat: TRadioButton
-            Left = 130
-            Top = 20
-            Width = 120
-            Height = 17
-            Caption = 'Manual Format'
-            TabOrder = 1
-          end
-          object rbFormatAiFlash: TRadioButton
-            Left = 2
-            Top = 40
-            Width = 150
-            Height = 17
-            Caption = 'Format AI Flash'
-            Checked = True
-            TabOrder = 2
-          end
-          object rbFormatAiExceptBootloader: TRadioButton
-            Left = 2
-            Top = 58
-            Width = 250
-            Height = 17
-            Caption = 'Format AI Except Bootloader'
-            TabOrder = 3
-          end
-          object btnFormat: TBitBtn
-            Left = 2
-            Top = 80
-            Width = 336
-            Height = 30
-            Caption = 'Format'
-            Margin = 6
-            Spacing = 14
-            TabOrder = 4
-            OnClick = btnFormatClick
-          end
-          object chkCreateDefaultFs: TCheckBox
-            Left = 2
-            Top = 114
-            Width = 250
-            Height = 17
-            Caption = 'Create Default FS'
-            TabOrder = 5
-          end
-          object btnWipeData: TBitBtn
-            Left = 2
-            Top = 132
-            Width = 336
-            Height = 30
-            Caption = 'Wipe Data'
-            Margin = 6
-            Spacing = 14
-            TabOrder = 6
-            OnClick = btnWipeDataClick
-          end
-          object btnWipePartitions: TBitBtn
-            Left = 2
-            Top = 166
-            Width = 336
-            Height = 30
-            Caption = 'Wipe Partitions'
-            Margin = 6
-            Spacing = 14
-            TabOrder = 7
-            OnClick = btnWipePartitionsClick
-          end
-          object btnEraseFrp: TBitBtn
-            Left = 2
-            Top = 200
-            Width = 336
-            Height = 30
-            Caption = 'Erase FRP'
-            Margin = 6
-            Spacing = 14
-            TabOrder = 8
-            OnClick = btnEraseFrpClick
-          end
-          object btnEraseFrpAndWipe: TBitBtn
-            Left = 2
-            Top = 234
-            Width = 336
-            Height = 30
-            Caption = 'Erase FRP and Wipe'
-            Margin = 6
-            Spacing = 14
-            TabOrder = 9
-            OnClick = btnEraseFrpAndWipeClick
+            CaptionInset = 6
+            object pnlFormatRange: TPanel
+              Left = 28
+              Top = 39
+              Width = 286
+              Height = 40
+              BevelOuter = bvNone
+              Color = 15790320
+              TabOrder = 1
+              object rbFormatAiFlash: TRadioButton
+                Left = 0
+                Top = 0
+                Width = 230
+                Height = 17
+                Caption = 'Format All Flash'
+                Checked = True
+                TabOrder = 2
+              end
+              object rbFormatAiExceptBootloader: TRadioButton
+                Left = 0
+                Top = 20
+                Width = 270
+                Height = 17
+                Caption = 'Format All Except Bootloader'
+                TabOrder = 3
+              end
+            end
+            object pnlFormatMode: TPanel
+              Left = 14
+              Top = 14
+              Width = 300
+              Height = 20
+              BevelOuter = bvNone
+              Color = 15790320
+              TabOrder = 0
+              object rbAutoFormat: TRadioButton
+                Left = 0
+                Top = 0
+                Width = 112
+                Height = 17
+                Caption = 'Auto Format'
+                Checked = True
+                TabOrder = 0
+              end
+              object rbManualFormat: TRadioButton
+                Left = 116
+                Top = 0
+                Width = 165
+                Height = 17
+                Caption = 'Manual Format'
+                TabOrder = 1
+              end
+            end
+            object btnFormat: TSampleButton
+              Left = 14
+              Top = 80
+              Width = 300
+              Height = 34
+              Caption = 'Format'
+              Margin = 2
+              Spacing = 8
+              TabOrder = 4
+              OnClick = btnFormatClick
+              Font.Charset = DEFAULT_CHARSET
+              Font.Color = clWindowText
+              Font.Height = -9
+              Font.Name = 'Tahoma'
+              Font.Style = []
+              ParentFont = False
+            end
+            object chkCreateDefaultFs: TCheckBox
+              Left = 14
+              Top = 116
+              Width = 250
+              Height = 17
+              Caption = 'Create Default FS'
+              TabOrder = 5
+            end
+            object btnWipeData: TSampleButton
+              Left = 14
+              Top = 134
+              Width = 300
+              Height = 34
+              Caption = 'Wipe Data'
+              Margin = 2
+              Spacing = 8
+              TabOrder = 6
+              OnClick = btnWipeDataClick
+              Font.Charset = DEFAULT_CHARSET
+              Font.Color = clWindowText
+              Font.Height = -9
+              Font.Name = 'Tahoma'
+              Font.Style = []
+              ParentFont = False
+            end
+            object btnWipePartitions: TSampleButton
+              Left = 14
+              Top = 170
+              Width = 300
+              Height = 34
+              Caption = 'Wipe Partitions'
+              Margin = 2
+              Spacing = 8
+              TabOrder = 7
+              OnClick = btnWipePartitionsClick
+              Font.Charset = DEFAULT_CHARSET
+              Font.Color = clWindowText
+              Font.Height = -9
+              Font.Name = 'Tahoma'
+              Font.Style = []
+              ParentFont = False
+            end
+            object btnEraseFrp: TSampleButton
+              Left = 14
+              Top = 206
+              Width = 300
+              Height = 34
+              Caption = 'Erase FRP'
+              Margin = 2
+              Spacing = 8
+              TabOrder = 8
+              OnClick = btnEraseFrpClick
+              Font.Charset = DEFAULT_CHARSET
+              Font.Color = clWindowText
+              Font.Height = -9
+              Font.Name = 'Tahoma'
+              Font.Style = []
+              ParentFont = False
+            end
+            object btnEraseFrpAndWipe: TSampleButton
+              Left = 14
+              Top = 242
+              Width = 300
+              Height = 34
+              Caption = 'Erase FRP and Wipe'
+              Margin = 2
+              Spacing = 8
+              TabOrder = 9
+              OnClick = btnEraseFrpAndWipeClick
+              Font.Charset = DEFAULT_CHARSET
+              Font.Color = clWindowText
+              Font.Height = -9
+              Font.Name = 'Tahoma'
+              Font.Style = []
+              ParentFont = False
+            end
           end
         end
-        object tsImei: TTabSheet
+        object tsImei: TSampleTabSheet
           Caption = 'IMEI'
           ImageIndex = 3
-          object lblOptionsImei: TLabel
-            Left = 2
-            Top = 4
-            Width = 41
-            Height = 13
+          object grpOptionsImei: TSampleGroupBox
+            Left = 8
+            Top = 3
+            Width = 328
+            Height = 152
             Caption = 'Options'
-          end
-          object chkImei1: TCheckBox
-            Left = 2
-            Top = 20
-            Width = 55
-            Height = 17
-            Caption = 'IMEI1'
-            Checked = True
-            State = cbChecked
+            Anchors = [akLeft, akTop, akRight]
             TabOrder = 0
-          end
-          object edtImei1: TEdit
-            Left = 62
-            Top = 16
-            Width = 130
-            Height = 23
-            TabOrder = 1
-            Text = '35646019030487'
-          end
-          object lblImei1Digits: TLabel
-            Left = 200
-            Top = 20
-            Width = 20
-            Height = 13
-            Caption = '9'
-          end
-          object chkImei2: TCheckBox
-            Left = 2
-            Top = 40
-            Width = 55
-            Height = 17
-            Caption = 'IMEI2'
-            Checked = True
-            State = cbChecked
-            TabOrder = 2
-          end
-          object edtImei2: TEdit
-            Left = 62
-            Top = 36
-            Width = 130
-            Height = 23
-            TabOrder = 3
-            Text = '35646019110987'
-          end
-          object lblImei2Digits: TLabel
-            Left = 200
-            Top = 40
-            Width = 20
-            Height = 13
-            Caption = '1'
-          end
-          object lblAdvancedSettings: TLabel
-            Left = 2
-            Top = 62
-            Width = 101
-            Height = 13
-            Cursor = crHandPoint
-            Caption = 'Advanced settings'
-            Font.Charset = DEFAULT_CHARSET
-            Font.Color = 16744448
-            Font.Height = -12
-            Font.Name = 'Segoe UI'
-            Font.Style = [fsUnderline]
-            ParentFont = False
-            OnClick = lblAdvancedSettingsClick
-          end
-          object btnRepair: TBitBtn
-            Left = 2
-            Top = 84
-            Width = 336
-            Height = 32
-            Caption = 'Repair'
-            Margin = 6
-            Spacing = 14
-            TabOrder = 4
-            OnClick = btnRepairClick
-          end
-          object btnReadImei: TBitBtn
-            Left = 2
-            Top = 120
-            Width = 336
-            Height = 32
-            Caption = 'Read IMEI'
-            Margin = 6
-            Spacing = 14
-            TabOrder = 5
-            OnClick = btnReadImeiClick
+            CaptionInset = 6
+            object chkImei1: TCheckBox
+              Left = 14
+              Top = 14
+              Width = 48
+              Height = 17
+              Caption = 'IMEI1'
+              Checked = True
+              State = cbChecked
+              TabOrder = 0
+              Font.Charset = DEFAULT_CHARSET
+              Font.Color = clWindowText
+              Font.Height = -11
+              Font.Name = 'Times New Roman'
+              Font.Style = []
+              ParentFont = False
+            end
+            object edtImei1: TEdit
+              Left = 62
+              Top = 16
+              Width = 84
+              Height = 17
+              TabOrder = 1
+              Text = '35646019030487'
+              AutoSize = False
+              Font.Charset = DEFAULT_CHARSET
+              Font.Color = clWindowText
+              Font.Height = -11
+              Font.Name = 'Times New Roman'
+              Font.Style = []
+              ParentFont = False
+              BorderStyle = bsNone
+            end
+            object lblImei1Digits: TLabel
+              Left = 153
+              Top = 16
+              Width = 13
+              Height = 18
+              Caption = '9'
+              AutoSize = False
+              Color = clWhite
+              Transparent = False
+              Alignment = taCenter
+              Layout = tlCenter
+              Font.Color = clGrayText
+              ParentFont = False
+            end
+            object chkImei2: TCheckBox
+              Left = 14
+              Top = 36
+              Width = 48
+              Height = 17
+              Caption = 'IMEI2'
+              Checked = True
+              State = cbChecked
+              TabOrder = 2
+              Font.Charset = DEFAULT_CHARSET
+              Font.Color = clWindowText
+              Font.Height = -11
+              Font.Name = 'Times New Roman'
+              Font.Style = []
+              ParentFont = False
+            end
+            object edtImei2: TEdit
+              Left = 62
+              Top = 38
+              Width = 84
+              Height = 17
+              TabOrder = 3
+              Text = '35646019110987'
+              AutoSize = False
+              Font.Charset = DEFAULT_CHARSET
+              Font.Color = clWindowText
+              Font.Height = -11
+              Font.Name = 'Times New Roman'
+              Font.Style = []
+              ParentFont = False
+              BorderStyle = bsNone
+            end
+            object lblImei2Digits: TLabel
+              Left = 153
+              Top = 38
+              Width = 13
+              Height = 18
+              Caption = '1'
+              AutoSize = False
+              Color = clWhite
+              Transparent = False
+              Alignment = taCenter
+              Layout = tlCenter
+              Font.Color = clGrayText
+              ParentFont = False
+            end
+            object lblAdvancedSettings: TLabel
+              Left = 14
+              Top = 62
+              Width = 110
+              Height = 13
+              Cursor = crHandPoint
+              Caption = 'Advanced settings'
+              Font.Charset = DEFAULT_CHARSET
+              Font.Color = 8804864
+              Font.Height = -10
+              Font.Name = 'Tahoma'
+              Font.Style = [fsBold, fsUnderline]
+              ParentFont = False
+              OnClick = lblAdvancedSettingsClick
+            end
+            object btnRepair: TSampleButton
+              Left = 14
+              Top = 77
+              Width = 300
+              Height = 34
+              Caption = 'Repair'
+              Margin = 2
+              Spacing = 8
+              TabOrder = 4
+              OnClick = btnRepairClick
+              Font.Charset = DEFAULT_CHARSET
+              Font.Color = clWindowText
+              Font.Height = -9
+              Font.Name = 'Tahoma'
+              Font.Style = []
+              ParentFont = False
+            end
+            object btnReadImei: TSampleButton
+              Left = 14
+              Top = 113
+              Width = 300
+              Height = 34
+              Caption = 'Read IMEI'
+              Margin = 2
+              Spacing = 8
+              TabOrder = 5
+              OnClick = btnReadImeiClick
+              Font.Charset = DEFAULT_CHARSET
+              Font.Color = clWindowText
+              Font.Height = -9
+              Font.Name = 'Tahoma'
+              Font.Style = []
+              ParentFont = False
+            end
           end
         end
-        object tsLocks: TTabSheet
+        object tsLocks: TSampleTabSheet
           Caption = 'Locks'
           ImageIndex = 4
-          object lblOptionsLocks: TLabel
-            Left = 2
-            Top = 4
-            Width = 41
-            Height = 13
+          object grpOptionsLocks: TSampleGroupBox
+            Left = 8
+            Top = 3
+            Width = 328
+            Height = 240
             Caption = 'Options'
-          end
-          object btnUnlockBootloader: TBitBtn
-            Left = 2
-            Top = 20
-            Width = 336
-            Height = 32
-            Caption = 'Unlock Bootloader'
-            Margin = 6
-            Spacing = 14
+            Anchors = [akLeft, akTop, akRight]
             TabOrder = 0
-            OnClick = btnUnlockBootloaderClick
-          end
-          object btnRelockBootloader: TBitBtn
-            Left = 2
-            Top = 56
-            Width = 336
-            Height = 32
-            Caption = 'Relock Bootloader'
-            Margin = 6
-            Spacing = 14
-            TabOrder = 1
-            OnClick = btnRelockBootloaderClick
-          end
-          object btnUnlockNetwork: TBitBtn
-            Left = 2
-            Top = 92
-            Width = 336
-            Height = 32
-            Caption = 'Unlock Network'
-            Margin = 6
-            Spacing = 14
-            TabOrder = 2
-            OnClick = btnUnlockNetworkClick
-          end
-          object btnReadCodes: TBitBtn
-            Left = 2
-            Top = 128
-            Width = 336
-            Height = 32
-            Caption = 'Read Codes'
-            Margin = 6
-            Spacing = 14
-            TabOrder = 3
-            OnClick = btnReadCodesClick
-          end
-          object btnResetPassword: TBitBtn
-            Left = 2
-            Top = 164
-            Width = 336
-            Height = 32
-            Caption = 'Reset Password [SAFE WIPE]'
-            Margin = 6
-            Spacing = 14
-            TabOrder = 4
-            OnClick = btnResetPasswordClick
-          end
-          object btnResetAccount: TBitBtn
-            Left = 2
-            Top = 200
-            Width = 336
-            Height = 32
-            Caption = 'Reset Account'
-            Margin = 6
-            Spacing = 14
-            TabOrder = 5
-            OnClick = btnResetAccountClick
+            CaptionInset = 6
+            object btnUnlockBootloader: TSampleButton
+              Left = 14
+              Top = 18
+              Width = 300
+              Height = 34
+              Caption = 'Unlock Bootloader'
+              Margin = 2
+              Spacing = 8
+              TabOrder = 0
+              OnClick = btnUnlockBootloaderClick
+              Font.Charset = DEFAULT_CHARSET
+              Font.Color = clWindowText
+              Font.Height = -9
+              Font.Name = 'Tahoma'
+              Font.Style = []
+              ParentFont = False
+            end
+            object btnRelockBootloader: TSampleButton
+              Left = 14
+              Top = 54
+              Width = 300
+              Height = 34
+              Caption = 'Relock Bootloader'
+              Margin = 2
+              Spacing = 8
+              TabOrder = 1
+              OnClick = btnRelockBootloaderClick
+              Font.Charset = DEFAULT_CHARSET
+              Font.Color = clWindowText
+              Font.Height = -9
+              Font.Name = 'Tahoma'
+              Font.Style = []
+              ParentFont = False
+            end
+            object btnUnlockNetwork: TSampleButton
+              Left = 14
+              Top = 90
+              Width = 300
+              Height = 34
+              Caption = 'Unlock Network'
+              Margin = 2
+              Spacing = 8
+              TabOrder = 2
+              OnClick = btnUnlockNetworkClick
+              Font.Charset = DEFAULT_CHARSET
+              Font.Color = clWindowText
+              Font.Height = -9
+              Font.Name = 'Tahoma'
+              Font.Style = []
+              ParentFont = False
+            end
+            object btnReadCodes: TSampleButton
+              Left = 14
+              Top = 126
+              Width = 300
+              Height = 34
+              Caption = 'Read Codes'
+              Margin = 2
+              Spacing = 8
+              TabOrder = 3
+              OnClick = btnReadCodesClick
+              Font.Charset = DEFAULT_CHARSET
+              Font.Color = clWindowText
+              Font.Height = -9
+              Font.Name = 'Tahoma'
+              Font.Style = []
+              ParentFont = False
+            end
+            object btnResetPassword: TSampleButton
+              Left = 14
+              Top = 162
+              Width = 300
+              Height = 34
+              Caption = 'Reset Password [SAFE WIPE]'
+              Margin = 2
+              Spacing = 8
+              TabOrder = 4
+              OnClick = btnResetPasswordClick
+              Font.Charset = DEFAULT_CHARSET
+              Font.Color = clWindowText
+              Font.Height = -9
+              Font.Name = 'Tahoma'
+              Font.Style = []
+              ParentFont = False
+            end
+            object btnResetAccount: TSampleButton
+              Left = 14
+              Top = 198
+              Width = 300
+              Height = 34
+              Caption = 'Reset Account'
+              Margin = 2
+              Spacing = 8
+              TabOrder = 5
+              OnClick = btnResetAccountClick
+              Font.Charset = DEFAULT_CHARSET
+              Font.Color = clWindowText
+              Font.Height = -9
+              Font.Name = 'Tahoma'
+              Font.Style = []
+              ParentFont = False
+            end
           end
         end
-        object tsService: TTabSheet
+        object tsService: TSampleTabSheet
           Caption = 'Service'
           ImageIndex = 5
-          object lblOptionsService: TLabel
-            Left = 2
-            Top = 4
-            Width = 41
-            Height = 13
+          object grpOptionsService: TSampleGroupBox
+            Left = 8
+            Top = 3
+            Width = 328
+            Height = 242
             Caption = 'Options'
-          end
-          object btnRebootRecovery: TBitBtn
-            Left = 2
-            Top = 20
-            Width = 336
-            Height = 32
-            Caption = 'Reboot to Recovery'
-            Margin = 6
-            Spacing = 14
+            Anchors = [akLeft, akTop, akRight]
             TabOrder = 0
-            OnClick = btnRebootRecoveryClick
-          end
-          object btnDisableOta: TBitBtn
-            Left = 2
-            Top = 56
-            Width = 336
-            Height = 32
-            Caption = 'Disable OTA Updates'
-            Margin = 6
-            Spacing = 14
-            TabOrder = 1
-            OnClick = btnDisableOtaClick
-          end
-          object btnResetDmVerity: TBitBtn
-            Left = 2
-            Top = 92
-            Width = 336
-            Height = 32
-            Caption = 'Reset Dm-Verity Error'
-            Margin = 6
-            Spacing = 14
-            TabOrder = 2
-            OnClick = btnResetDmVerityClick
-          end
-          object btnDisableOrangeState: TBitBtn
-            Left = 2
-            Top = 128
-            Width = 336
-            Height = 32
-            Caption = 'Disable Orange State'
-            Margin = 6
-            Spacing = 14
-            TabOrder = 3
-            OnClick = btnDisableOrangeStateClick
-          end
-          object btnSwitchSlot: TBitBtn
-            Left = 2
-            Top = 164
-            Width = 336
-            Height = 32
-            Caption = 'Switch Slot'
-            Margin = 6
-            Spacing = 14
-            TabOrder = 4
-            OnClick = btnSwitchSlotClick
-          end
-          object btnFixDlImage: TBitBtn
-            Left = 2
-            Top = 200
-            Width = 336
-            Height = 32
-            Caption = 'Fix DL Image Fail'
-            Margin = 6
-            Spacing = 14
-            TabOrder = 5
-            OnClick = btnFixDlImageClick
+            CaptionInset = 6
+            object btnRebootRecovery: TSampleButton
+              Left = 14
+              Top = 18
+              Width = 300
+              Height = 34
+              Caption = 'Reboot to Recovery'
+              Margin = 2
+              Spacing = 8
+              TabOrder = 0
+              OnClick = btnRebootRecoveryClick
+              Font.Charset = DEFAULT_CHARSET
+              Font.Color = clWindowText
+              Font.Height = -9
+              Font.Name = 'Tahoma'
+              Font.Style = []
+              ParentFont = False
+            end
+            object btnDisableOta: TSampleButton
+              Left = 14
+              Top = 54
+              Width = 300
+              Height = 34
+              Caption = 'Disable OTA Updates'
+              Margin = 2
+              Spacing = 8
+              TabOrder = 1
+              OnClick = btnDisableOtaClick
+              Font.Charset = DEFAULT_CHARSET
+              Font.Color = clWindowText
+              Font.Height = -9
+              Font.Name = 'Tahoma'
+              Font.Style = []
+              ParentFont = False
+            end
+            object btnResetDmVerity: TSampleButton
+              Left = 14
+              Top = 90
+              Width = 300
+              Height = 34
+              Caption = 'Reset Dm-Verity Error'
+              Margin = 2
+              Spacing = 8
+              TabOrder = 2
+              OnClick = btnResetDmVerityClick
+              Font.Charset = DEFAULT_CHARSET
+              Font.Color = clWindowText
+              Font.Height = -9
+              Font.Name = 'Tahoma'
+              Font.Style = []
+              ParentFont = False
+            end
+            object btnDisableOrangeState: TSampleButton
+              Left = 14
+              Top = 126
+              Width = 300
+              Height = 34
+              Caption = 'Disable Orange State'
+              Margin = 2
+              Spacing = 8
+              TabOrder = 3
+              OnClick = btnDisableOrangeStateClick
+              Font.Charset = DEFAULT_CHARSET
+              Font.Color = clWindowText
+              Font.Height = -9
+              Font.Name = 'Tahoma'
+              Font.Style = []
+              ParentFont = False
+            end
+            object btnSwitchSlot: TSampleButton
+              Left = 14
+              Top = 162
+              Width = 300
+              Height = 34
+              Caption = 'Switch Slot'
+              Margin = 2
+              Spacing = 8
+              TabOrder = 4
+              OnClick = btnSwitchSlotClick
+              Font.Charset = DEFAULT_CHARSET
+              Font.Color = clWindowText
+              Font.Height = -9
+              Font.Name = 'Tahoma'
+              Font.Style = []
+              ParentFont = False
+            end
+            object btnFixDlImage: TSampleButton
+              Left = 14
+              Top = 198
+              Width = 300
+              Height = 34
+              Caption = 'Fix DL Image Fail'
+              Margin = 2
+              Spacing = 8
+              TabOrder = 5
+              OnClick = btnFixDlImageClick
+              Font.Charset = DEFAULT_CHARSET
+              Font.Color = clWindowText
+              Font.Height = -9
+              Font.Name = 'Tahoma'
+              Font.Style = []
+              ParentFont = False
+            end
           end
         end
-        object tsRpmb: TTabSheet
+        object tsRpmb: TSampleTabSheet
           Caption = 'RPMB'
           ImageIndex = 6
-          object lblOptionsRpmb: TLabel
-            Left = 2
-            Top = 4
-            Width = 41
-            Height = 13
+          object grpOptionsRpmb: TSampleGroupBox
+            Left = 8
+            Top = 3
+            Width = 328
+            Height = 152
             Caption = 'Options'
-          end
-          object btnRpmbBackup: TBitBtn
-            Left = 2
-            Top = 20
-            Width = 336
-            Height = 32
-            Caption = 'Backup RPMB'
-            Margin = 6
-            Spacing = 14
+            Anchors = [akLeft, akTop, akRight]
             TabOrder = 0
-            OnClick = btnRpmbBackupClick
-          end
-          object lblRpmbAddress: TLabel
-            Left = 2
-            Top = 58
-            Width = 53
-            Height = 13
-            Caption = 'Address 0x'
-          end
-          object edtRpmbAddress: TEdit
-            Left = 62
-            Top = 54
-            Width = 90
-            Height = 23
-            TabOrder = 1
-            Text = '000000'
-          end
-          object btnRpmbWrite: TBitBtn
-            Left = 2
-            Top = 80
-            Width = 336
-            Height = 32
-            Caption = 'Write RPMB'
-            Margin = 6
-            Spacing = 14
-            TabOrder = 2
-            OnClick = btnRpmbWriteClick
-          end
-          object btnRpmbFormat: TBitBtn
-            Left = 2
-            Top = 116
-            Width = 336
-            Height = 32
-            Caption = 'Format RPMB'
-            Margin = 6
-            Spacing = 14
-            TabOrder = 3
-            OnClick = btnRpmbFormatClick
+            CaptionInset = 6
+            object btnRpmbBackup: TSampleButton
+              Left = 14
+              Top = 18
+              Width = 300
+              Height = 34
+              Caption = 'Backup RPMB'
+              Margin = 2
+              Spacing = 8
+              TabOrder = 0
+              OnClick = btnRpmbBackupClick
+              Font.Charset = DEFAULT_CHARSET
+              Font.Color = clWindowText
+              Font.Height = -9
+              Font.Name = 'Tahoma'
+              Font.Style = []
+              ParentFont = False
+            end
+            object lblRpmbAddress: TLabel
+              Left = 14
+              Top = 56
+              Width = 70
+              Height = 13
+              Caption = 'Address 0x'
+            end
+            object edtRpmbAddress: TEdit
+              Left = 86
+              Top = 56
+              Width = 59
+              Height = 18
+              TabOrder = 1
+              Text = '000000'
+              AutoSize = False
+              Font.Charset = DEFAULT_CHARSET
+              Font.Color = clWindowText
+              Font.Height = -9
+              Font.Name = 'Tahoma'
+              Font.Style = []
+              ParentFont = False
+            end
+            object btnRpmbWrite: TSampleButton
+              Left = 14
+              Top = 77
+              Width = 300
+              Height = 34
+              Caption = 'Write RPMB'
+              Margin = 2
+              Spacing = 8
+              TabOrder = 2
+              OnClick = btnRpmbWriteClick
+              Font.Charset = DEFAULT_CHARSET
+              Font.Color = clWindowText
+              Font.Height = -9
+              Font.Name = 'Tahoma'
+              Font.Style = []
+              ParentFont = False
+            end
+            object btnRpmbFormat: TSampleButton
+              Left = 14
+              Top = 113
+              Width = 300
+              Height = 34
+              Caption = 'Format RPMB'
+              Margin = 2
+              Spacing = 8
+              TabOrder = 3
+              OnClick = btnRpmbFormatClick
+              Font.Charset = DEFAULT_CHARSET
+              Font.Color = clWindowText
+              Font.Height = -9
+              Font.Name = 'Tahoma'
+              Font.Style = []
+              ParentFont = False
+            end
           end
         end
       end
     end
-    object tsMeta: TTabSheet
+    object tsMeta: TSampleTabSheet
       Caption = 'META'
       ImageIndex = 1
-      object grpPlatform: TGroupBox
-        Left = 1
-        Top = 14
-        Width = 344
-        Height = 120
+      object grpPlatform: TSampleGroupBox
+        Left = 8
+        Top = 5
+        Width = 328
+        Height = 148
         Caption = 'Platform'
         TabOrder = 0
         object lblPlatform: TLabel
           Left = 14
-          Top = 22
-          Width = 45
+          Top = 18
+          Width = 80
           Height = 13
           Caption = 'Platform'
         end
         object cbPlatform: TComboBox
           Left = 14
-          Top = 38
-          Width = 316
-          Height = 23
+          Top = 34
+          Width = 300
+          Height = 21
           Hint = 'Choose the chipset family. Unisoc changes META to DIAG.'
           Style = csDropDownList
           TabOrder = 0
           OnChange = cbPlatformChange
           Items.Strings = (
-            'MediaTek (MTK)'
-            'Unisoc / Spreadtrum'
-            'Qualcomm'
-            'Samsung'
-            'Other / Generic')
+          'MediaTek (MTK)'
+          'Unisoc / Spreadtrum'
+          'Qualcomm'
+          'Samsung'
+          'Other / Generic')
+          ItemIndex = 0
         end
         object lblServiceMode: TLabel
           Left = 14
-          Top = 70
-          Width = 75
+          Top = 66
+          Width = 100
           Height = 13
           Caption = 'Service mode'
         end
         object lblServiceModeValue: TLabel
           Left = 118
-          Top = 70
-          Width = 34
+          Top = 66
+          Width = 100
           Height = 13
           Caption = 'META'
         end
         object lblMetaInfo: TLabel
           Left = 14
-          Top = 92
-          Width = 316
-          Height = 20
+          Top = 88
+          Width = 300
+          Height = 50
           AutoSize = False
           WordWrap = True
           Caption = 'MediaTek service profile. This build does not communicate with a phone.'
@@ -1149,23 +1545,25 @@ object frmMain2: TMain2Form
     end
   end
   object lblDeviceState: TLabel
-    Left = 330
-    Top = 567
-    Width = 292
-    Height = 15
+    Left = 351
+    Top = 566
+    Width = 280
+    Height = 16
     Alignment = taRightJustify
     AutoSize = False
     Caption = 'No device'
     Visible = False
+    Anchors = [akRight, akBottom]
   end
   object pbDeviceState: TPaintBox
-    Left = 628
-    Top = 563
+    Left = 636
+    Top = 562
     Width = 24
     Height = 24
     Hint = 'No device connected'
     Visible = False
     OnPaint = pbDeviceStatePaint
+    Anchors = [akRight, akBottom]
   end
   object pmMain: TPopupMenu
     Left = 600

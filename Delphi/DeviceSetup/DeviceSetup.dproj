@@ -53,6 +53,8 @@
     </DCCReference>
     <DCCReference Include="DeviceCatalog.pas" />
     <DCCReference Include="ToolbarIcons.pas" />
+    <DCCReference Include="SampleAssets.pas" />
+    <DCCReference Include="SampleControls.pas" />
     <DCCReference Include="AppInfo.pas" />
     <DCCReference Include="LogView.pas" />
     <DCCReference Include="UsbDetect.pas" />
