@@ -77,6 +77,24 @@ jobs:
           Copy-Item $exe "artifacts\DeviceSetup-${{ matrix.platform }}.exe"
           Get-Item "artifacts\*.exe" | Format-Table Name, Length
 
+      - name: Smoke test the EXE
+        shell: pwsh
+        run: |
+          # The compiler cannot see form-streaming problems: a component that
+          # exists in the .lfm but not in the form class only fails when the
+          # app starts. Launch it, make sure it is still alive, then close it.
+          $exe = Join-Path (Get-Location) "artifacts\DeviceSetup-${{ matrix.platform }}.exe"
+          if (-not (Test-Path $exe)) { Write-Output "::error::EXE not found: $exe"; exit 1 }
+          $proc = Start-Process -FilePath $exe -PassThru
+          Start-Sleep -Seconds 10
+          $proc.Refresh()
+          if ($proc.HasExited) {
+            Write-Output "::error::The app exited during start-up (code $($proc.ExitCode)) - a form probably could not be streamed from its .lfm"
+            exit 1
+          }
+          Write-Output "Started and stayed running (PID $($proc.Id)); closing it."
+          Stop-Process -Id $proc.Id -Force
+
       - name: Upload EXE
         uses: actions/upload-artifact@v4
         with:
