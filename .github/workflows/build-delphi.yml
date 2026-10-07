@@ -1,0 +1,66 @@
+name: Build Delphi EXEs
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build Win32 and Win64
+    runs-on: [self-hosted, Windows, X64, delphi]
+    timeout-minutes: 30
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Build Release executables
+        shell: cmd
+        env:
+          DELPHI_STUDIO_DIR: ${{ vars.DELPHI_STUDIO_DIR }}
+        run: |
+          @echo off
+          if not defined DELPHI_STUDIO_DIR (
+            echo Missing repository Actions variable DELPHI_STUDIO_DIR.
+            exit /b 1
+          )
+          if not exist "%DELPHI_STUDIO_DIR%\bin\rsvars.bat" (
+            echo Could not find "%DELPHI_STUDIO_DIR%\bin\rsvars.bat".
+            exit /b 1
+          )
+
+          call "%DELPHI_STUDIO_DIR%\bin\rsvars.bat"
+          if errorlevel 1 exit /b 1
+
+          msbuild "Delphi\DeviceSetup\DeviceSetup.dproj" /t:Build /p:Config=Release /p:Platform=Win32 /verbosity:minimal
+          if errorlevel 1 exit /b 1
+
+          msbuild "Delphi\DeviceSetup\DeviceSetup.dproj" /t:Build /p:Config=Release /p:Platform=Win64 /verbosity:minimal
+          if errorlevel 1 exit /b 1
+
+          if not exist "Delphi\DeviceSetup\Win32\Release\DeviceSetup.exe" (
+            echo Win32 EXE was not produced.
+            exit /b 1
+          )
+          if not exist "Delphi\DeviceSetup\Win64\Release\DeviceSetup.exe" (
+            echo Win64 EXE was not produced.
+            exit /b 1
+          )
+
+          if not exist "Delphi\DeviceSetup\artifacts" mkdir "Delphi\DeviceSetup\artifacts"
+          copy /y "Delphi\DeviceSetup\Win32\Release\DeviceSetup.exe" "Delphi\DeviceSetup\artifacts\DeviceSetup-Win32.exe" >nul
+          if errorlevel 1 exit /b 1
+          copy /y "Delphi\DeviceSetup\Win64\Release\DeviceSetup.exe" "Delphi\DeviceSetup\artifacts\DeviceSetup-Win64.exe" >nul
+          if errorlevel 1 exit /b 1
+
+      - name: Upload both executables
+        uses: actions/upload-artifact@v4
+        with:
+          name: DeviceSetup-${{ github.sha }}
+          path: Delphi/DeviceSetup/artifacts/*.exe
+          if-no-files-found: error
+          retention-days: 30
