@@ -10,8 +10,8 @@ object frmMain: TMainForm
   DoubleBuffered = True
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
-  Font.Height = -12
-  Font.Name = 'Segoe UI'
+  Font.Height = -11
+  Font.Name = 'Tahoma'
   Font.Style = []
   OldCreateOrder = False
   Position = poScreenCenter
@@ -23,8 +23,8 @@ object frmMain: TMainForm
   PixelsPerInch = 96
   TextHeight = 15
   object pbMenu: TPaintBox
-    Left = 12
-    Top = 3
+    Left = 6
+    Top = 0
     Width = 28
     Height = 28
     Cursor = crHandPoint
@@ -33,8 +33,8 @@ object frmMain: TMainForm
     OnPaint = pbMenuPaint
   end
   object pbNext: TPaintBox
-    Left = 730
-    Top = 3
+    Left = 725
+    Top = 0
     Width = 28
     Height = 28
     Cursor = crHandPoint
@@ -44,8 +44,8 @@ object frmMain: TMainForm
     OnPaint = pbNextPaint
   end
   object pbDownload: TPaintBox
-    Left = 772
-    Top = 3
+    Left = 769
+    Top = 0
     Width = 28
     Height = 28
     Cursor = crHandPoint
@@ -55,8 +55,8 @@ object frmMain: TMainForm
     OnPaint = pbDownloadPaint
   end
   object pbReload: TPaintBox
-    Left = 812
-    Top = 3
+    Left = 813
+    Top = 0
     Width = 28
     Height = 28
     Cursor = crHandPoint
@@ -67,7 +67,7 @@ object frmMain: TMainForm
   end
   object pbSettings: TPaintBox
     Left = 856
-    Top = 3
+    Top = 0
     Width = 28
     Height = 28
     Cursor = crHandPoint
@@ -77,8 +77,8 @@ object frmMain: TMainForm
     OnPaint = pbSettingsPaint
   end
   object pbContact: TPaintBox
-    Left = 902
-    Top = 3
+    Left = 901
+    Top = 0
     Width = 28
     Height = 28
     Cursor = crHandPoint
@@ -88,8 +88,8 @@ object frmMain: TMainForm
     OnPaint = pbContactPaint
   end
   object pbFacebook: TPaintBox
-    Left = 948
-    Top = 3
+    Left = 946
+    Top = 0
     Width = 28
     Height = 28
     Cursor = crHandPoint
@@ -99,8 +99,8 @@ object frmMain: TMainForm
     OnPaint = pbFacebookPaint
   end
   object pbHelp: TPaintBox
-    Left = 992
-    Top = 3
+    Left = 990
+    Top = 0
     Width = 28
     Height = 28
     Cursor = crHandPoint
@@ -111,17 +111,17 @@ object frmMain: TMainForm
   end
   object pbLogo: TPaintBox
     Left = 432
-    Top = 47
+    Top = 72
     Width = 583
-    Height = 468
+    Height = 450
     Anchors = [akLeft, akTop, akRight, akBottom]
     OnPaint = pbLogoPaint
   end
   object cbSearch: TComboBox
-    Left = 2
-    Top = 36
-    Width = 421
-    Height = 23
+    Left = 3
+    Top = 48
+    Width = 420
+    Height = 18
     TabOrder = 0
     Text = 'Quick search'
     OnChange = cbSearchChange
@@ -130,38 +130,53 @@ object frmMain: TMainForm
     OnKeyDown = cbSearchKeyDown
   end
   object lstBrands: TListBox
-    Left = 2
-    Top = 62
+    Left = 3
+    Top = 72
     Width = 128
-    Height = 456
+    Height = 423
     Anchors = [akLeft, akTop, akBottom]
-    ItemHeight = 14
+    ItemHeight = 17
     TabOrder = 1
     OnClick = lstBrandsClick
+    IntegralHeight = False
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -14
+    Font.Name = 'Tahoma'
+    Font.Style = []
+    ParentFont = False
   end
   object lstModels: TListBox
-    Left = 135
-    Top = 62
-    Width = 288
-    Height = 456
+    Left = 136
+    Top = 72
+    Width = 287
+    Height = 423
     Anchors = [akLeft, akTop, akBottom]
-    ItemHeight = 14
+    ItemHeight = 17
     TabOrder = 2
     OnClick = lstModelsClick
     OnDblClick = lstModelsDblClick
     OnKeyDown = lstModelsKeyDown
+    IntegralHeight = False
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -14
+    Font.Name = 'Tahoma'
+    Font.Style = []
+    ParentFont = False
   end
-  object btnSelect: TBitBtn
-    Left = 2
-    Top = 524
-    Width = 421
-    Height = 30
+  object btnSelect: TSampleButton
+    Left = 3
+    Top = 501
+    Width = 420
+    Height = 31
     Anchors = [akLeft, akBottom]
     Caption = 'Select'
-    Margin = 12
-    Spacing = 10
+    Margin = 2
+    Spacing = 6
     TabOrder = 3
     OnClick = pbNextClick
+    Centered = True
   end
   object pmMain: TPopupMenu
     Left = 760
