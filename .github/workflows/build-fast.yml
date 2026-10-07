@@ -3,13 +3,24 @@ name: Build EXEs (fast)
 # Builds the app on GitHub-hosted Windows runners with the free Lazarus /
 # Free Pascal compiler - no self-hosted runner or Delphi licence needed.
 # Lazarus is cached after the first run, so later runs only compile.
+# Every build runs "DeviceSetup.exe --selftest" (forms load, checks pass,
+# screenshots of the screens are uploaded). Pushes to main publish the EXEs
+# as the "Latest build" release; pushing a tag like v1.1.0 publishes a
+# versioned release.
 
 on:
   push:
     branches:
       - main
+    tags:
+      - 'v*'
   pull_request:
   workflow_dispatch:
+    inputs:
+      screenshots:
+        description: 'Also publish self-test screenshots as check runs (for review without downloading artifacts)'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -23,6 +34,9 @@ jobs:
     name: Build ${{ matrix.platform }}
     runs-on: windows-latest
     timeout-minutes: 20
+    permissions:
+      contents: read
+      checks: write
     strategy:
       fail-fast: false
       matrix:
@@ -62,6 +76,13 @@ jobs:
         shell: pwsh
         run: python tools/dfm2lfm.py
 
+      - name: Stamp build id (shown in Help)
+        shell: pwsh
+        run: |
+          $id = "${{ github.sha }}".Substring(0, 7) + " #${{ github.run_number }}"
+          Set-Content -Path BuildInfo.inc -Value "CAppBuild = '$id';" -Encoding ascii
+          Get-Content BuildInfo.inc
+
       - name: Compile
         shell: pwsh
         run: |
@@ -77,6 +98,107 @@ jobs:
           Copy-Item $exe "artifacts\DeviceSetup-${{ matrix.platform }}.exe"
           Get-Item "artifacts\*.exe" | Format-Table Name, Length
 
+      - name: Self-test (forms load, checks pass, screenshots)
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force selftest-run | Out-Null
+          Copy-Item "artifacts\DeviceSetup-${{ matrix.platform }}.exe" selftest-run\DeviceSetup.exe
+          $p = Start-Process -FilePath selftest-run\DeviceSetup.exe -ArgumentList '--selftest' -PassThru
+          $null = $p.Handle
+          $timedOut = -not $p.WaitForExit(120000)
+          New-Item -ItemType Directory -Force selftest-run\selftest | Out-Null
+          Add-Type -AssemblyName System.Drawing, System.Windows.Forms
+          if ($timedOut) {
+            # something (usually an error dialog) blocked the app: grab the screen
+            $b = [System.Windows.Forms.SystemInformation]::VirtualScreen
+            $shot = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+            [System.Drawing.Graphics]::FromImage($shot).CopyFromScreen($b.Left, $b.Top, 0, 0, $shot.Size)
+            $shot.Save("$PWD\selftest-run\selftest\timeout-screen.png")
+            # text of the blocking window(s), e.g. an error message box
+            $src = 'using System; using System.Text; using System.Runtime.InteropServices;
+            public static class Wnd {
+              public delegate bool EnumProc(IntPtr h, IntPtr l);
+              [DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc f, IntPtr l);
+              [DllImport("user32.dll")] public static extern bool EnumChildWindows(IntPtr p, EnumProc f, IntPtr l);
+              [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int GetWindowText(IntPtr h, StringBuilder s, int n);
+              [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+              [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
+              public static string Dump(uint pid) {
+                var sb = new StringBuilder();
+                EnumWindows((h, l) => { uint p; GetWindowThreadProcessId(h, out p);
+                  if (p == pid && IsWindowVisible(h)) {
+                    var t = new StringBuilder(1024); GetWindowText(h, t, 1024); sb.Append("[" + t + "] ");
+                    EnumChildWindows(h, (c, l2) => { var ct = new StringBuilder(4096); GetWindowText(c, ct, 4096); if (ct.Length > 0) sb.Append(ct + " | "); return true; }, IntPtr.Zero);
+                    sb.Append(" || "); }
+                  return true; }, IntPtr.Zero);
+                return sb.ToString(); } }'
+            Add-Type -TypeDefinition $src
+            $txt = [Wnd]::Dump([uint32]$p.Id) -replace "`r", '' -replace "`n", '%0A'
+            Write-Output "::notice title=blocking-window-${{ matrix.platform }}::$txt"
+            Stop-Process -Id $p.Id -Force
+          }
+          Get-ChildItem selftest-run\selftest\*.bmp -ErrorAction SilentlyContinue | ForEach-Object {
+            $img = [System.Drawing.Image]::FromFile($_.FullName)
+            $img.Save(($_.FullName -replace '\.bmp$', '.png'), [System.Drawing.Imaging.ImageFormat]::Png)
+            $img.Dispose()
+            Remove-Item $_.FullName
+          }
+          $log = 'selftest-run\selftest\selftest.log'
+          if (Test-Path $log) { Get-Content $log }
+          if ($timedOut) { Write-Output "::error::Self-test did not finish (probably blocked by an error dialog - see timeout-screen.png)"; exit 1 }
+          if (($p.ExitCode -ne 0) -or -not (Test-Path $log) -or -not (Select-String -Path $log -Pattern 'SELFTEST OK' -Quiet)) {
+            Write-Output "::error::Self-test failed (exit code $($p.ExitCode))"
+            exit 1
+          }
+
+      - name: Report self-test as annotations
+        if: always()
+        shell: pwsh
+        run: |
+          $dir = 'selftest-run\selftest'
+          $log = "$dir\selftest.log"
+          if (Test-Path $log) {
+            $text = (Get-Content $log) -join '%0A'
+            Write-Output "::notice title=selftest-${{ matrix.platform }}::$text"
+          } else {
+            Write-Output "::notice title=selftest-${{ matrix.platform }}::no selftest.log"
+          }
+          # Optional (manual run with "screenshots" ticked, or the file
+          # .github/ci-screenshots present in the commit): screenshots as
+          # neutral check runs (base64 GIF chunks, readable through the GitHub
+          # API) so they can be reviewed without downloading artifacts.
+          $wantShots = ('${{ inputs.screenshots }}' -eq 'true') -or (Test-Path '../../.github/ci-screenshots')
+          if (('${{ matrix.platform }}' -eq 'Win64') -and $wantShots) {
+            $env:GH_TOKEN = '${{ github.token }}'
+            $sha = '${{ github.event.pull_request.head.sha || github.sha }}'
+            Add-Type -AssemblyName System.Drawing
+            Get-ChildItem "$dir\*.png" -ErrorAction SilentlyContinue | ForEach-Object {
+              $img = [System.Drawing.Image]::FromFile($_.FullName)
+              $gif = $_.FullName -replace '\.png$', '.gif'
+              $img.Save($gif, [System.Drawing.Imaging.ImageFormat]::Gif)
+              $img.Dispose()
+              $b64 = [Convert]::ToBase64String([IO.File]::ReadAllBytes($gif))
+              Remove-Item $gif
+              $size = 60000
+              $n = [Math]::Ceiling($b64.Length / $size)
+              for ($i = 0; $i -lt $n; $i++) {
+                $chunk = $b64.Substring($i * $size, [Math]::Min($size, $b64.Length - $i * $size))
+                $body = @{ name = "ci-shot $($_.BaseName) $($i + 1)/$n"; head_sha = $sha; status = 'completed'; conclusion = 'neutral';
+                           output = @{ title = 'self-test screenshot'; summary = 'base64 GIF chunk'; text = $chunk } } | ConvertTo-Json -Depth 4
+                $body | gh api "repos/${{ github.repository }}/check-runs" --input - --silent
+              }
+            }
+          }
+
+      - name: Upload self-test results and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: DeviceSetup-selftest-${{ matrix.platform }}-${{ github.sha }}
+          path: Delphi/DeviceSetup/selftest-run/selftest/
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Upload EXE
         uses: actions/upload-artifact@v4
         with:
@@ -84,3 +206,35 @@ jobs:
           path: Delphi/DeviceSetup/artifacts/*.exe
           if-no-files-found: error
           retention-days: 30
+
+  release:
+    name: Publish release
+    needs: build
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download EXEs
+        uses: actions/download-artifact@v4
+        with:
+          pattern: DeviceSetup-Win*-${{ github.sha }}
+          merge-multiple: true
+          path: exe
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          ls -l exe
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            tag="${GITHUB_REF#refs/tags/}"
+            gh release create "$tag" exe/*.exe --verify-tag \
+              --title "Mobile Servicing Tools $tag" --generate-notes
+          else
+            gh release delete latest-build --yes --cleanup-tag 2>/dev/null || true
+            gh release create latest-build exe/*.exe --target "$GITHUB_SHA" --latest \
+              --title "Latest build (main)" \
+              --notes "Built from ${GITHUB_SHA::7} on main. Download DeviceSetup-Win64.exe (64-bit Windows) or DeviceSetup-Win32.exe (32-bit). This release is replaced on every push to main."
+          fi

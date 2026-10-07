@@ -5,9 +5,17 @@ unit DeviceCatalog;
 {$ENDIF}
 
 
-{ In-memory brand/model catalog used by MAIN 1.
-  Each model entry is shown exactly as "<model code> : <marketing name>".
-  This is starter/demo data - replace it with a real data source later. }
+{ Brand/model catalog used by MAIN 1.
+  Each model entry is shown as "<model code> : <marketing name>".
+
+  The catalog comes from one of two places:
+    - models.csv next to the EXE (if present), one model per line:
+          Brand,Model code,Name
+      e.g.  Realme,RMX3511,Realme C35
+      Lines starting with # are comments. ";" or a tab also work as the
+      separator. The name may contain commas.
+    - otherwise the built-in starter list below.
+  MAIN 1 can export the current list to models.csv as a starting point. }
 
 interface
 
@@ -18,9 +26,29 @@ type
     class function BrandName(const ABrandIndex: Integer): string; static;
     class function ModelCount(const ABrandIndex: Integer): Integer; static;
     class function ModelName(const ABrandIndex, AModelIndex: Integer): string; static;
+    class function FindBrand(const AName: string): Integer; static;
+    class function TotalModels: Integer; static;
+
+    { '' when the built-in list is used, otherwise the file name. }
+    class function Source: string; static;
+    class procedure ResetToBuiltIn; static;
+    { Replaces the catalog with the file contents. On failure (no valid
+      lines, unreadable file) the catalog is left unchanged. ASkipped is the
+      number of lines that could not be read. }
+    class function LoadFromFile(const AFileName: string; out ASkipped: Integer;
+      out AError: string): Boolean; static;
+    class procedure ExportToFile(const AFileName: string); static;
   end;
 
 implementation
+
+uses
+{$IFDEF FPC}
+  Classes, SysUtils;
+{$ELSE}
+  System.Classes,
+  System.SysUtils;
+{$ENDIF}
 
 type
   TModelList = array of string;
@@ -32,6 +60,7 @@ type
 
 var
   GBrands: TBrandList;
+  GSource: string;
 
 procedure AddBrand(const AName: string; const AModels: array of string);
 var
@@ -46,7 +75,7 @@ begin
   GBrands[High(GBrands)] := Entry;
 end;
 
-procedure BuildCatalog;
+procedure BuildBuiltIn;
 begin
   { Brands are kept in case-insensitive alphabetical order (iGET, myPhone...). }
   AddBrand('Alcatel', [
@@ -254,7 +283,243 @@ begin
   Result := GBrands[ABrandIndex].Models[AModelIndex];
 end;
 
+class function TDeviceCatalog.FindBrand(const AName: string): Integer;
+var
+  I: Integer;
+begin
+  for I := 0 to High(GBrands) do
+    if SameText(GBrands[I].Name, AName) then
+    begin
+      Result := I;
+      Exit;
+    end;
+  Result := -1;
+end;
+
+class function TDeviceCatalog.TotalModels: Integer;
+var
+  I: Integer;
+begin
+  Result := 0;
+  for I := 0 to High(GBrands) do
+    Inc(Result, Length(GBrands[I].Models));
+end;
+
+class function TDeviceCatalog.Source: string;
+begin
+  Result := GSource;
+end;
+
+class procedure TDeviceCatalog.ResetToBuiltIn;
+begin
+  SetLength(GBrands, 0);
+  BuildBuiltIn;
+  GSource := '';
+end;
+
+{ ---------------------------------------------------------------- file }
+
+function Unquote(const S: string): string;
+begin
+  Result := Trim(S);
+  if (Length(Result) >= 2) and (Result[1] = '"') and
+     (Result[Length(Result)] = '"') then
+    Result := Trim(Copy(Result, 2, Length(Result) - 2));
+end;
+
+function FindSeparator(const S: string): Char;
+var
+  I: Integer;
+begin
+  for I := 1 to Length(S) do
+    if CharInSet(S[I], [',', ';', #9]) then
+    begin
+      Result := S[I];
+      Exit;
+    end;
+  Result := #0;
+end;
+
+{ Splits "Brand,Code,Name" (the name may contain the separator). }
+function SplitLine(const S: string; out ABrand, ACode, AName: string): Boolean;
+var
+  Sep: Char;
+  P: Integer;
+  Rest: string;
+begin
+  Result := False;
+  Sep := FindSeparator(S);
+  if Sep = #0 then
+    Exit;
+  P := Pos(Sep, S);
+  ABrand := Unquote(Copy(S, 1, P - 1));
+  Rest := Copy(S, P + 1, MaxInt);
+  P := Pos(Sep, Rest);
+  if P = 0 then
+    Exit;
+  ACode := Unquote(Copy(Rest, 1, P - 1));
+  AName := Unquote(Copy(Rest, P + 1, MaxInt));
+  Result := (ABrand <> '') and ((ACode <> '') or (AName <> ''));
+end;
+
+function NewBrandIndex(var ABrands: TBrandList; const AName: string): Integer;
+var
+  I: Integer;
+begin
+  for I := 0 to High(ABrands) do
+    if SameText(ABrands[I].Name, AName) then
+    begin
+      Result := I;
+      Exit;
+    end;
+  SetLength(ABrands, Length(ABrands) + 1);
+  Result := High(ABrands);
+  ABrands[Result].Name := AName;
+  SetLength(ABrands[Result].Models, 0);
+end;
+
+procedure SortBrands(var ABrands: TBrandList);
+var
+  I, J: Integer;
+  Tmp: TBrandEntry;
+begin
+  { insertion sort, case-insensitive (iGET, myPhone...) }
+  for I := 1 to High(ABrands) do
+  begin
+    Tmp := ABrands[I];
+    J := I - 1;
+    while (J >= 0) and (CompareText(ABrands[J].Name, Tmp.Name) > 0) do
+    begin
+      ABrands[J + 1] := ABrands[J];
+      Dec(J);
+    end;
+    ABrands[J + 1] := Tmp;
+  end;
+end;
+
+procedure ReadLines(const AFileName: string; ALines: TStringList);
+begin
+  {$IFDEF FPC}
+  ALines.LoadFromFile(AFileName);  { LCL strings are UTF-8 }
+  { strip a UTF-8 byte order mark (compared byte by byte to avoid any
+    code page conversion of the constant) }
+  if (ALines.Count > 0) and (Length(ALines[0]) >= 3) and
+     (Ord(ALines[0][1]) = $EF) and (Ord(ALines[0][2]) = $BB) and
+     (Ord(ALines[0][3]) = $BF) then
+    ALines[0] := Copy(ALines[0], 4, MaxInt);
+  {$ELSE}
+  try
+    ALines.LoadFromFile(AFileName, TEncoding.UTF8);
+  except
+    on EEncodingError do
+      ALines.LoadFromFile(AFileName);  { not UTF-8: read as ANSI }
+  end;
+  {$ENDIF}
+end;
+
+class function TDeviceCatalog.LoadFromFile(const AFileName: string;
+  out ASkipped: Integer; out AError: string): Boolean;
+var
+  Lines: TStringList;
+  NewList: TBrandList;
+  I, B, Valid: Integer;
+  Line, Brand, Code, Name, Entry: string;
+begin
+  Result := False;
+  ASkipped := 0;
+  AError := '';
+  Valid := 0;
+  SetLength(NewList, 0);
+  Lines := TStringList.Create;
+  try
+    try
+      ReadLines(AFileName, Lines);
+    except
+      on E: Exception do
+      begin
+        AError := E.Message;
+        Exit;
+      end;
+    end;
+    for I := 0 to Lines.Count - 1 do
+    begin
+      Line := Trim(Lines[I]);
+      if (Line = '') or (Line[1] = '#') then
+        Continue;
+      if not SplitLine(Line, Brand, Code, Name) then
+      begin
+        Inc(ASkipped);
+        Continue;
+      end;
+      if SameText(Brand, 'Brand') then
+        Continue;  { header line }
+      if Code = '' then
+        Entry := Name
+      else if Name = '' then
+        Entry := Code
+      else
+        Entry := Code + ' : ' + Name;
+      B := NewBrandIndex(NewList, Brand);
+      SetLength(NewList[B].Models, Length(NewList[B].Models) + 1);
+      NewList[B].Models[High(NewList[B].Models)] := Entry;
+      Inc(Valid);
+    end;
+  finally
+    Lines.Free;
+  end;
+
+  if Valid = 0 then
+  begin
+    AError := 'No models found. Each line should look like: Brand,Model code,Name';
+    Exit;
+  end;
+  SortBrands(NewList);
+  GBrands := NewList;
+  GSource := AFileName;
+  Result := True;
+end;
+
+class procedure TDeviceCatalog.ExportToFile(const AFileName: string);
+var
+  Lines: TStringList;
+  B, M, P: Integer;
+  Entry, Code, Name: string;
+begin
+  Lines := TStringList.Create;
+  try
+    Lines.Add('# Mobile Servicing Tools - model list');
+    Lines.Add('# One model per line: Brand,Model code,Name');
+    Lines.Add('# Put this file next to the EXE as models.csv, then restart the app');
+    Lines.Add('# or use Menu > Reload models.');
+    Lines.Add('Brand,Model code,Name');
+    for B := 0 to High(GBrands) do
+      for M := 0 to High(GBrands[B].Models) do
+      begin
+        Entry := GBrands[B].Models[M];
+        P := Pos(' : ', Entry);
+        if P > 0 then
+        begin
+          Code := Copy(Entry, 1, P - 1);
+          Name := Copy(Entry, P + 3, MaxInt);
+        end
+        else
+        begin
+          Code := Entry;
+          Name := '';
+        end;
+        Lines.Add(GBrands[B].Name + ',' + Code + ',' + Name);
+      end;
+    {$IFDEF FPC}
+    Lines.SaveToFile(AFileName);
+    {$ELSE}
+    Lines.SaveToFile(AFileName, TEncoding.UTF8);
+    {$ENDIF}
+  finally
+    Lines.Free;
+  end;
+end;
+
 initialization
-  BuildCatalog;
+  BuildBuiltIn;
 
 end.

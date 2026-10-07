@@ -20,7 +20,19 @@ uses
 {$ENDIF}
 
 type
-  TActionGlyph = (agWriteFirmware, agRestore, agWriteBin, agWriteOfp);
+  TActionGlyph = (agWriteFirmware, agRestore, agWriteBin, agWriteOfp,
+    agReadInfo, agReadPartitions, agReadBin, agReadRegion, agReadOtp);
+
+  { Every Draw*Icon routine draws into a 28x28 area. }
+  TIconProc = procedure(ACanvas: TCanvas; const R: TRect);
+
+{ Draws an icon into ADest. If ADest is not 28x28 (e.g. the form was scaled
+  for a high-DPI screen) the icon is drawn at 28x28 and smoothly stretched. }
+procedure PaintIcon(ACanvas: TCanvas; const ADest: TRect; AProc: TIconProc);
+procedure DrawNextIconEnabled(ACanvas: TCanvas; const R: TRect);
+procedure DrawNextIconDisabled(ACanvas: TCanvas; const R: TRect);
+procedure DrawDeviceConnectedIcon(ACanvas: TCanvas; const R: TRect);
+procedure DrawDeviceDisconnectedIcon(ACanvas: TCanvas; const R: TRect);
 
 procedure DrawMenuIcon(ACanvas: TCanvas; const R: TRect);
 procedure DrawNextIcon(ACanvas: TCanvas; const R: TRect; const AEnabled: Boolean);
@@ -279,6 +291,62 @@ begin
   ACanvas.Brush.Style := bsSolid;
 end;
 
+procedure DrawNextIconEnabled(ACanvas: TCanvas; const R: TRect);
+begin
+  DrawNextIcon(ACanvas, R, True);
+end;
+
+procedure DrawNextIconDisabled(ACanvas: TCanvas; const R: TRect);
+begin
+  DrawNextIcon(ACanvas, R, False);
+end;
+
+procedure DrawDeviceConnectedIcon(ACanvas: TCanvas; const R: TRect);
+begin
+  DrawDeviceStateIcon(ACanvas, R, True);
+end;
+
+procedure DrawDeviceDisconnectedIcon(ACanvas: TCanvas; const R: TRect);
+begin
+  DrawDeviceStateIcon(ACanvas, R, False);
+end;
+
+procedure PaintIcon(ACanvas: TCanvas; const ADest: TRect; AProc: TIconProc);
+const
+  CSize = 28;
+var
+  Bmp: TBitmap;
+  W, H, Side, X, Y: Integer;
+begin
+  W := ADest.Right - ADest.Left;
+  H := ADest.Bottom - ADest.Top;
+  if (W = CSize) and (H = CSize) then
+  begin
+    AProc(ACanvas, ADest);
+    Exit;
+  end;
+  ACanvas.Brush.Style := bsSolid;
+  ACanvas.Brush.Color := clBtnFace;
+  ACanvas.FillRect(ADest);
+  Side := Min(W, H);
+  if Side <= 0 then
+    Exit;
+  Bmp := TBitmap.Create;
+  try
+    Bmp.PixelFormat := pf24bit;
+    Bmp.SetSize(CSize, CSize);
+    AProc(Bmp.Canvas, Rect(0, 0, CSize, CSize));
+    X := ADest.Left + (W - Side) div 2;
+    Y := ADest.Top + (H - Side) div 2;
+    SetStretchBltMode(ACanvas.Handle, HALFTONE);
+    SetBrushOrgEx(ACanvas.Handle, 0, 0, nil);
+    StretchBlt(ACanvas.Handle, X, Y, Side, Side, Bmp.Canvas.Handle,
+      0, 0, CSize, CSize, SRCCOPY);
+  finally
+    Bmp.Free;
+  end;
+end;
+
 procedure DrawGlyphPhone(ACanvas: TCanvas);
 begin
   ACanvas.Pen.Color := RGB(60, 60, 60);
@@ -297,6 +365,69 @@ begin
     Point(7, 20), Point(7, 15), Point(0, 15)]);
 end;
 
+{ phone on the left, for the "read" glyphs (data comes out of the phone) }
+procedure DrawGlyphPhoneLeft(ACanvas: TCanvas);
+begin
+  ACanvas.Pen.Color := RGB(60, 60, 60);
+  ACanvas.Brush.Color := clWhite;
+  ACanvas.RoundRect(1, 0, 14, 24, 4, 4);
+  ACanvas.Brush.Color := RGB(60, 60, 60);
+  ACanvas.FillRect(Rect(1, 19, 14, 24));
+  ACanvas.FillRect(Rect(1, 0, 14, 3));
+end;
+
+procedure DrawGlyphArrowOut(ACanvas: TCanvas; const AFill, AEdge: TColor);
+begin
+  ACanvas.Pen.Color := AEdge;
+  ACanvas.Brush.Color := AFill;
+  ACanvas.Polygon([Point(7, 9), Point(14, 9), Point(14, 4), Point(23, 12),
+    Point(14, 20), Point(14, 15), Point(7, 15)]);
+end;
+
+procedure DrawGlyphMagnifier(ACanvas: TCanvas);
+begin
+  { handle }
+  ACanvas.Pen.Color := RGB(200, 100, 20);
+  ACanvas.Pen.Width := 4;
+  ACanvas.MoveTo(14, 14);
+  ACanvas.LineTo(21, 22);
+  { lens }
+  ACanvas.Pen.Width := 3;
+  ACanvas.Pen.Color := RGB(245, 140, 30);
+  ACanvas.Brush.Color := clWhite;
+  ACanvas.Ellipse(2, 1, 18, 17);
+  ACanvas.Pen.Width := 1;
+  { tiny phone inside the lens }
+  ACanvas.Pen.Color := RGB(90, 90, 90);
+  ACanvas.Brush.Color := RGB(210, 225, 240);
+  ACanvas.Rectangle(7, 5, 13, 13);
+end;
+
+procedure DrawGlyphBarcode(ACanvas: TCanvas);
+const
+  Bars: array[0..12] of Integer = (1, 2, 1, 1, 3, 1, 2, 1, 1, 2, 1, 3, 1);
+var
+  I, X: Integer;
+begin
+  ACanvas.Pen.Color := RGB(120, 120, 120);
+  ACanvas.Brush.Color := clWhite;
+  ACanvas.Rectangle(0, 2, 24, 22);
+  { not pure black: the LCL can treat clBlack glyph pixels as transparent }
+  ACanvas.Brush.Color := RGB(25, 25, 25);
+  X := 2;
+  for I := Low(Bars) to High(Bars) do
+  begin
+    if not Odd(I) then
+      ACanvas.FillRect(Rect(X, 4, X + Bars[I], 17));
+    Inc(X, Bars[I]);
+    if X > 21 then
+      Break;
+  end;
+  { digits under the bars }
+  for I := 0 to 4 do
+    ACanvas.FillRect(Rect(3 + I * 4, 18, 5 + I * 4, 20));
+end;
+
 function CreateActionGlyph(const AKind: TActionGlyph): TBitmap;
 begin
   Result := TBitmap.Create;
@@ -304,7 +435,12 @@ begin
   Result.SetSize(24, 24);
   Result.Canvas.Brush.Color := clFuchsia;
   Result.Canvas.FillRect(Rect(0, 0, 24, 24));
-  DrawGlyphPhone(Result.Canvas);
+  case AKind of
+    agWriteFirmware, agRestore, agWriteBin, agWriteOfp:
+      DrawGlyphPhone(Result.Canvas);
+    agReadPartitions, agReadBin, agReadRegion:
+      DrawGlyphPhoneLeft(Result.Canvas);
+  end;
   case AKind of
     agWriteFirmware:
       DrawGlyphArrow(Result.Canvas, RGB(0, 160, 110), RGB(0, 110, 76));
@@ -314,6 +450,16 @@ begin
       DrawGlyphArrow(Result.Canvas, RGB(120, 120, 120), RGB(80, 80, 80));
     agWriteOfp:
       DrawGlyphArrow(Result.Canvas, RGB(122, 96, 204), RGB(84, 62, 150));
+    agReadInfo:
+      DrawGlyphMagnifier(Result.Canvas);
+    agReadPartitions:
+      DrawGlyphArrowOut(Result.Canvas, RGB(40, 180, 70), RGB(20, 120, 40));
+    agReadBin:
+      DrawGlyphArrowOut(Result.Canvas, RGB(30, 130, 230), RGB(15, 80, 160));
+    agReadRegion:
+      DrawGlyphArrowOut(Result.Canvas, RGB(250, 200, 20), RGB(190, 140, 0));
+    agReadOtp:
+      DrawGlyphBarcode(Result.Canvas);
   end;
   { keep bottom-left pixel transparent for TBitBtn }
   Result.Canvas.Pixels[0, 23] := clFuchsia;

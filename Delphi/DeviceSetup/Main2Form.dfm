@@ -2,11 +2,11 @@ object frmMain2: TMain2Form
   Left = 0
   Top = 0
   Caption = 'Mobile Servicing Tools'
-  ClientHeight = 543
-  ClientWidth = 1157
+  ClientHeight = 680
+  ClientWidth = 925
   Color = clBtnFace
-  Constraints.MinHeight = 560
-  Constraints.MinWidth = 1000
+  Constraints.MinHeight = 640
+  Constraints.MinWidth = 900
   DoubleBuffered = True
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -18,12 +18,14 @@ object frmMain2: TMain2Form
   Position = poScreenCenter
   ShowHint = True
   OnCreate = FormCreate
+  OnDestroy = FormDestroy
   OnKeyDown = FormKeyDown
+  OnShow = FormShow
   PixelsPerInch = 96
   TextHeight = 13
   object pbMenu: TPaintBox
-    Left = 4
-    Top = 0
+    Left = 12
+    Top = 5
     Width = 28
     Height = 28
     Cursor = crHandPoint
@@ -31,42 +33,9 @@ object frmMain2: TMain2Form
     OnClick = pbMenuClick
     OnPaint = pbMenuPaint
   end
-  object pbNext: TPaintBox
-    Left = 911
-    Top = 0
-    Width = 28
-    Height = 28
-    Cursor = crHandPoint
-    Hint = 'Start (Write Firmware)'
-    Anchors = [akTop, akRight]
-    OnClick = pbNextClick
-    OnPaint = pbNextPaint
-  end
-  object pbDownload: TPaintBox
-    Left = 952
-    Top = 0
-    Width = 28
-    Height = 28
-    Cursor = crHandPoint
-    Hint = 'Save log'
-    Anchors = [akTop, akRight]
-    OnClick = pbDownloadClick
-    OnPaint = pbDownloadPaint
-  end
-  object pbChangeDevice: TPaintBox
-    Left = 994
-    Top = 0
-    Width = 28
-    Height = 28
-    Cursor = crHandPoint
-    Hint = 'Change device'
-    Anchors = [akTop, akRight]
-    OnClick = pbChangeDeviceClick
-    OnPaint = pbChangeDevicePaint
-  end
   object pbSettings: TPaintBox
-    Left = 1037
-    Top = 0
+    Left = 636
+    Top = 5
     Width = 28
     Height = 28
     Cursor = crHandPoint
@@ -76,8 +45,8 @@ object frmMain2: TMain2Form
     OnPaint = pbSettingsPaint
   end
   object pbFacebook: TPaintBox
-    Left = 1079
-    Top = 0
+    Left = 686
+    Top = 5
     Width = 28
     Height = 28
     Cursor = crHandPoint
@@ -87,8 +56,8 @@ object frmMain2: TMain2Form
     OnPaint = pbFacebookPaint
   end
   object pbHelp: TPaintBox
-    Left = 1121
-    Top = 0
+    Left = 735
+    Top = 5
     Width = 28
     Height = 28
     Cursor = crHandPoint
@@ -97,197 +66,301 @@ object frmMain2: TMain2Form
     OnClick = pbHelpClick
     OnPaint = pbHelpPaint
   end
-  object lblPresets: TLabel
-    Left = 7
-    Top = 33
-    Width = 38
-    Height = 13
-    Caption = 'Presets'
+  object pbChangeDevice: TPaintBox
+    Left = 786
+    Top = 5
+    Width = 28
+    Height = 28
+    Cursor = crHandPoint
+    Hint = 'Change device'
+    Anchors = [akTop, akRight]
+    OnClick = pbChangeDeviceClick
+    OnPaint = pbChangeDevicePaint
   end
-  object bvlPresets: TBevel
-    Left = 50
-    Top = 40
-    Width = 772
-    Height = 2
-    Anchors = [akLeft, akTop, akRight]
-    Shape = bsTopLine
+  object pbDownload: TPaintBox
+    Left = 836
+    Top = 5
+    Width = 28
+    Height = 28
+    Cursor = crHandPoint
+    Hint = 'Save log'
+    Anchors = [akTop, akRight]
+    OnClick = pbDownloadClick
+    OnPaint = pbDownloadPaint
   end
-  object lblFiles: TLabel
-    Left = 7
-    Top = 77
-    Width = 24
-    Height = 13
-    Caption = 'Files'
-  end
-  object bvlFiles: TBevel
-    Left = 36
-    Top = 84
-    Width = 786
-    Height = 2
-    Anchors = [akLeft, akTop, akRight]
-    Shape = bsTopLine
-  end
-  object lblLog: TLabel
-    Left = 7
-    Top = 174
-    Width = 17
-    Height = 13
-    Caption = 'Log'
-  end
-  object bvlLog: TBevel
-    Left = 30
-    Top = 181
-    Width = 792
-    Height = 2
-    Anchors = [akLeft, akTop, akRight]
-    Shape = bsTopLine
+  object pbNext: TPaintBox
+    Left = 886
+    Top = 5
+    Width = 28
+    Height = 28
+    Cursor = crHandPoint
+    Hint = 'Start (runs the first job of the open tab)'
+    Anchors = [akTop, akRight]
+    OnClick = pbNextClick
+    OnPaint = pbNextPaint
   end
   object pbProgress: TPaintBox
     Left = 8
-    Top = 524
-    Width = 1137
-    Height = 14
+    Top = 656
+    Width = 514
+    Height = 20
     Anchors = [akLeft, akRight, akBottom]
     OnPaint = pbProgressPaint
   end
-  object cbPresets: TComboBox
+  object grpPresets: TGroupBox
     Left = 8
-    Top = 52
-    Width = 807
-    Height = 21
-    Style = csDropDownList
+    Top = 40
+    Width = 514
+    Height = 52
     Anchors = [akLeft, akTop, akRight]
-    Enabled = False
+    Caption = 'Presets'
     TabOrder = 0
+    object cbPresets: TComboBox
+      Left = 7
+      Top = 20
+      Width = 498
+      Height = 21
+      Style = csDropDownList
+      Anchors = [akLeft, akTop, akRight]
+      TabOrder = 0
+    end
   end
-  object btnScat: TButton
+  object grpFiles: TGroupBox
     Left = 8
-    Top = 92
-    Width = 46
-    Height = 18
-    Caption = 'SCAT'
+    Top = 94
+    Width = 514
+    Height = 232
+    Anchors = [akLeft, akTop, akRight]
+    Caption = 'Files'
     TabOrder = 1
-    OnClick = btnScatClick
+    object btnScat: TButton
+      Left = 7
+      Top = 16
+      Width = 58
+      Height = 21
+      Caption = 'SCAT'
+      TabOrder = 0
+      OnClick = btnScatClick
+    end
+    object edtScat: TEdit
+      Left = 68
+      Top = 16
+      Width = 439
+      Height = 21
+      Anchors = [akLeft, akTop, akRight]
+      TabOrder = 1
+    end
+    object btnAuth: TButton
+      Left = 7
+      Top = 39
+      Width = 58
+      Height = 21
+      Caption = 'AUTH'
+      TabOrder = 2
+      OnClick = btnAuthClick
+    end
+    object edtAuth: TEdit
+      Left = 68
+      Top = 39
+      Width = 439
+      Height = 21
+      Anchors = [akLeft, akTop, akRight]
+      TabOrder = 3
+    end
+    object btnBin: TButton
+      Left = 7
+      Top = 62
+      Width = 58
+      Height = 21
+      Hint = 'Tick "Advanced write" on the Flash tab to use a BIN file'
+      Caption = 'BIN'
+      TabOrder = 4
+      OnClick = btnBinClick
+    end
+    object edtBin: TEdit
+      Left = 68
+      Top = 62
+      Width = 439
+      Height = 21
+      Anchors = [akLeft, akTop, akRight]
+      TabOrder = 5
+    end
+    object btnOfp: TButton
+      Left = 7
+      Top = 85
+      Width = 58
+      Height = 21
+      Caption = 'OFP'
+      TabOrder = 6
+      OnClick = btnOfpClick
+    end
+    object edtOfp: TEdit
+      Left = 68
+      Top = 85
+      Width = 439
+      Height = 21
+      Anchors = [akLeft, akTop, akRight]
+      TabOrder = 7
+    end
+    object btnBl: TButton
+      Left = 7
+      Top = 108
+      Width = 58
+      Height = 21
+      Caption = 'BL'
+      TabOrder = 8
+      OnClick = btnBlClick
+    end
+    object edtBl: TEdit
+      Left = 68
+      Top = 108
+      Width = 439
+      Height = 21
+      Anchors = [akLeft, akTop, akRight]
+      TabOrder = 9
+    end
+    object btnAp: TButton
+      Left = 7
+      Top = 131
+      Width = 58
+      Height = 21
+      Caption = 'AP'
+      TabOrder = 10
+      OnClick = btnApClick
+    end
+    object edtAp: TEdit
+      Left = 68
+      Top = 131
+      Width = 439
+      Height = 21
+      Anchors = [akLeft, akTop, akRight]
+      TabOrder = 11
+    end
+    object btnCp: TButton
+      Left = 7
+      Top = 154
+      Width = 58
+      Height = 21
+      Caption = 'CP'
+      TabOrder = 12
+      OnClick = btnCpClick
+    end
+    object edtCp: TEdit
+      Left = 68
+      Top = 154
+      Width = 439
+      Height = 21
+      Anchors = [akLeft, akTop, akRight]
+      TabOrder = 13
+    end
+    object btnCsc: TButton
+      Left = 7
+      Top = 177
+      Width = 58
+      Height = 21
+      Caption = 'CSC'
+      TabOrder = 14
+      OnClick = btnCscClick
+    end
+    object edtCsc: TEdit
+      Left = 68
+      Top = 177
+      Width = 439
+      Height = 21
+      Anchors = [akLeft, akTop, akRight]
+      TabOrder = 15
+    end
+    object btnUser: TButton
+      Left = 7
+      Top = 200
+      Width = 58
+      Height = 21
+      Caption = 'USER'
+      TabOrder = 16
+      OnClick = btnUserClick
+    end
+    object edtUser: TEdit
+      Left = 68
+      Top = 200
+      Width = 439
+      Height = 21
+      Anchors = [akLeft, akTop, akRight]
+      TabOrder = 17
+    end
   end
-  object edtScat: TEdit
-    Left = 58
-    Top = 92
-    Width = 758
-    Height = 18
-    Anchors = [akLeft, akTop, akRight]
-    AutoSize = False
-    TabOrder = 2
-  end
-  object btnAuth: TButton
+  object grpLog: TGroupBox
     Left = 8
-    Top = 112
-    Width = 46
-    Height = 18
-    Caption = 'AUTH'
-    TabOrder = 3
-    OnClick = btnAuthClick
-  end
-  object edtAuth: TEdit
-    Left = 58
-    Top = 112
-    Width = 758
-    Height = 18
-    Anchors = [akLeft, akTop, akRight]
-    AutoSize = False
-    TabOrder = 4
-  end
-  object btnBin: TButton
-    Left = 8
-    Top = 131
-    Width = 46
-    Height = 18
-    Caption = 'BIN'
-    Enabled = False
-    TabOrder = 5
-    OnClick = btnBinClick
-  end
-  object edtBin: TEdit
-    Left = 58
-    Top = 131
-    Width = 758
-    Height = 18
-    Anchors = [akLeft, akTop, akRight]
-    AutoSize = False
-    Enabled = False
-    TabOrder = 6
-  end
-  object btnOfp: TButton
-    Left = 8
-    Top = 151
-    Width = 46
-    Height = 18
-    Caption = 'OFP'
-    TabOrder = 7
-    OnClick = btnOfpClick
-  end
-  object edtOfp: TEdit
-    Left = 58
-    Top = 151
-    Width = 758
-    Height = 18
-    Anchors = [akLeft, akTop, akRight]
-    AutoSize = False
-    TabOrder = 8
-  end
-  object memLog: TMemo
-    Left = 0
-    Top = 189
-    Width = 822
-    Height = 330
+    Top = 328
+    Width = 514
+    Height = 324
     Anchors = [akLeft, akTop, akRight, akBottom]
-    BorderStyle = bsNone
-    ReadOnly = True
-    ScrollBars = ssVertical
-    TabOrder = 9
+    Caption = 'Log'
+    TabOrder = 2
+    object lstLog: TListBox
+      Left = 2
+      Top = 15
+      Width = 510
+      Height = 307
+      Style = lbOwnerDrawFixed
+      Align = alClient
+      BorderStyle = bsNone
+      Font.Charset = DEFAULT_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -12
+      Font.Name = 'Courier New'
+      Font.Style = []
+      ItemHeight = 15
+      MultiSelect = True
+      ParentFont = False
+      PopupMenu = pmLog
+      TabOrder = 0
+      OnDrawItem = lstLogDrawItem
+      OnKeyDown = lstLogKeyDown
+    end
   end
   object pcJobs: TPageControl
-    Left = 830
-    Top = 33
-    Width = 304
-    Height = 472
+    Left = 530
+    Top = 40
+    Width = 387
+    Height = 584
     ActivePage = tsJobs
     Anchors = [akTop, akRight]
     Style = tsFlatButtons
-    TabOrder = 10
+    TabOrder = 3
     object tsJobs: TTabSheet
       Caption = 'Jobs'
       object grpConnections: TGroupBox
-        Left = 2
-        Top = 4
-        Width = 290
-        Height = 157
+        Left = 4
+        Top = 2
+        Width = 371
+        Height = 190
         Caption = 'Connections'
         TabOrder = 0
         object lblDownloadAgent: TLabel
-          Left = 12
-          Top = 16
-          Width = 79
+          Left = 18
+          Top = 14
+          Width = 78
           Height = 13
           Caption = 'Download agent'
         end
         object lblUsbSpeed: TLabel
-          Left = 12
-          Top = 124
+          Left = 18
+          Top = 144
           Width = 51
           Height = 13
           Caption = 'USB Speed'
         end
         object lblBattery: TLabel
-          Left = 144
-          Top = 124
-          Width = 37
+          Left = 174
+          Top = 144
+          Width = 36
           Height = 13
           Caption = 'Battery'
         end
         object cbDownloadAgent: TComboBox
-          Left = 12
-          Top = 29
-          Width = 264
+          Left = 18
+          Top = 30
+          Width = 333
           Height = 21
           Style = csDropDownList
           Enabled = False
@@ -297,58 +370,57 @@ object frmMain2: TMain2Form
             'MTK_AllInOne_DA.bin')
         end
         object chkAuthBrom: TCheckBox
-          Left = 12
-          Top = 50
-          Width = 264
-          Height = 15
+          Left = 18
+          Top = 54
+          Width = 300
+          Height = 17
           Caption = 'Advanced Authorization [BROM]'
-          Checked = True
-          State = cbChecked
           TabOrder = 1
         end
         object chkAuthPreloader: TCheckBox
-          Left = 12
-          Top = 65
-          Width = 264
-          Height = 15
+          Left = 18
+          Top = 72
+          Width = 300
+          Height = 17
           Caption = 'Advanced Authorization [Preloader]'
-          Enabled = False
+          Checked = True
+          State = cbChecked
           TabOrder = 2
         end
         object chkForceBrom: TCheckBox
-          Left = 12
-          Top = 80
-          Width = 264
-          Height = 15
+          Left = 18
+          Top = 90
+          Width = 300
+          Height = 17
           Caption = 'Force BROM Mode'
-          Checked = True
-          State = cbChecked
+          Enabled = False
           TabOrder = 3
         end
         object chkReadEmi: TCheckBox
-          Left = 12
-          Top = 95
-          Width = 264
-          Height = 15
+          Left = 18
+          Top = 108
+          Width = 300
+          Height = 17
           Caption = 'Read EMI from phone'
           Checked = True
+          Enabled = False
           State = cbChecked
           TabOrder = 4
         end
         object chkReadPhoneInfo: TCheckBox
-          Left = 12
-          Top = 110
-          Width = 264
-          Height = 15
+          Left = 18
+          Top = 126
+          Width = 300
+          Height = 17
           Caption = 'Read Phone Info'
           Checked = True
           State = cbChecked
           TabOrder = 5
         end
         object cbUsbSpeed: TComboBox
-          Left = 12
-          Top = 137
-          Width = 90
+          Left = 18
+          Top = 159
+          Width = 104
           Height = 21
           Style = csDropDownList
           ItemIndex = 0
@@ -358,9 +430,9 @@ object frmMain2: TMain2Form
             'Full speed')
         end
         object cbBattery: TComboBox
-          Left = 144
-          Top = 137
-          Width = 132
+          Left = 174
+          Top = 159
+          Width = 152
           Height = 21
           Style = csDropDownList
           ItemIndex = 0
@@ -372,53 +444,32 @@ object frmMain2: TMain2Form
         end
       end
       object grpStorage: TGroupBox
-        Left = 2
-        Top = 163
-        Width = 290
-        Height = 52
+        Left = 4
+        Top = 196
+        Width = 371
+        Height = 50
         Caption = 'Storage'
         TabOrder = 1
-        object lblStorageType: TLabel
+        object cbStorage: TComboBox
           Left = 12
-          Top = 12
-          Width = 24
-          Height = 13
-          Caption = 'Type'
-        end
-        object lblRegion: TLabel
-          Left = 144
-          Top = 12
-          Width = 33
-          Height = 13
-          Caption = 'Region'
-        end
-        object cbStorageType: TComboBox
-          Left = 12
-          Top = 25
-          Width = 90
+          Top = 18
+          Width = 347
           Height = 21
           Style = csDropDownList
           ItemIndex = 0
           TabOrder = 0
-          OnChange = cbStorageTypeChange
           Items.Strings = (
-            'EMMC'
-            'UFS')
-        end
-        object cbRegion: TComboBox
-          Left = 144
-          Top = 25
-          Width = 132
-          Height = 21
-          Style = csDropDownList
-          TabOrder = 1
+            'EMMC(USER) || UFS(LU2)'
+            'EMMC(BOOT1) || UFS(LU0)'
+            'EMMC(BOOT2) || UFS(LU1)'
+            'EMMC(RPMB) || UFS(RPMB)')
         end
       end
       object pcOperations: TPageControl
         Left = 0
-        Top = 219
-        Width = 296
-        Height = 225
+        Top = 250
+        Width = 379
+        Height = 300
         ActivePage = tsFlash
         Style = tsFlatButtons
         TabOrder = 2
@@ -427,21 +478,21 @@ object frmMain2: TMain2Form
           object grpOptions: TGroupBox
             Left = 2
             Top = 2
-            Width = 286
-            Height = 200
+            Width = 367
+            Height = 262
             Caption = 'Options'
             TabOrder = 0
             object lblAddress: TLabel
-              Left = 12
-              Top = 119
-              Width = 51
+              Left = 14
+              Top = 139
+              Width = 53
               Height = 13
               Caption = 'Address 0x'
             end
             object cbFlashMode: TComboBox
-              Left = 12
-              Top = 17
-              Width = 264
+              Left = 14
+              Top = 16
+              Width = 335
               Height = 21
               Style = csDropDownList
               ItemIndex = 0
@@ -452,65 +503,64 @@ object frmMain2: TMain2Form
                 'Format all + Download')
             end
             object btnWriteFirmware: TBitBtn
-              Left = 12
-              Top = 40
-              Width = 264
-              Height = 27
+              Left = 14
+              Top = 42
+              Width = 335
+              Height = 32
               Caption = 'Write Firmware'
-              Margin = 2
+              Margin = 6
               Spacing = 14
               TabOrder = 1
               OnClick = btnWriteFirmwareClick
             end
             object btnRestoreBackup: TBitBtn
-              Left = 12
-              Top = 71
-              Width = 264
-              Height = 27
+              Left = 14
+              Top = 78
+              Width = 335
+              Height = 32
               Caption = 'Restore from backup'
-              Margin = 2
+              Margin = 6
               Spacing = 14
               TabOrder = 2
               OnClick = btnRestoreBackupClick
             end
             object chkAdvancedWrite: TCheckBox
-              Left = 12
-              Top = 101
-              Width = 264
-              Height = 15
+              Left = 14
+              Top = 116
+              Width = 200
+              Height = 17
               Caption = 'Advanced write'
               TabOrder = 3
               OnClick = chkAdvancedWriteClick
             end
             object edtAddress: TEdit
-              Left = 64
-              Top = 117
-              Width = 106
-              Height = 18
-              AutoSize = False
+              Left = 74
+              Top = 136
+              Width = 124
+              Height = 21
               Enabled = False
               TabOrder = 4
               Text = '00000000  00000000'
             end
             object btnWriteBin: TBitBtn
-              Left = 12
-              Top = 141
-              Width = 264
-              Height = 27
+              Left = 14
+              Top = 162
+              Width = 335
+              Height = 32
               Caption = 'Write BIN'
               Enabled = False
-              Margin = 2
+              Margin = 6
               Spacing = 14
               TabOrder = 5
               OnClick = btnWriteBinClick
             end
             object btnWriteOfp: TBitBtn
-              Left = 12
-              Top = 171
-              Width = 264
-              Height = 27
+              Left = 14
+              Top = 198
+              Width = 335
+              Height = 32
               Caption = 'Write OFP'
-              Margin = 2
+              Margin = 6
               Spacing = 14
               TabOrder = 6
               OnClick = btnWriteOfpClick
@@ -520,12 +570,98 @@ object frmMain2: TMain2Form
         object tsRead: TTabSheet
           Caption = 'Read'
           ImageIndex = 1
-          object lblReadInfo: TLabel
-            Left = 8
-            Top = 8
-            Width = 270
-            Height = 13
-            Caption = 'Read options are not available yet.'
+          object grpReadOptions: TGroupBox
+            Left = 2
+            Top = 2
+            Width = 367
+            Height = 262
+            Caption = 'Options'
+            TabOrder = 0
+            object lblReadAddress: TLabel
+              Left = 14
+              Top = 88
+              Width = 53
+              Height = 13
+              Caption = 'Address 0x'
+            end
+            object lblReadSize: TLabel
+              Left = 158
+              Top = 88
+              Width = 37
+              Height = 13
+              Caption = 'Size 0x'
+            end
+            object btnReadInfo: TBitBtn
+              Left = 14
+              Top = 16
+              Width = 335
+              Height = 32
+              Caption = 'Read Flash Info'
+              Margin = 6
+              Spacing = 14
+              TabOrder = 0
+              OnClick = btnReadInfoClick
+            end
+            object btnReadPartitions: TBitBtn
+              Left = 14
+              Top = 52
+              Width = 335
+              Height = 32
+              Caption = 'Read Partitions'
+              Margin = 6
+              Spacing = 14
+              TabOrder = 1
+              OnClick = btnReadPartitionsClick
+            end
+            object edtReadAddress: TEdit
+              Left = 14
+              Top = 104
+              Width = 124
+              Height = 21
+              TabOrder = 2
+              Text = '00000000  00000000'
+            end
+            object edtReadSize: TEdit
+              Left = 158
+              Top = 104
+              Width = 124
+              Height = 21
+              TabOrder = 3
+              Text = '00000000  00000000'
+            end
+            object btnReadBin: TBitBtn
+              Left = 14
+              Top = 132
+              Width = 335
+              Height = 32
+              Caption = 'Read BIN'
+              Margin = 6
+              Spacing = 14
+              TabOrder = 4
+              OnClick = btnReadBinClick
+            end
+            object btnReadRegion: TBitBtn
+              Left = 14
+              Top = 168
+              Width = 335
+              Height = 32
+              Caption = 'Read Region'
+              Margin = 6
+              Spacing = 14
+              TabOrder = 5
+              OnClick = btnReadRegionClick
+            end
+            object btnReadOtp: TBitBtn
+              Left = 14
+              Top = 204
+              Width = 335
+              Height = 32
+              Caption = 'Read OTP'
+              Margin = 6
+              Spacing = 14
+              TabOrder = 6
+              OnClick = btnReadOtpClick
+            end
           end
         end
         object tsFormat: TTabSheet
@@ -591,29 +727,35 @@ object frmMain2: TMain2Form
       object lblMetaInfo: TLabel
         Left = 8
         Top = 8
-        Width = 280
+        Width = 270
         Height = 13
         Caption = 'META mode options are not available yet.'
       end
     end
   end
   object pnlDeviceState: TPanel
-    Left = 1112
-    Top = 474
-    Width = 24
-    Height = 32
-    Anchors = [akTop, akRight]
+    Left = 530
+    Top = 630
+    Width = 387
+    Height = 44
+    Anchors = [akRight, akBottom]
     BevelOuter = bvNone
-    Color = clBtnFace
-    ParentBackground = False
-    TabOrder = 11
-    object pbDeviceState: TPaintBox
+    TabOrder = 4
+    object lblDeviceState: TLabel
       Left = 0
-      Top = 0
-      Width = 24
-      Height = 32
+      Top = 15
+      Width = 347
+      Height = 13
+      Alignment = taRightJustify
+      AutoSize = False
+      Caption = 'No device'
+    end
+    object pbDeviceState: TPaintBox
+      Left = 355
+      Top = 8
+      Width = 28
+      Height = 28
       Hint = 'No device connected'
-      Align = alClient
       OnPaint = pbDeviceStatePaint
     end
   end
@@ -632,12 +774,43 @@ object frmMain2: TMain2Form
       Caption = 'Clear log'
       OnClick = miClearLogClick
     end
+    object miSettings: TMenuItem
+      Caption = 'Settings...'
+      OnClick = pbSettingsClick
+    end
     object miSeparator: TMenuItem
       Caption = '-'
     end
     object miExit: TMenuItem
       Caption = 'Exit'
       OnClick = miExitClick
+    end
+  end
+  object pmLog: TPopupMenu
+    Left = 640
+    Top = 260
+    object miLogCopy: TMenuItem
+      Caption = 'Copy'
+      OnClick = miLogCopyClick
+    end
+    object miLogCopyAll: TMenuItem
+      Caption = 'Copy all'
+      OnClick = miLogCopyAllClick
+    end
+    object miLogSelectAll: TMenuItem
+      Caption = 'Select all'
+      OnClick = miLogSelectAllClick
+    end
+    object miLogSeparator: TMenuItem
+      Caption = '-'
+    end
+    object miLogSave: TMenuItem
+      Caption = 'Save log...'
+      OnClick = pbDownloadClick
+    end
+    object miLogClear: TMenuItem
+      Caption = 'Clear log'
+      OnClick = miClearLogClick
     end
   end
 end

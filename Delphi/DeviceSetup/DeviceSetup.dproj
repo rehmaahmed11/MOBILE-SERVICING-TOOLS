@@ -28,6 +28,15 @@
   </PropertyGroup>
 
   <PropertyGroup>
+    <Icon_MainIcon>DeviceSetup.ico</Icon_MainIcon>
+    <AppEnableRuntimeThemes>true</AppEnableRuntimeThemes>
+    <AppDPIAwarenessMode>system</AppDPIAwarenessMode>
+    <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
+    <VerInfo_MajorVer>1</VerInfo_MajorVer>
+    <VerInfo_MinorVer>1</VerInfo_MinorVer>
+    <VerInfo_Release>0</VerInfo_Release>
+    <VerInfo_Locale>1033</VerInfo_Locale>
+    <VerInfo_Keys>FileDescription=Mobile Servicing Tools;FileVersion=1.1.0.0;InternalName=DeviceSetup;OriginalFilename=DeviceSetup.exe;ProductName=Mobile Servicing Tools;ProductVersion=1.1.0</VerInfo_Keys>
     <DCC_ExeOutput>.\$(Platform)\$(Config)</DCC_ExeOutput>
     <DCC_DcuOutput>.\$(Platform)\$(Config)</DCC_DcuOutput>
   </PropertyGroup>
@@ -44,6 +53,11 @@
     </DCCReference>
     <DCCReference Include="DeviceCatalog.pas" />
     <DCCReference Include="ToolbarIcons.pas" />
+    <DCCReference Include="AppInfo.pas" />
+    <DCCReference Include="LogView.pas" />
+    <DCCReference Include="UsbDetect.pas" />
+    <DCCReference Include="SettingsDialog.pas" />
+    <DCCReference Include="SelfTest.pas" />
   </ItemGroup>
 
   <ProjectExtensions>

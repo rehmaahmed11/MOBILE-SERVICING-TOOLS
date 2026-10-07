@@ -7,14 +7,16 @@ unit Main2Form;
 
 { MAIN 2 - opened from MAIN 1 when the user presses Next.
   Layout follows the MAIN 2 reference screenshot:
-    - toolbar: menu (left); next, save, change device, settings,
-      Facebook and help (right)
-    - left: Presets, Files (SCAT / AUTH / BIN / OFP), Log
+    - toolbar: menu (left); settings, Facebook, help, change device, save
+      log and start (right)
+    - left: Presets, Files (SCAT / AUTH / BIN / OFP / BL / AP / CP / CSC /
+      USER), colour log and progress
     - right: Jobs / META tabs with Connections and Storage groups, then the
       Flash / Read / Format / IMEI / Locks / Service / RPMB tabs
-    - red progress bar along the bottom
-  Device communication (flashing, reading, etc.) is NOT implemented here:
-  the action buttons check their inputs and write to the log. }
+    - USB device state (bottom right)
+  Device communication (flashing, reading, etc.) is NOT implemented: the
+  action buttons check their inputs and write to the log. USB detection only
+  reads the Windows device list. }
 
 interface
 
@@ -38,30 +40,30 @@ uses
   Vcl.Menus,
   Vcl.StdCtrls,
 {$ENDIF}
-  ToolbarIcons;
+  ToolbarIcons,
+  UsbDetect;
 
 type
   TMain2Form = class(TForm)
     { toolbar }
     pbMenu: TPaintBox;
-    pbNext: TPaintBox;
-    pbDownload: TPaintBox;
-    pbChangeDevice: TPaintBox;
     pbSettings: TPaintBox;
     pbFacebook: TPaintBox;
     pbHelp: TPaintBox;
+    pbChangeDevice: TPaintBox;
+    pbDownload: TPaintBox;
+    pbNext: TPaintBox;
     pmMain: TPopupMenu;
     miChangeDevice: TMenuItem;
     miSaveLog: TMenuItem;
     miClearLog: TMenuItem;
+    miSettings: TMenuItem;
     miSeparator: TMenuItem;
     miExit: TMenuItem;
     { left side }
-    lblPresets: TLabel;
-    bvlPresets: TBevel;
+    grpPresets: TGroupBox;
     cbPresets: TComboBox;
-    lblFiles: TLabel;
-    bvlFiles: TBevel;
+    grpFiles: TGroupBox;
     btnScat: TButton;
     edtScat: TEdit;
     btnAuth: TButton;
@@ -70,9 +72,25 @@ type
     edtBin: TEdit;
     btnOfp: TButton;
     edtOfp: TEdit;
-    lblLog: TLabel;
-    bvlLog: TBevel;
-    memLog: TMemo;
+    btnBl: TButton;
+    edtBl: TEdit;
+    btnAp: TButton;
+    edtAp: TEdit;
+    btnCp: TButton;
+    edtCp: TEdit;
+    btnCsc: TButton;
+    edtCsc: TEdit;
+    btnUser: TButton;
+    edtUser: TEdit;
+    grpLog: TGroupBox;
+    lstLog: TListBox;
+    pmLog: TPopupMenu;
+    miLogCopy: TMenuItem;
+    miLogCopyAll: TMenuItem;
+    miLogSelectAll: TMenuItem;
+    miLogSeparator: TMenuItem;
+    miLogSave: TMenuItem;
+    miLogClear: TMenuItem;
     pbProgress: TPaintBox;
     { right side - Jobs / META }
     pcJobs: TPageControl;
@@ -91,10 +109,7 @@ type
     lblBattery: TLabel;
     cbBattery: TComboBox;
     grpStorage: TGroupBox;
-    lblStorageType: TLabel;
-    cbStorageType: TComboBox;
-    lblRegion: TLabel;
-    cbRegion: TComboBox;
+    cbStorage: TComboBox;
     lblMetaInfo: TLabel;
     { right side - operations }
     pcOperations: TPageControl;
@@ -114,7 +129,16 @@ type
     edtAddress: TEdit;
     btnWriteBin: TBitBtn;
     btnWriteOfp: TBitBtn;
-    lblReadInfo: TLabel;
+    grpReadOptions: TGroupBox;
+    btnReadInfo: TBitBtn;
+    btnReadPartitions: TBitBtn;
+    lblReadAddress: TLabel;
+    edtReadAddress: TEdit;
+    lblReadSize: TLabel;
+    edtReadSize: TEdit;
+    btnReadBin: TBitBtn;
+    btnReadRegion: TBitBtn;
+    btnReadOtp: TBitBtn;
     lblFormatInfo: TLabel;
     lblImeiInfo: TLabel;
     lblLocksInfo: TLabel;
@@ -122,8 +146,11 @@ type
     lblRpmbInfo: TLabel;
     { device state }
     pnlDeviceState: TPanel;
+    lblDeviceState: TLabel;
     pbDeviceState: TPaintBox;
     procedure FormCreate(Sender: TObject);
+    procedure FormDestroy(Sender: TObject);
+    procedure FormShow(Sender: TObject);
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure pbMenuPaint(Sender: TObject);
     procedure pbNextPaint(Sender: TObject);
@@ -143,36 +170,78 @@ type
     procedure pbHelpClick(Sender: TObject);
     procedure miClearLogClick(Sender: TObject);
     procedure miExitClick(Sender: TObject);
+    procedure miLogCopyClick(Sender: TObject);
+    procedure miLogCopyAllClick(Sender: TObject);
+    procedure miLogSelectAllClick(Sender: TObject);
+    procedure lstLogDrawItem(Control: TWinControl; Index: Integer;
+      ARect: TRect; State: TOwnerDrawState);
+    procedure lstLogKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure btnScatClick(Sender: TObject);
     procedure btnAuthClick(Sender: TObject);
     procedure btnBinClick(Sender: TObject);
     procedure btnOfpClick(Sender: TObject);
-    procedure cbStorageTypeChange(Sender: TObject);
+    procedure btnBlClick(Sender: TObject);
+    procedure btnApClick(Sender: TObject);
+    procedure btnCpClick(Sender: TObject);
+    procedure btnCscClick(Sender: TObject);
+    procedure btnUserClick(Sender: TObject);
     procedure chkAdvancedWriteClick(Sender: TObject);
     procedure btnWriteFirmwareClick(Sender: TObject);
     procedure btnRestoreBackupClick(Sender: TObject);
     procedure btnWriteBinClick(Sender: TObject);
     procedure btnWriteOfpClick(Sender: TObject);
+    procedure btnReadInfoClick(Sender: TObject);
+    procedure btnReadPartitionsClick(Sender: TObject);
+    procedure btnReadBinClick(Sender: TObject);
+    procedure btnReadRegionClick(Sender: TObject);
+    procedure btnReadOtpClick(Sender: TObject);
   private
     FBrand: string;
     FModelCode: string;
     FModelName: string;
     FProgress: Integer;
-    FDeviceConnected: Boolean;
+    FDevices: TUsbDeviceArray;
+    FDeviceSig: string;
+    FUsbTimer: TTimer;
+    FMeasure: TBitmap;
+    FSessionLog: TStringList;
+    FLayoutFixed: Boolean;
     procedure AssignGlyph(AButton: TBitBtn; const AKind: TActionGlyph);
-    procedure Log(const AText: string);
+    procedure SetupLogFont;
+    procedure AddLogLine(const ALine: string);
     procedure LogSettings;
     procedure LogNotImplemented(const AOperation: string);
+    procedure LogError(const AText: string);
+    function SelectedLogText(const AOnlySelected: Boolean): string;
     function BrowseFile(const ATitle, AFilter: string; AEdit: TEdit): Boolean;
+    procedure BrowseFirmwarePart(AEdit: TEdit; const AName: string);
     function RequireFile(AEdit: TEdit; const AName: string): Boolean;
-    function ParseAddress(out AStart, ALength: UInt64): Boolean;
+    function CheckOptionalFile(AEdit: TEdit; const AName: string): Boolean;
+    function AskSaveFile(const ATitle, ADefaultName: string;
+      out AFileName: string): Boolean;
     procedure UpdateAdvancedWrite;
-    procedure FillRegions;
     procedure SetProgress(const AValue: Integer);
+    procedure UsbTimerTick(Sender: TObject);
+    procedure CheckUsb(const AInitial: Boolean);
+    procedure UpdateDeviceState;
+    procedure ApplyOptions;
+    procedure LoadState;
+    procedure SaveState;
+    procedure AutoSaveSessionLog;
   public
     procedure SetDevice(const ABrand, AModelEntry: string);
+    { Writes a line to the log. Colour codes from LogView may be used. }
+    procedure Log(const AText: string);
+    { Used by the CI self-test: runs the checks that need no dialogs and
+      adds PASS/FAIL lines to AOut. }
+    function SelfTest(AOut: TStrings): Boolean;
+    procedure ShowDemoLog;
     property Progress: Integer read FProgress write SetProgress;
   end;
+
+{ Parses a 64-bit hex value. Spaces are ignored, so the "00000000  00000000"
+  (high / low half) format of the address boxes is accepted. }
+function TryParseHex64(const S: string; out AValue: UInt64): Boolean;
 
 implementation
 
@@ -184,18 +253,86 @@ implementation
 
 uses
 {$IFDEF FPC}
-  ShellApi;
+  ShellApi, Clipbrd, IniFiles,
 {$ELSE}
-  Winapi.ShellAPI;
+  Winapi.ShellAPI,
+  Vcl.Clipbrd,
+  System.IniFiles,
 {$ENDIF}
+  AppInfo,
+  LogView,
+  SettingsDialog;
 
 const
   CFacebookUrl = 'https://www.facebook.com/';
+  CMaxLogLines = 5000;
+  CSection = 'Main2';
+
+  CFilterAll = '|All files (*.*)|*.*';
+  CFilterSamsung = 'Samsung firmware (*.tar.md5;*.tar;*.md5)|*.tar.md5;*.tar;*.md5' +
+    CFilterAll;
+
+{ ---------------------------------------------------------------- helpers }
+
+function TryParseHex64(const S: string; out AValue: UInt64): Boolean;
+var
+  I, Digit, Count: Integer;
+begin
+  AValue := 0;
+  Count := 0;
+  Result := False;
+  for I := 1 to Length(S) do
+  begin
+    case S[I] of
+      ' ', #9: Continue;
+      '0'..'9': Digit := Ord(S[I]) - Ord('0');
+      'a'..'f': Digit := Ord(S[I]) - Ord('a') + 10;
+      'A'..'F': Digit := Ord(S[I]) - Ord('A') + 10;
+    else
+      Exit;
+    end;
+    Inc(Count);
+    if Count > 16 then
+      Exit;
+    AValue := (AValue shl 4) or UInt64(Digit);
+  end;
+  Result := Count > 0;
+end;
+
+function Hex64(const AValue: UInt64): string;
+begin
+  { "00000000 00100000" - the same high / low layout as the address boxes }
+  Result := IntToHex(Int64(AValue shr 32), 8) + ' ' +
+    IntToHex(Int64(AValue and $FFFFFFFF), 8);
+end;
+
+function FileSizeOf(const AFileName: string): Int64;
+var
+  SR: TSearchRec;
+begin
+  Result := -1;
+  if FindFirst(AFileName, faAnyFile, SR) = 0 then
+  begin
+    Result := SR.Size;
+    FindClose(SR);
+  end;
+end;
+
+function SafeFileName(const S: string): string;
+var
+  I: Integer;
+begin
+  Result := S;
+  for I := 1 to Length(Result) do
+    if CharInSet(Result[I], ['\', '/', ':', '*', '?', '"', '<', '>', '|', ' ']) then
+      Result[I] := '_';
+end;
 
 { ---------------------------------------------------------------- setup }
 
 procedure TMain2Form.FormCreate(Sender: TObject);
 begin
+  Caption := AppTitle;
   pcJobs.ActivePage := tsJobs;
   pcOperations.ActivePage := tsFlash;
 
@@ -203,12 +340,51 @@ begin
   AssignGlyph(btnRestoreBackup, agRestore);
   AssignGlyph(btnWriteBin, agWriteBin);
   AssignGlyph(btnWriteOfp, agWriteOfp);
+  AssignGlyph(btnReadInfo, agReadInfo);
+  AssignGlyph(btnReadPartitions, agReadPartitions);
+  AssignGlyph(btnReadBin, agReadBin);
+  AssignGlyph(btnReadRegion, agReadRegion);
+  AssignGlyph(btnReadOtp, agReadOtp);
 
-  FillRegions;
-  UpdateAdvancedWrite;
+  FSessionLog := TStringList.Create;
+  FMeasure := TBitmap.Create;
+  SetupLogFont;
+  lstLog.Items.Clear;
+
   FProgress := 0;
-  FDeviceConnected := False;
-  memLog.Clear;
+  SetLength(FDevices, 0);
+  FDeviceSig := '';
+
+  LoadState;
+  UpdateAdvancedWrite;
+
+  FUsbTimer := TTimer.Create(Self);
+  FUsbTimer.Enabled := False;
+  FUsbTimer.Interval := 1000;
+  FUsbTimer.OnTimer := UsbTimerTick;
+  UpdateDeviceState;
+end;
+
+procedure TMain2Form.FormShow(Sender: TObject);
+begin
+  if not FLayoutFixed then
+  begin
+    FLayoutFixed := True;
+    FixGroupBoxLayout(Self, grpFiles);
+  end;
+  ApplyOptions;
+  if GOptions.DetectUsb then
+    CheckUsb(True);
+end;
+
+procedure TMain2Form.FormDestroy(Sender: TObject);
+begin
+  if FUsbTimer <> nil then
+    FUsbTimer.Enabled := False;
+  SaveState;
+  AutoSaveSessionLog;
+  FSessionLog.Free;
+  FMeasure.Free;
 end;
 
 procedure TMain2Form.AssignGlyph(AButton: TBitBtn; const AKind: TActionGlyph);
@@ -222,6 +398,13 @@ begin
   finally
     Glyph.Free;
   end;
+end;
+
+procedure TMain2Form.SetupLogFont;
+begin
+  FMeasure.SetSize(8, 8);
+  FMeasure.Canvas.Font.Assign(lstLog.Font);
+  lstLog.ItemHeight := FMeasure.Canvas.TextHeight('Wg') + 2;
 end;
 
 procedure TMain2Form.SetDevice(const ABrand, AModelEntry: string);
@@ -242,13 +425,12 @@ begin
     FModelName := AModelEntry;
   end;
 
-  Caption := 'Mobile Servicing Tools - ' + FModelName;
-  memLog.Clear;
-  Log('Brand : ' + FBrand);
+  Caption := AppTitle + ' - ' + FModelName;
+  Log('Brand : ' + LInfo(FBrand));
   if FModelCode <> '' then
-    Log('Model : ' + FModelCode + ' : ' + FModelName)
+    Log('Model : ' + LInfo(FModelCode + ' : ' + FModelName))
   else
-    Log('Model : ' + FModelName);
+    Log('Model : ' + LInfo(FModelName));
 end;
 
 procedure TMain2Form.FormKeyDown(Sender: TObject; var Key: Word;
@@ -261,81 +443,336 @@ begin
   end;
 end;
 
+procedure TMain2Form.ApplyOptions;
+begin
+  if FUsbTimer <> nil then
+    FUsbTimer.Enabled := GOptions.DetectUsb;
+  if not GOptions.DetectUsb then
+  begin
+    SetLength(FDevices, 0);
+    FDeviceSig := '';
+  end;
+  UpdateDeviceState;
+end;
+
+{ ---------------------------------------------------------------- state }
+
+procedure TMain2Form.LoadState;
+var
+  Ini: TMemIniFile;
+
+  procedure LoadEdit(AEdit: TEdit; const AKey: string);
+  begin
+    AEdit.Text := Ini.ReadString(CSection, AKey, AEdit.Text);
+  end;
+
+  procedure LoadCheck(ACheck: TCheckBox; const AKey: string);
+  begin
+    ACheck.Checked := Ini.ReadBool(CSection, AKey, ACheck.Checked);
+  end;
+
+  procedure LoadCombo(ACombo: TComboBox; const AKey: string);
+  var
+    I: Integer;
+  begin
+    I := Ini.ReadInteger(CSection, AKey, ACombo.ItemIndex);
+    if (I >= 0) and (I < ACombo.Items.Count) then
+      ACombo.ItemIndex := I;
+  end;
+
+var
+  Tab: Integer;
+  Dummy: UInt64;
+begin
+  if not GOptions.RememberFiles then
+    Exit;
+  Ini := Settings;
+  LoadEdit(edtScat, 'ScatFile');
+  LoadEdit(edtAuth, 'AuthFile');
+  LoadEdit(edtBin, 'BinFile');
+  LoadEdit(edtOfp, 'OfpFile');
+  LoadEdit(edtBl, 'BlFile');
+  LoadEdit(edtAp, 'ApFile');
+  LoadEdit(edtCp, 'CpFile');
+  LoadEdit(edtCsc, 'CscFile');
+  LoadEdit(edtUser, 'UserFile');
+  LoadCheck(chkAuthBrom, 'AuthBrom');
+  LoadCheck(chkAuthPreloader, 'AuthPreloader');
+  LoadCheck(chkReadPhoneInfo, 'ReadPhoneInfo');
+  LoadCheck(chkAdvancedWrite, 'AdvancedWrite');
+  LoadCombo(cbUsbSpeed, 'UsbSpeed');
+  LoadCombo(cbBattery, 'Battery');
+  LoadCombo(cbStorage, 'Storage');
+  LoadCombo(cbFlashMode, 'FlashMode');
+  LoadEdit(edtAddress, 'WriteAddress');
+  LoadEdit(edtReadAddress, 'ReadAddress');
+  LoadEdit(edtReadSize, 'ReadSize');
+  { do not bring back broken addresses }
+  if not TryParseHex64(edtAddress.Text, Dummy) then
+    edtAddress.Text := '00000000  00000000';
+  if not TryParseHex64(edtReadAddress.Text, Dummy) then
+    edtReadAddress.Text := '00000000  00000000';
+  if not TryParseHex64(edtReadSize.Text, Dummy) then
+    edtReadSize.Text := '00000000  00000000';
+  Tab := Ini.ReadInteger(CSection, 'OperationTab', 0);
+  if (Tab >= 0) and (Tab < pcOperations.PageCount) then
+    pcOperations.ActivePageIndex := Tab;
+end;
+
+procedure TMain2Form.SaveState;
+var
+  Ini: TMemIniFile;
+begin
+  if not GOptions.RememberFiles then
+    Exit;
+  Ini := Settings;
+  Ini.WriteString(CSection, 'ScatFile', edtScat.Text);
+  Ini.WriteString(CSection, 'AuthFile', edtAuth.Text);
+  Ini.WriteString(CSection, 'BinFile', edtBin.Text);
+  Ini.WriteString(CSection, 'OfpFile', edtOfp.Text);
+  Ini.WriteString(CSection, 'BlFile', edtBl.Text);
+  Ini.WriteString(CSection, 'ApFile', edtAp.Text);
+  Ini.WriteString(CSection, 'CpFile', edtCp.Text);
+  Ini.WriteString(CSection, 'CscFile', edtCsc.Text);
+  Ini.WriteString(CSection, 'UserFile', edtUser.Text);
+  Ini.WriteBool(CSection, 'AuthBrom', chkAuthBrom.Checked);
+  Ini.WriteBool(CSection, 'AuthPreloader', chkAuthPreloader.Checked);
+  Ini.WriteBool(CSection, 'ReadPhoneInfo', chkReadPhoneInfo.Checked);
+  Ini.WriteBool(CSection, 'AdvancedWrite', chkAdvancedWrite.Checked);
+  Ini.WriteInteger(CSection, 'UsbSpeed', cbUsbSpeed.ItemIndex);
+  Ini.WriteInteger(CSection, 'Battery', cbBattery.ItemIndex);
+  Ini.WriteInteger(CSection, 'Storage', cbStorage.ItemIndex);
+  Ini.WriteInteger(CSection, 'FlashMode', cbFlashMode.ItemIndex);
+  Ini.WriteString(CSection, 'WriteAddress', edtAddress.Text);
+  Ini.WriteString(CSection, 'ReadAddress', edtReadAddress.Text);
+  Ini.WriteString(CSection, 'ReadSize', edtReadSize.Text);
+  Ini.WriteInteger(CSection, 'OperationTab', pcOperations.ActivePageIndex);
+  FlushSettings;
+end;
+
+procedure TMain2Form.AutoSaveSessionLog;
+var
+  FileName: string;
+begin
+  if (not GOptions.AutoSaveLog) or (FSessionLog = nil) or
+     (FSessionLog.Count <= 2) then  { brand + model lines only: nothing done }
+    Exit;
+  try
+    ForceDirectories(LogsDir);
+    FileName := LogsDir + FormatDateTime('yyyy-mm-dd_hh-nn-ss', Now) + '_' +
+      SafeFileName(FModelCode + '_' + FModelName) + '.txt';
+    {$IFDEF FPC}
+    FSessionLog.SaveToFile(FileName);
+    {$ELSE}
+    FSessionLog.SaveToFile(FileName, TEncoding.UTF8);
+    {$ENDIF}
+  except
+    { never block closing the window because of the log }
+  end;
+end;
+
 { ---------------------------------------------------------------- log }
 
-procedure TMain2Form.Log(const AText: string);
+procedure TMain2Form.AddLogLine(const ALine: string);
+var
+  W: Integer;
 begin
-  memLog.Lines.Add(AText);
-  memLog.SelStart := Length(memLog.Text);
-  memLog.SelLength := 0;
+  lstLog.Items.BeginUpdate;
+  try
+    while lstLog.Items.Count >= CMaxLogLines do
+      lstLog.Items.Delete(0);
+    lstLog.Items.Add(ALine);
+  finally
+    lstLog.Items.EndUpdate;
+  end;
+  W := LogLineWidth(FMeasure.Canvas, ALine);
+  if W > lstLog.ScrollWidth then
+    lstLog.ScrollWidth := W;
+  lstLog.TopIndex := lstLog.Items.Count - 1;
+end;
+
+procedure TMain2Form.Log(const AText: string);
+var
+  Stamp: string;
+begin
+  Stamp := FormatDateTime('hh:nn:ss', Now);
+  if FSessionLog <> nil then
+    FSessionLog.Add(Stamp + '  ' + StripLogCodes(AText));
+  if GOptions.ShowTimeInLog and (AText <> '') then
+    AddLogLine(LMuted('[' + Stamp + '] ') + AText)
+  else
+    AddLogLine(AText);
+end;
+
+procedure TMain2Form.LogError(const AText: string);
+begin
+  Log(LErr(AText));
+  Log('');
 end;
 
 procedure TMain2Form.LogSettings;
 begin
-  Log('Download agent : ' + cbDownloadAgent.Text);
-  Log('USB speed : ' + cbUsbSpeed.Text + ',  Battery : ' + cbBattery.Text);
-  Log('Storage : ' + cbStorageType.Text + ' / ' + cbRegion.Text);
+  Log('Download agent : ' + LInfo(cbDownloadAgent.Text));
+  Log('USB speed : ' + LInfo(cbUsbSpeed.Text) + ',  Battery : ' +
+    LInfo(cbBattery.Text));
+  Log('Storage : ' + LInfo(cbStorage.Text));
 end;
 
 procedure TMain2Form.LogNotImplemented(const AOperation: string);
 begin
-  Log(AOperation + ' : device communication is not implemented in this build.');
+  Log(AOperation + '... ' + LErr('error(NOT_IMPLEMENTED)'));
+  Log(LMuted('Device communication is not part of this build.'));
   Log('');
+end;
+
+procedure TMain2Form.lstLogDrawItem(Control: TWinControl; Index: Integer;
+  ARect: TRect; State: TOwnerDrawState);
+begin
+  if (Index < 0) or (Index >= lstLog.Items.Count) then
+    Exit;
+  lstLog.Canvas.Font.Assign(lstLog.Font);
+  DrawLogLine(lstLog.Canvas, ARect, lstLog.Items[Index], odSelected in State);
+end;
+
+function TMain2Form.SelectedLogText(const AOnlySelected: Boolean): string;
+var
+  Lines: TStringList;
+  I: Integer;
+begin
+  Lines := TStringList.Create;
+  try
+    for I := 0 to lstLog.Items.Count - 1 do
+      if (not AOnlySelected) or lstLog.Selected[I] then
+        Lines.Add(StripLogCodes(lstLog.Items[I]));
+    Result := Lines.Text;
+  finally
+    Lines.Free;
+  end;
+end;
+
+procedure TMain2Form.miLogCopyClick(Sender: TObject);
+var
+  S: string;
+begin
+  S := SelectedLogText(True);
+  if S = '' then
+    S := SelectedLogText(False);
+  if S <> '' then
+    Clipboard.AsText := S;
+end;
+
+procedure TMain2Form.miLogCopyAllClick(Sender: TObject);
+begin
+  if lstLog.Items.Count > 0 then
+    Clipboard.AsText := SelectedLogText(False);
+end;
+
+procedure TMain2Form.miLogSelectAllClick(Sender: TObject);
+var
+  I: Integer;
+begin
+  lstLog.Items.BeginUpdate;
+  try
+    for I := 0 to lstLog.Items.Count - 1 do
+      lstLog.Selected[I] := True;
+  finally
+    lstLog.Items.EndUpdate;
+  end;
+end;
+
+procedure TMain2Form.lstLogKeyDown(Sender: TObject; var Key: Word;
+  Shift: TShiftState);
+begin
+  if ssCtrl in Shift then
+    case Key of
+      Ord('C'):
+        begin
+          miLogCopyClick(Sender);
+          Key := 0;
+        end;
+      Ord('A'):
+        begin
+          miLogSelectAllClick(Sender);
+          Key := 0;
+        end;
+    end;
 end;
 
 procedure TMain2Form.miClearLogClick(Sender: TObject);
 begin
-  memLog.Clear;
+  lstLog.Items.Clear;
+  lstLog.ScrollWidth := 0;
+end;
+
+procedure TMain2Form.ShowDemoLog;
+begin
+  { Sample lines in the style of the reference screenshot (used by the
+    self-test screenshots only). }
+  Log('Force Charge... ' + LOk);
+  Log('Disable WatchDog Timer... ' + LOk);
+  Log('Preloader exist. Skip connection verification.');
+  Log('Get ME ID... ' + LOk);
+  Log('ME_ID =  ' + LInfo('0x79E2F16C, 0x28109B51, 0x6D061FBF, 0x9B47BCDA'));
+  Log('Load DownloadAgent... ' + LOk);
+  Log('Search DA... ' + LOk + ' ' + LInfo('[0]'));
+  Log('Get device connection agent... ' + LInfo('[PRELOADER]'));
+  Log('Send preloader... ' + LErr('error(STATUS_DA_HASH_MISMATCH)'));
 end;
 
 { ---------------------------------------------------------------- painting }
 
 procedure TMain2Form.pbMenuPaint(Sender: TObject);
 begin
-  DrawMenuIcon(pbMenu.Canvas, pbMenu.ClientRect);
+  PaintIcon(pbMenu.Canvas, pbMenu.ClientRect, DrawMenuIcon);
 end;
 
 procedure TMain2Form.pbNextPaint(Sender: TObject);
 begin
-  DrawNextIcon(pbNext.Canvas, pbNext.ClientRect, True);
+  PaintIcon(pbNext.Canvas, pbNext.ClientRect, DrawNextIconEnabled);
 end;
 
 procedure TMain2Form.pbDownloadPaint(Sender: TObject);
 begin
-  DrawDownloadIcon(pbDownload.Canvas, pbDownload.ClientRect);
+  PaintIcon(pbDownload.Canvas, pbDownload.ClientRect, DrawDownloadIcon);
 end;
 
 procedure TMain2Form.pbChangeDevicePaint(Sender: TObject);
 begin
-  DrawPhoneRefreshIcon(pbChangeDevice.Canvas, pbChangeDevice.ClientRect);
+  PaintIcon(pbChangeDevice.Canvas, pbChangeDevice.ClientRect,
+    DrawPhoneRefreshIcon);
 end;
 
 procedure TMain2Form.pbSettingsPaint(Sender: TObject);
 begin
-  DrawGearIcon(pbSettings.Canvas, pbSettings.ClientRect);
+  PaintIcon(pbSettings.Canvas, pbSettings.ClientRect, DrawGearIcon);
 end;
 
 procedure TMain2Form.pbFacebookPaint(Sender: TObject);
 begin
-  DrawFacebookIcon(pbFacebook.Canvas, pbFacebook.ClientRect);
+  PaintIcon(pbFacebook.Canvas, pbFacebook.ClientRect, DrawFacebookIcon);
 end;
 
 procedure TMain2Form.pbHelpPaint(Sender: TObject);
 begin
-  DrawHelpIcon(pbHelp.Canvas, pbHelp.ClientRect);
+  PaintIcon(pbHelp.Canvas, pbHelp.ClientRect, DrawHelpIcon);
 end;
 
 procedure TMain2Form.pbDeviceStatePaint(Sender: TObject);
 begin
-  DrawDeviceStateIcon(pbDeviceState.Canvas, pbDeviceState.ClientRect,
-    FDeviceConnected);
+  if Length(FDevices) > 0 then
+    PaintIcon(pbDeviceState.Canvas, pbDeviceState.ClientRect,
+      DrawDeviceConnectedIcon)
+  else
+    PaintIcon(pbDeviceState.Canvas, pbDeviceState.ClientRect,
+      DrawDeviceDisconnectedIcon);
 end;
 
 procedure TMain2Form.pbProgressPaint(Sender: TObject);
 var
   C: TCanvas;
   R: TRect;
-  Mid, Fill, Knob: Integer;
+  Fill, BarTop: Integer;
+  S: string;
 begin
   C := pbProgress.Canvas;
   R := pbProgress.ClientRect;
@@ -343,28 +780,24 @@ begin
   C.Brush.Color := clBtnFace;
   C.FillRect(R);
 
-  Mid := (R.Top + R.Bottom) div 2;
-  Knob := 6;
-  Fill := R.Left + Knob + MulDiv(R.Width - 2 * Knob, FProgress, 100);
-
-  { track }
-  C.Brush.Color := RGB(170, 170, 170);
-  C.FillRect(Rect(R.Left, Mid - 2, R.Right, Mid + 2));
-  { filled part: red, fading to pink at the leading edge }
-  if Fill > R.Left then
+  { thin red bar along the bottom while a job runs }
+  if FProgress > 0 then
   begin
+    BarTop := R.Bottom - 4;
+    Fill := R.Left + MulDiv(R.Right - R.Left, FProgress, 100);
+    C.Brush.Color := RGB(200, 200, 200);
+    C.FillRect(Rect(R.Left, BarTop, R.Right, R.Bottom));
     C.Brush.Color := RGB(232, 0, 18);
-    C.FillRect(Rect(R.Left, Mid - 2, Fill, Mid + 2));
-    if Fill - R.Left > 60 then
-    begin
-      C.Brush.Color := RGB(236, 20, 90);
-      C.FillRect(Rect(Fill - 40, Mid - 2, Fill, Mid + 2));
-    end;
+    C.FillRect(Rect(R.Left, BarTop, Fill, R.Bottom));
   end;
-  { knob }
-  C.Pen.Color := RGB(210, 0, 18);
-  C.Brush.Color := RGB(232, 0, 18);
-  C.Ellipse(Fill - Knob, Mid - Knob, Fill + Knob, Mid + Knob);
+
+  S := IntToStr(FProgress) + '%';
+  C.Font.Assign(Font);
+  C.Font.Color := clWindowText;
+  C.Brush.Style := bsClear;
+  C.TextOut(R.Left + (R.Right - R.Left - C.TextWidth(S)) div 2,
+    R.Top + 1, S);
+  C.Brush.Style := bsSolid;
 end;
 
 procedure TMain2Form.SetProgress(const AValue: Integer);
@@ -383,6 +816,77 @@ begin
   end;
 end;
 
+{ ---------------------------------------------------------------- USB }
+
+procedure TMain2Form.UsbTimerTick(Sender: TObject);
+begin
+  CheckUsb(False);
+end;
+
+function SameDevice(const A, B: TUsbDevice): Boolean;
+begin
+  Result := (A.VidPid = B.VidPid) and (A.Port = B.Port);
+end;
+
+procedure TMain2Form.CheckUsb(const AInitial: Boolean);
+var
+  NewDevices: TUsbDeviceArray;
+  Sig: string;
+  I, J: Integer;
+  Known: Boolean;
+begin
+  NewDevices := ScanServiceDevices;
+  Sig := DevicesSignature(NewDevices);
+  if (not AInitial) and (Sig = FDeviceSig) then
+    Exit;
+
+  { removed }
+  for I := 0 to High(FDevices) do
+  begin
+    Known := False;
+    for J := 0 to High(NewDevices) do
+      if SameDevice(FDevices[I], NewDevices[J]) then
+        Known := True;
+    if not Known then
+      Log('Device removed... ' + LWarn(DescribeDevice(FDevices[I])));
+  end;
+  { added }
+  for I := 0 to High(NewDevices) do
+  begin
+    Known := False;
+    for J := 0 to High(FDevices) do
+      if SameDevice(NewDevices[I], FDevices[J]) then
+        Known := True;
+    if not Known then
+      Log('Device found... ' + LInfo(DescribeDevice(NewDevices[I])));
+  end;
+  if AInitial and (Length(NewDevices) = 0) then
+    Log(LMuted('Waiting for device... (connect the phone by USB)'));
+
+  FDevices := NewDevices;
+  FDeviceSig := Sig;
+  UpdateDeviceState;
+end;
+
+procedure TMain2Form.UpdateDeviceState;
+var
+  Text: string;
+begin
+  if not GOptions.DetectUsb then
+    Text := 'USB detection is off'
+  else if Length(FDevices) = 0 then
+    Text := 'No device'
+  else
+  begin
+    Text := DescribeDevice(FDevices[0]);
+    if Length(FDevices) > 1 then
+      Text := Text + '  (+' + IntToStr(Length(FDevices) - 1) + ' more)';
+  end;
+  lblDeviceState.Caption := Text;
+  pbDeviceState.Hint := Text;
+  pbDeviceState.Invalidate;
+end;
+
 { ---------------------------------------------------------------- toolbar }
 
 procedure TMain2Form.pbMenuClick(Sender: TObject);
@@ -395,31 +899,35 @@ end;
 
 procedure TMain2Form.pbNextClick(Sender: TObject);
 begin
-  { Runs the action of the Flash tab's main button. }
+  { Runs the first job of the open operations tab. }
   pcJobs.ActivePage := tsJobs;
-  pcOperations.ActivePage := tsFlash;
-  btnWriteFirmwareClick(btnWriteFirmware);
+  if pcOperations.ActivePage = tsRead then
+    btnReadInfoClick(btnReadInfo)
+  else
+  begin
+    pcOperations.ActivePage := tsFlash;
+    btnWriteFirmwareClick(btnWriteFirmware);
+  end;
 end;
 
 procedure TMain2Form.pbDownloadClick(Sender: TObject);
 var
-  Dialog: TSaveDialog;
+  FileName: string;
+  Lines: TStringList;
 begin
-  Dialog := TSaveDialog.Create(Self);
+  if not AskSaveFile('Save log', 'log_' + SafeFileName(FModelName) + '.txt',
+    FileName) then
+    Exit;
+  Lines := TStringList.Create;
   try
-    Dialog.Title := 'Save log';
-    Dialog.Filter := 'Text files (*.txt)|*.txt|All files (*.*)|*.*';
-    Dialog.DefaultExt := 'txt';
-    Dialog.Options := Dialog.Options + [ofOverwritePrompt];
-    Dialog.FileName := 'log.txt';
-    if Dialog.Execute then
-      {$IFDEF FPC}
-      memLog.Lines.SaveToFile(Dialog.FileName);  { LCL strings are UTF-8 }
-      {$ELSE}
-      memLog.Lines.SaveToFile(Dialog.FileName, TEncoding.UTF8);
-      {$ENDIF}
+    Lines.Text := SelectedLogText(False);
+    {$IFDEF FPC}
+    Lines.SaveToFile(FileName);  { LCL strings are UTF-8 }
+    {$ELSE}
+    Lines.SaveToFile(FileName, TEncoding.UTF8);
+    {$ENDIF}
   finally
-    Dialog.Free;
+    Lines.Free;
   end;
 end;
 
@@ -431,7 +939,13 @@ end;
 
 procedure TMain2Form.pbSettingsClick(Sender: TObject);
 begin
-  MessageDlg('Settings are not available yet.', mtInformation, [mbOK], 0);
+  if ShowSettingsDialog(Self) then
+  begin
+    ApplyOptions;
+    if GOptions.DetectUsb then
+      CheckUsb(True);
+    lstLog.Invalidate;
+  end;
 end;
 
 procedure TMain2Form.pbFacebookClick(Sender: TObject);
@@ -441,8 +955,11 @@ end;
 
 procedure TMain2Form.pbHelpClick(Sender: TObject);
 begin
-  MessageDlg('Mobile Servicing Tools' + sLineBreak + sLineBreak +
-    'Selected device: ' + FBrand + ' ' + FModelName, mtInformation, [mbOK], 0);
+  MessageDlg(AppTitle + sLineBreak + AppVersionText + sLineBreak + sLineBreak +
+    'Selected device: ' + FBrand + ' ' + FModelName + sLineBreak + sLineBreak +
+    'Esc - back to the model list' + sLineBreak +
+    'Ctrl+C / Ctrl+A in the log - copy / select all' + sLineBreak + sLineBreak +
+    'Settings and logs: ' + DataDir, mtInformation, [mbOK], 0);
 end;
 
 procedure TMain2Form.miExitClick(Sender: TObject);
@@ -464,7 +981,10 @@ begin
     Dialog.Filter := AFilter;
     Dialog.Options := Dialog.Options + [ofFileMustExist, ofPathMustExist];
     if AEdit.Text <> '' then
-      Dialog.FileName := AEdit.Text;
+    begin
+      Dialog.InitialDir := ExtractFilePath(AEdit.Text);
+      Dialog.FileName := ExtractFileName(AEdit.Text);
+    end;
     Result := Dialog.Execute;
     if Result then
       AEdit.Text := Dialog.FileName;
@@ -473,33 +993,93 @@ begin
   end;
 end;
 
+function TMain2Form.AskSaveFile(const ATitle, ADefaultName: string;
+  out AFileName: string): Boolean;
+var
+  Dialog: TSaveDialog;
+begin
+  AFileName := '';
+  Dialog := TSaveDialog.Create(Self);
+  try
+    Dialog.Title := ATitle;
+    if SameText(ExtractFileExt(ADefaultName), '.txt') then
+    begin
+      Dialog.Filter := 'Text files (*.txt)|*.txt' + CFilterAll;
+      Dialog.DefaultExt := 'txt';
+    end
+    else
+    begin
+      Dialog.Filter := 'Binary files (*.bin)|*.bin' + CFilterAll;
+      Dialog.DefaultExt := 'bin';
+    end;
+    Dialog.Options := Dialog.Options + [ofOverwritePrompt];
+    Dialog.FileName := ADefaultName;
+    Result := Dialog.Execute;
+    if Result then
+      AFileName := Dialog.FileName;
+  finally
+    Dialog.Free;
+  end;
+end;
+
+procedure TMain2Form.BrowseFirmwarePart(AEdit: TEdit; const AName: string);
+begin
+  if BrowseFile('Select ' + AName + ' file', CFilterSamsung, AEdit) then
+    Log(AName + ' file : ' + LInfo(AEdit.Text));
+end;
+
 procedure TMain2Form.btnScatClick(Sender: TObject);
 begin
   if BrowseFile('Select scatter file',
-    'Scatter files (*scatter*.txt;*.xml)|*scatter*.txt;*.xml|All files (*.*)|*.*',
+    'Scatter files (*scatter*.txt;*.xml)|*scatter*.txt;*.xml' + CFilterAll,
     edtScat) then
-    Log('Scatter file : ' + edtScat.Text);
+    Log('Scatter file : ' + LInfo(edtScat.Text));
 end;
 
 procedure TMain2Form.btnAuthClick(Sender: TObject);
 begin
   if BrowseFile('Select auth file',
-    'Auth files (*.auth;*.bin)|*.auth;*.bin|All files (*.*)|*.*', edtAuth) then
-    Log('Auth file : ' + edtAuth.Text);
+    'Auth files (*.auth;*.bin)|*.auth;*.bin' + CFilterAll, edtAuth) then
+    Log('Auth file : ' + LInfo(edtAuth.Text));
 end;
 
 procedure TMain2Form.btnBinClick(Sender: TObject);
 begin
   if BrowseFile('Select BIN file',
-    'Binary files (*.bin;*.img)|*.bin;*.img|All files (*.*)|*.*', edtBin) then
-    Log('BIN file : ' + edtBin.Text);
+    'Binary files (*.bin;*.img)|*.bin;*.img' + CFilterAll, edtBin) then
+    Log('BIN file : ' + LInfo(edtBin.Text));
 end;
 
 procedure TMain2Form.btnOfpClick(Sender: TObject);
 begin
   if BrowseFile('Select OFP file',
-    'OFP files (*.ofp)|*.ofp|All files (*.*)|*.*', edtOfp) then
-    Log('OFP file : ' + edtOfp.Text);
+    'OFP files (*.ofp)|*.ofp' + CFilterAll, edtOfp) then
+    Log('OFP file : ' + LInfo(edtOfp.Text));
+end;
+
+procedure TMain2Form.btnBlClick(Sender: TObject);
+begin
+  BrowseFirmwarePart(edtBl, 'BL');
+end;
+
+procedure TMain2Form.btnApClick(Sender: TObject);
+begin
+  BrowseFirmwarePart(edtAp, 'AP');
+end;
+
+procedure TMain2Form.btnCpClick(Sender: TObject);
+begin
+  BrowseFirmwarePart(edtCp, 'CP');
+end;
+
+procedure TMain2Form.btnCscClick(Sender: TObject);
+begin
+  BrowseFirmwarePart(edtCsc, 'CSC');
+end;
+
+procedure TMain2Form.btnUserClick(Sender: TObject);
+begin
+  BrowseFirmwarePart(edtUser, 'USER');
 end;
 
 function TMain2Form.RequireFile(AEdit: TEdit; const AName: string): Boolean;
@@ -508,43 +1088,20 @@ begin
   if not Result then
   begin
     if Trim(AEdit.Text) = '' then
-      Log('Select a ' + AName + ' file first.')
+      LogError('Select a ' + AName + ' file first.')
     else
-      Log(AName + ' file not found : ' + AEdit.Text);
-    Log('');
+      LogError(AName + ' file not found : ' + AEdit.Text);
   end;
+end;
+
+function TMain2Form.CheckOptionalFile(AEdit: TEdit; const AName: string): Boolean;
+begin
+  Result := (Trim(AEdit.Text) = '') or FileExists(Trim(AEdit.Text));
+  if not Result then
+    LogError(AName + ' file not found : ' + AEdit.Text);
 end;
 
 { ---------------------------------------------------------------- options }
-
-procedure TMain2Form.FillRegions;
-begin
-  cbRegion.Items.BeginUpdate;
-  try
-    cbRegion.Items.Clear;
-    if SameText(cbStorageType.Text, 'UFS') then
-    begin
-      cbRegion.Items.Add('UFS_LU0');
-      cbRegion.Items.Add('UFS_LU1');
-      cbRegion.Items.Add('UFS_LU2');
-    end
-    else
-    begin
-      cbRegion.Items.Add('EMMC_USER');
-      cbRegion.Items.Add('EMMC_BOOT1');
-      cbRegion.Items.Add('EMMC_BOOT2');
-      cbRegion.Items.Add('EMMC_RPMB');
-    end;
-  finally
-    cbRegion.Items.EndUpdate;
-  end;
-  cbRegion.ItemIndex := 0;
-end;
-
-procedure TMain2Form.cbStorageTypeChange(Sender: TObject);
-begin
-  FillRegions;
-end;
 
 procedure TMain2Form.UpdateAdvancedWrite;
 var
@@ -562,53 +1119,48 @@ begin
   UpdateAdvancedWrite;
 end;
 
-function TryParseHex(const S: string; out AValue: UInt64): Boolean;
-var
-  I: Integer;
-  Digit: Integer;
-begin
-  AValue := 0;
-  Result := (Length(S) > 0) and (Length(S) <= 16);
-  if not Result then
-    Exit;
-  for I := 1 to Length(S) do
-  begin
-    case S[I] of
-      '0'..'9': Digit := Ord(S[I]) - Ord('0');
-      'a'..'f': Digit := Ord(S[I]) - Ord('a') + 10;
-      'A'..'F': Digit := Ord(S[I]) - Ord('A') + 10;
-    else
-      Result := False;
-      Exit;
-    end;
-    AValue := (AValue shl 4) or UInt64(Digit);
-  end;
-end;
-
-function TMain2Form.ParseAddress(out AStart, ALength: UInt64): Boolean;
-var
-  Clean: string;
-  SpacePos: Integer;
-begin
-  AStart := 0;
-  ALength := 0;
-  Clean := Trim(edtAddress.Text);
-  SpacePos := Pos(' ', Clean);
-  Result := (SpacePos > 0) and
-    TryParseHex(Trim(Copy(Clean, 1, SpacePos - 1)), AStart) and
-    TryParseHex(Trim(Copy(Clean, SpacePos + 1, MaxInt)), ALength);
-end;
-
-{ ---------------------------------------------------------------- actions }
+{ ---------------------------------------------------------------- Flash tab }
 
 procedure TMain2Form.btnWriteFirmwareClick(Sender: TObject);
+const
+  CNames: array[0..4] of string = ('BL', 'AP', 'CP', 'CSC', 'USER');
+var
+  Parts: array[0..4] of TEdit;
+  I: Integer;
+  HasParts: Boolean;
 begin
-  Log('[Write Firmware] ' + cbFlashMode.Text);
-  if not RequireFile(edtScat, 'SCAT') then
+  Parts[0] := edtBl;
+  Parts[1] := edtAp;
+  Parts[2] := edtCp;
+  Parts[3] := edtCsc;
+  Parts[4] := edtUser;
+
+  Log('[Write Firmware] ' + LInfo(cbFlashMode.Text));
+  HasParts := False;
+  for I := 0 to High(Parts) do
+    if Trim(Parts[I].Text) <> '' then
+      HasParts := True;
+
+  if (Trim(edtScat.Text) = '') and not HasParts then
+  begin
+    LogError('Select a SCAT file (MediaTek) or BL / AP / CP / CSC / USER ' +
+      'files (Samsung) first.');
     Exit;
-  Log('Scatter file : ' + edtScat.Text);
+  end;
+  if not CheckOptionalFile(edtScat, 'SCAT') or
+     not CheckOptionalFile(edtAuth, 'AUTH') then
+    Exit;
+  for I := 0 to High(Parts) do
+    if not CheckOptionalFile(Parts[I], CNames[I]) then
+      Exit;
+
+  if Trim(edtScat.Text) <> '' then
+    Log('Scatter file : ' + LInfo(edtScat.Text));
   if Trim(edtAuth.Text) <> '' then
-    Log('Auth file : ' + edtAuth.Text);
+    Log('Auth file : ' + LInfo(edtAuth.Text));
+  for I := 0 to High(Parts) do
+    if Trim(Parts[I].Text) <> '' then
+      Log(CNames[I] + ' file : ' + LInfo(Parts[I].Text));
   LogSettings;
   LogNotImplemented('Write Firmware');
 end;
@@ -621,15 +1173,16 @@ begin
   Dialog := TOpenDialog.Create(Self);
   try
     Dialog.Title := 'Select backup file';
-    Dialog.Filter := 'Backup files (*.bin;*.img;*.zip)|*.bin;*.img;*.zip|All files (*.*)|*.*';
+    Dialog.Filter := 'Backup files (*.bin;*.img;*.zip)|*.bin;*.img;*.zip' +
+      CFilterAll;
     Dialog.Options := Dialog.Options + [ofFileMustExist, ofPathMustExist];
     if not Dialog.Execute then
     begin
-      Log('Cancelled.');
+      Log(LMuted('Cancelled.'));
       Log('');
       Exit;
     end;
-    Log('Backup file : ' + Dialog.FileName);
+    Log('Backup file : ' + LInfo(Dialog.FileName));
   finally
     Dialog.Free;
   end;
@@ -639,19 +1192,19 @@ end;
 
 procedure TMain2Form.btnWriteBinClick(Sender: TObject);
 var
-  StartAddr, Len: UInt64;
+  StartAddr: UInt64;
 begin
   Log('[Write BIN]');
   if not RequireFile(edtBin, 'BIN') then
     Exit;
-  if not ParseAddress(StartAddr, Len) then
+  if not TryParseHex64(edtAddress.Text, StartAddr) then
   begin
-    Log('Enter the address as two hex values: start and length, e.g. 00000000 00100000');
-    Log('');
+    LogError('Enter the start address in hex, e.g. 00000000 00100000');
     Exit;
   end;
-  Log(Format('BIN file : %s', [edtBin.Text]));
-  Log('Address : 0x' + IntToHex(StartAddr, 8) + '  Length : 0x' + IntToHex(Len, 8));
+  Log('BIN file : ' + LInfo(edtBin.Text));
+  Log('Address : ' + LInfo('0x' + Hex64(StartAddr)) + '  Length : ' +
+    LInfo('0x' + Hex64(UInt64(FileSizeOf(edtBin.Text)))));
   LogSettings;
   LogNotImplemented('Write BIN');
 end;
@@ -661,9 +1214,152 @@ begin
   Log('[Write OFP]');
   if not RequireFile(edtOfp, 'OFP') then
     Exit;
-  Log('OFP file : ' + edtOfp.Text);
+  Log('OFP file : ' + LInfo(edtOfp.Text));
   LogSettings;
   LogNotImplemented('Write OFP');
+end;
+
+{ ---------------------------------------------------------------- Read tab }
+
+procedure TMain2Form.btnReadInfoClick(Sender: TObject);
+begin
+  Log('[Read Flash Info]');
+  LogSettings;
+  LogNotImplemented('Read Flash Info');
+end;
+
+procedure TMain2Form.btnReadPartitionsClick(Sender: TObject);
+begin
+  Log('[Read Partitions]');
+  if Trim(edtScat.Text) <> '' then
+  begin
+    if not CheckOptionalFile(edtScat, 'SCAT') then
+      Exit;
+    Log('Scatter file : ' + LInfo(edtScat.Text));
+  end;
+  LogSettings;
+  LogNotImplemented('Read Partitions');
+end;
+
+procedure TMain2Form.btnReadBinClick(Sender: TObject);
+var
+  StartAddr, Size: UInt64;
+  FileName: string;
+begin
+  Log('[Read BIN]');
+  if not TryParseHex64(edtReadAddress.Text, StartAddr) then
+  begin
+    LogError('Enter the start address in hex, e.g. 00000000 00100000');
+    Exit;
+  end;
+  if (not TryParseHex64(edtReadSize.Text, Size)) or (Size = 0) then
+  begin
+    LogError('Enter the size to read in hex (more than 0), e.g. 00000000 00400000');
+    Exit;
+  end;
+  if not AskSaveFile('Save BIN as',
+    'read_' + IntToHex(Int64(StartAddr), 8) + '_' + IntToHex(Int64(Size), 8) +
+    '.bin', FileName) then
+  begin
+    Log(LMuted('Cancelled.'));
+    Log('');
+    Exit;
+  end;
+  Log('Address : ' + LInfo('0x' + Hex64(StartAddr)) + '  Size : ' +
+    LInfo('0x' + Hex64(Size)));
+  Log('Save to : ' + LInfo(FileName));
+  LogSettings;
+  LogNotImplemented('Read BIN');
+end;
+
+procedure TMain2Form.btnReadRegionClick(Sender: TObject);
+var
+  FileName, Region: string;
+begin
+  Log('[Read Region]');
+  Region := cbStorage.Text;
+  if not AskSaveFile('Save region as',
+    SafeFileName(FModelCode + '_' + Copy(Region, 1, Pos(' ', Region + ' ') - 1)) +
+    '.bin', FileName) then
+  begin
+    Log(LMuted('Cancelled.'));
+    Log('');
+    Exit;
+  end;
+  Log('Region : ' + LInfo(Region));
+  Log('Save to : ' + LInfo(FileName));
+  LogSettings;
+  LogNotImplemented('Read Region');
+end;
+
+procedure TMain2Form.btnReadOtpClick(Sender: TObject);
+begin
+  Log('[Read OTP]');
+  LogSettings;
+  LogNotImplemented('Read OTP');
+end;
+
+{ ---------------------------------------------------------------- self-test }
+
+function TMain2Form.SelfTest(AOut: TStrings): Boolean;
+var
+  AllOk: Boolean;
+  V: UInt64;
+  Before: Integer;
+
+  procedure Check(const AName: string; const AOk: Boolean);
+  begin
+    if AOk then
+      AOut.Add('PASS  ' + AName)
+    else
+    begin
+      AOut.Add('FAIL  ' + AName);
+      AllOk := False;
+    end;
+  end;
+
+begin
+  AllOk := True;
+  Check('hex: "00000000  00100000" = $100000',
+    TryParseHex64('00000000  00100000', V) and (V = $100000));
+  Check('hex: "1 00000000" = $100000000',
+    TryParseHex64('1 00000000', V) and (V = UInt64($100000000)));
+  Check('hex: rejects "12G4"', not TryParseHex64('12G4', V));
+  Check('hex: rejects 17 digits', not TryParseHex64('11111111111111111', V));
+  Check('hex: rejects empty', not TryParseHex64('  ', V));
+  Check('log codes stripped',
+    StripLogCodes('Search DA... ' + LOk + ' ' + LInfo('[0]')) = 'Search DA... OK [0]');
+  Check('nine file rows', (btnUser.Parent = grpFiles) and (edtOfp.Parent = grpFiles));
+
+  Before := lstLog.Items.Count;
+  edtScat.Text := '';
+  edtAuth.Text := '';
+  edtBl.Text := '';
+  edtAp.Text := '';
+  edtCp.Text := '';
+  edtCsc.Text := '';
+  edtUser.Text := '';
+  btnWriteFirmwareClick(nil);
+  Check('Write Firmware without files logs an error',
+    Pos('Select a SCAT file', StripLogCodes(lstLog.Items[lstLog.Items.Count - 2])) > 0);
+
+  edtAp.Text := ExeDir + 'does-not-exist.tar.md5';
+  btnWriteFirmwareClick(nil);
+  Check('Write Firmware with a missing AP file logs an error',
+    Pos('AP file not found', StripLogCodes(lstLog.Items[lstLog.Items.Count - 2])) > 0);
+  edtAp.Text := '';
+
+  edtReadSize.Text := '00000000  00000000';
+  btnReadBinClick(nil);
+  Check('Read BIN with size 0 logs an error',
+    Pos('size to read', StripLogCodes(lstLog.Items[lstLog.Items.Count - 2])) > 0);
+
+  btnReadOtpClick(nil);
+  Check('Read OTP logs the job', lstLog.Items.Count > Before);
+
+  CheckUsb(True);
+  Check('USB scan ran', True);
+  Result := AllOk;
 end;
 
 end.

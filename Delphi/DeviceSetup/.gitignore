@@ -23,3 +23,8 @@ artifacts/
 *.compiled
 lazbuild-out/
 backup/
+# files the app writes next to the EXE when run from here
+DeviceSetup.ini
+logs/
+selftest/
+selftest-run/
