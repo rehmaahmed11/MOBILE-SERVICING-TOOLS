@@ -81,6 +81,10 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
+        <Filename Value="DaLoader.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
         <Filename Value="LogView.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>

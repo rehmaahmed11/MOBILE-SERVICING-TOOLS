@@ -83,6 +83,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python tools/test_ui_contract.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/test_da_integration.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Stamp build id (shown in Help)
         shell: pwsh
@@ -111,6 +113,9 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force selftest-run | Out-Null
           Copy-Item "artifacts\DeviceSetup-${{ matrix.platform }}.exe" selftest-run\DeviceSetup.exe
+          if (Test-Path "data") {
+            Copy-Item -Recurse -Force "data" "selftest-run\data"
+          }
           $p = Start-Process -FilePath selftest-run\DeviceSetup.exe -ArgumentList '--selftest' -PassThru
           $null = $p.Handle
           $timedOut = -not $p.WaitForExit(120000)

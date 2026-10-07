@@ -343,6 +343,7 @@ uses
   System.IniFiles,
 {$ENDIF}
   AppInfo,
+  DaLoader,
   LogView,
   SettingsDialog;
 
@@ -745,6 +746,8 @@ end;
 procedure TMain2Form.SetDevice(const ABrand, AModelEntry: string);
 var
   SepPos: Integer;
+  DaRes: TDaLoadResult;
+  Fdl1, Fdl2: string;
 begin
   { Model entries look like "RMX3382 : Realme 8s 5G". }
   FBrand := ABrand;
@@ -761,8 +764,35 @@ begin
   end;
 
   Caption := AppTitle + ' - ' + FModelName;
-  { The reference log is empty until an operation or a USB event occurs.
-    Model context is recorded with jobs, not on opening the form. }
+
+  { Check for Unisoc FDL files }
+  Fdl1 := GetFdl1Path;
+  Fdl2 := GetFdl2Path;
+  if (Fdl1 <> '') and (Fdl2 <> '') and (cbPlatform.ItemIndex = CPlatformUnisoc) then
+  begin
+    ReplaceComboItems(cbDownloadAgent, [ExtractFileName(Fdl1) + ' / ' + ExtractFileName(Fdl2)]);
+  end;
+
+  { Automatic DA discovery and extraction }
+  DaRes := ResolveAndExtractDa(FBrand, FModelCode, FModelName);
+  if DaRes.Found then
+  begin
+    if DaRes.ExtractedDaBin <> '' then
+      ReplaceComboItems(cbDownloadAgent, [ExtractFileName(DaRes.DaFile) + ' -> ' + ExtractFileName(DaRes.ExtractedDaBin)]);
+
+    if DaRes.HasAuth then
+    begin
+      edtAuth.Text := DaRes.ExtractedAuthBin;
+      chkAuthPreloader.Checked := True;
+      chkAuthBrom.Checked := True;
+    end
+    else
+    begin
+      { Safe fallback: clear auth path and uncheck preloader auth }
+      edtAuth.Text := '';
+      chkAuthPreloader.Checked := False;
+    end;
+  end;
 end;
 
 procedure TMain2Form.FormKeyDown(Sender: TObject; var Key: Word;
