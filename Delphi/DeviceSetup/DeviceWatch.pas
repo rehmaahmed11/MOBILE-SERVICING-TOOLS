@@ -476,7 +476,13 @@ end;
 
 function TDetectedDevice.Caption: string;
 begin
-  Result := KindText + ' (' + IntToHex(Vid, 4) + ':' + IntToHex(Pid, 4) + ')';
+  { A phone in its normal (MTP/ADB-off) mode is still worth showing, but the
+    name Windows gives it says more than "USB device". }
+  if (Kind = dkOther) and (Description <> '') then
+    Result := Description
+  else
+    Result := KindText;
+  Result := Result + ' (' + IntToHex(Vid, 4) + ':' + IntToHex(Pid, 4) + ')';
   if PortName <> '' then
     Result := Result + ' on ' + PortName;
 end;
@@ -633,8 +639,8 @@ begin
   else if Length(FDevices) = 1 then
     Result := 'Device: ' + FDevices[0].Caption
   else
-    Result := 'Device: ' + FDevices[0].KindText + ' +' +
-      IntToStr(Length(FDevices) - 1) + ' more';
+    Result := 'Device: ' + FDevices[0].Caption + '  (+' +
+      IntToStr(Length(FDevices) - 1) + ' more)';
 end;
 
 end.

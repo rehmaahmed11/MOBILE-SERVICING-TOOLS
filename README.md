@@ -149,6 +149,8 @@ Units:
 | `AppSettings.pas` | folders, `settings.ini`, log and error files |
 | `ToolbarIcons.pas` | vector-drawn toolbar icons and button glyphs |
 
+`DeviceSetup.exe /selftest` (used by the build pipeline) creates both forms, checks the catalog and exits with 0, or 1 after writing `logs\error-<timestamp>.txt`.
+
 `DeviceCatalog.pas` holds an in-memory starter catalog. The Realme entries match the reference screenshot. The other brands contain sample entries only: check them before production use, or replace them with your own Data files as described above.
 
 ## EXE artifacts (fast build)
@@ -157,6 +159,12 @@ Units:
 
 - First run: about 2–3 minutes, because it installs Lazarus.
 - Later runs: Lazarus comes from the cache, so the job only compiles.
+
+Each build is verified before it is uploaded:
+
+1. **Compile** — Win32 and Win64.
+2. **Self test** — `DeviceSetup.exe /selftest` builds MAIN 1 *and* MAIN 2, checks that the catalog loaded and that MAIN 2 accepted the device, then exits 0. A form-streaming problem (a component in the `.dfm`/`.lfm` that does not match the form class) is invisible to the compiler, so this is what catches it. On failure the error report from the log folder is printed as a build annotation.
+3. **Smoke test** — the app is launched normally and must still be running 10 seconds later, then it is closed.
 
 Download the EXEs from the run's **Artifacts** section:
 
