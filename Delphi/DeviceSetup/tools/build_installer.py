@@ -51,14 +51,19 @@ def build_installer(iscc: str, platform: str, output_dir: Path) -> Path:
     verify_bundle(DEFAULT_BUNDLE_DIR, entries)
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    platform_64 = "1" if platform == "Win64" else "0"
-    command = [
-        iscc,
-        f"/DAppPlatform64={platform_64}",
-        f"/DAppVersion={app_version()}",
-        f"/O{output_dir.resolve()}",
-        str(PROJECT_FILE),
-    ]
+    command = [iscc]
+    if platform == "Win64":
+        # Presence selects the x64 directives in DeviceSetup.iss. For Win32,
+        # leave this macro undefined and use Inno Setup's x86-compatible default.
+        command.append("/DAppPlatform64=1")
+    command.extend(
+        [
+            f"/DAppVersion={app_version()}",
+            f"/O{output_dir.resolve()}",
+            f"/FDeviceSetup-Setup-{platform}",
+            str(PROJECT_FILE),
+        ]
+    )
     completed = subprocess.run(command, cwd=DEVICE_SETUP_DIR, check=False)
     if completed.returncode:
         raise ValueError(f"ISCC failed with exit code {completed.returncode}")

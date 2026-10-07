@@ -82,6 +82,9 @@ class RealDataIntegrationTests(unittest.TestCase):
             normalized,
         )
         self.assertIn("privilegesrequired=lowest", normalized)
+        self.assertIn("#ifdef appplatform64", normalized)
+        self.assertIn("architecturesallowed=x64", normalized)
+        self.assertIn("architecturesinstallin64bitmode=x64", normalized)
         self.assertIn("outputbasefilename=devicesetup-setup-{#installerplatform}", normalized)
         self.assertIn('name: "{autoprograms}/{#appname}"; filename: "{app}/devicesetup.exe"', normalized)
 

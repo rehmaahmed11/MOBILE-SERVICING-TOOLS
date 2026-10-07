@@ -4,16 +4,12 @@
   #define AppVersion "1.1.0"
 #endif
 
-#ifndef AppPlatform64
-  #define AppPlatform64 1
-#endif
-
-#if AppPlatform64
+; AppPlatform64 is defined only for a Win64 package. Presence-based selection
+; avoids treating a command-line value of 0 as a truthy string.
+#ifdef AppPlatform64
   #define InstallerPlatform "Win64"
-  #define AllowedArchitectures "x64"
 #else
   #define InstallerPlatform "Win32"
-  #define AllowedArchitectures "x86 x64"
 #endif
 
 [Setup]
@@ -26,8 +22,8 @@ DefaultDirName={localappdata}\Programs\Mobile Servicing Tools
 DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
-ArchitecturesAllowed={#AllowedArchitectures}
-#if AppPlatform64
+#ifdef AppPlatform64
+ArchitecturesAllowed=x64
 ArchitecturesInstallIn64BitMode=x64
 #endif
 OutputDir=artifacts
