@@ -141,7 +141,7 @@ type
     Reserved: ULONG_PTR;
   end;
 
-function SetupDiGetClassDevsW(ClassGuid: PGUID; Enumerator: PWideChar;
+function SetupDiGetClassDevsW(ClassGuid: PGUID; AEnumerator: PWideChar;
   hwndParent: HWND; Flags: DWORD): HDEVINFO; stdcall;
   external 'setupapi.dll' name 'SetupDiGetClassDevsW';
 function SetupDiEnumDeviceInfo(DeviceInfoSet: HDEVINFO;
@@ -180,7 +180,7 @@ begin
   RegType := 0;
   Required := 0;
   if SetupDiGetDeviceRegistryPropertyW(ADevInfo, AData, AProperty, RegType,
-    @Buf[0], SizeOf(Buf), Required) then
+    @Buf[0], DWORD(SizeOf(Buf)), Required) then
     Result := WideToAppString(@Buf[0]);
 end;
 
@@ -193,7 +193,7 @@ begin
   Result := '';
   FillChar(Buf, SizeOf(Buf), 0);
   Required := 0;
-  if SetupDiGetDeviceInstanceIdW(ADevInfo, AData, @Buf[0], SizeOf(Buf),
+  if SetupDiGetDeviceInstanceIdW(ADevInfo, AData, @Buf[0], DWORD(SizeOf(Buf)),
     Required) then
     Result := WideToAppString(@Buf[0]);
 end;
@@ -403,17 +403,17 @@ function ScanUsbDevices: TDeviceArray;
 var
   DevInfo: HDEVINFO;
   Data: TSpDevInfoData;
-  Enumerator: UnicodeString;
+  EnumFilter: UnicodeString;
   Index: DWORD;
-  HardwareId, Friendly, Description, InstanceId, Text, Serial: string;
+  HardwareId, Friendly, Description, InstanceId, DevText, Serial: string;
   Vid, Pid: Integer;
   Dev: TDetectedDevice;
   N: Integer;
 begin
   SetLength(Result, 0);
   N := 0;
-  Enumerator := 'USB';
-  DevInfo := SetupDiGetClassDevsW(nil, PWideChar(Enumerator), 0,
+  EnumFilter := 'USB';
+  DevInfo := SetupDiGetClassDevsW(nil, PWideChar(EnumFilter), 0,
     DIGCF_PRESENT or DIGCF_ALLCLASSES);
   { HDEVINFO is a pointer: INVALID_HANDLE_VALUE must be cast before comparing. }
   if (DevInfo = nil) or (DevInfo = Pointer(INVALID_HANDLE_VALUE)) then
@@ -435,23 +435,23 @@ begin
       Friendly := CleanDescription(ReadProperty(DevInfo, Data, SPDRP_FRIENDLYNAME));
       Description := CleanDescription(ReadProperty(DevInfo, Data, SPDRP_DEVICEDESC));
       if Friendly <> '' then
-        Text := Friendly
+        DevText := Friendly
       else
-        Text := Description;
+        DevText := Description;
 
-      if not IsInteresting(Vid, Text) then
+      if not IsInteresting(Vid, DevText) then
         Continue;
 
       InstanceId := ReadInstanceId(DevInfo, Data);
       Serial := InstanceSerial(InstanceId);
 
-      Dev.Kind := ClassifyDevice(Vid, Pid, Text + ' ' + Description);
+      Dev.Kind := ClassifyDevice(Vid, Pid, DevText + ' ' + Description);
       Dev.KindText := DeviceKindText(Dev.Kind);
       Dev.Vid := Vid;
       Dev.Pid := Pid;
       Dev.InstanceId := InstanceId;
       Dev.Serial := Serial;
-      Dev.Description := Text;
+      Dev.Description := DevText;
       Dev.PortName := ExtractComPort(Friendly);
 
       if N = Length(Result) then

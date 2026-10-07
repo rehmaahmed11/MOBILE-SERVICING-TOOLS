@@ -76,8 +76,9 @@ implementation
 
 uses
 {$IFDEF FPC}
-  ShellApi;
+  Windows, ShellApi;      { SW_SHOWNORMAL lives in Windows under Free Pascal }
 {$ELSE}
+  Winapi.Windows,
   Winapi.ShellAPI;
 {$ENDIF}
 
