@@ -1,0 +1,421 @@
+{
+  "schema_version": 1,
+  "description": "SHA-256 inventory for the supplied MOBILO TOOLZ support tree. Hashes check package identity and copy integrity; they are not vendor signatures or compatibility guarantees.",
+  "files": [
+    {
+      "path": "7z.dll",
+      "size_bytes": 1075528,
+      "sha256": "99d96029d0d1aadfb5cfb7c583f705a22b65df06bf2a3a894713c0404527130c"
+    },
+    {
+      "path": "AdbWinApi.dll",
+      "size_bytes": 96256,
+      "sha256": "14a51482aa003db79a400f4b15c158397fe6d57ee6606b3d633fa431a7bfdf4b"
+    },
+    {
+      "path": "AdbWinUsbApi.dll",
+      "size_bytes": 60928,
+      "sha256": "041c6859bb4fc78d3a903dd901298cd1ecfb75b6be0646b74954cd722280a407"
+    },
+    {
+      "path": "Data/DA/AGM.da",
+      "size_bytes": 235520,
+      "sha256": "e420a2d54317a28d4c2353034bff697caf18b866fa04f1cbb98a8e564eed1eef"
+    },
+    {
+      "path": "Data/DA/ASUS.da",
+      "size_bytes": 307200,
+      "sha256": "62e1ae35ce65d7792f69c1fbee3a1351e434039b0c210783a5dfcfe15c2cf239"
+    },
+    {
+      "path": "Data/DA/BLACKVIEW.da",
+      "size_bytes": 481280,
+      "sha256": "22257b432e5e4a19f0ee4b04cedd40c5d557e304372193b20a27b58b1bc1e86a"
+    },
+    {
+      "path": "Data/DA/DA_v6.crp",
+      "size_bytes": 4180570,
+      "sha256": "952d8b6e598969069e3ff1739ab6be67afe83abe6bf72e555018ec71eefc3c72"
+    },
+    {
+      "path": "Data/DA/DOOGEE.da",
+      "size_bytes": 430080,
+      "sha256": "36980a9dae0630350d058c821d227f814b4ca84fe88df1d1b03f97146b475fd6"
+    },
+    {
+      "path": "Data/DA/HUAWEI_HONOR.da",
+      "size_bytes": 419840,
+      "sha256": "5d8eb0b7f3b42aab867a8b5aeb655bbf0639170ee5e93f774e1809ab637ffd7d"
+    },
+    {
+      "path": "Data/DA/INFINIX_TECNO.da",
+      "size_bytes": 5365760,
+      "sha256": "fe26e258f8b1fc707661afc16648689550b30bfd251956dde66782347851e032"
+    },
+    {
+      "path": "Data/DA/ITEL.da",
+      "size_bytes": 471040,
+      "sha256": "c78b874afe9734f41e00a0c5985d8b5d2bdfe509f3781b6d14cb7de2be838ede"
+    },
+    {
+      "path": "Data/DA/LENOVO.da",
+      "size_bytes": 4618240,
+      "sha256": "f879dad5d68f5d18de5549e968a0c14eb8045f27086834e3c2ccf606f748de9f"
+    },
+    {
+      "path": "Data/DA/models_map.ini",
+      "size_bytes": 879,
+      "sha256": "3d765481a05ac82467c0ff08d81cf06daafef9dd7d69037c7095c1bc47629e0b"
+    },
+    {
+      "path": "Data/DA/MOTOROLA.da",
+      "size_bytes": 3256320,
+      "sha256": "1b94d771d19b1d4bf4df5bd486ebda167488513f46e372c852c4c5230882cef3"
+    },
+    {
+      "path": "Data/DA/MTK.da",
+      "size_bytes": 3174400,
+      "sha256": "076330b6928886f8ea54a5f87893139a8a5610e9eefc6ed268d546ba56c11b55"
+    },
+    {
+      "path": "Data/DA/MTK_AllInOne_DA.bin",
+      "size_bytes": 17777672,
+      "sha256": "44dcf9fe7b023b641a8593e090e37863e7d891fecb205267212681ee568fcc2b"
+    },
+    {
+      "path": "Data/DA/MTK_AllInOne_DA_v2.crp",
+      "size_bytes": 21463357,
+      "sha256": "04a83a51ac6e1c4b48777e6476c28d36d6542ff54ef42ecec1ec06aa67bf309f"
+    },
+    {
+      "path": "Data/DA/NOTHING.da",
+      "size_bytes": 1372160,
+      "sha256": "866eef509b87e83808f0a0b2bb45d295f3c26f8a709938e63ee674e06cf2f7de"
+    },
+    {
+      "path": "Data/DA/ONEPLUS.da",
+      "size_bytes": 3153920,
+      "sha256": "8ba9e7430476e6fecfda400c0b155b9a6d1451cd1871a7c155bcd017de4b69c4"
+    },
+    {
+      "path": "Data/DA/OPPO.da",
+      "size_bytes": 6430720,
+      "sha256": "caa4c958b60c86ce3d584e34a1bc7aced94502a1190783ae97ff8eda50cd5fbd"
+    },
+    {
+      "path": "Data/DA/OUKITEL.da",
+      "size_bytes": 2078720,
+      "sha256": "e2005db3ffb06e758b1429e309bc1a645ffbf56ad8179ee16ddd4632de7ba039"
+    },
+    {
+      "path": "Data/DA/preloader.crp",
+      "size_bytes": 16368,
+      "sha256": "636f44be0798b54c611e78f6a199ffcbf3a8278bb04a1c27d58f2b185f278a7f"
+    },
+    {
+      "path": "Data/DA/preloader2.crp",
+      "size_bytes": 16144,
+      "sha256": "53d2494f834b68d225fd36ec98ea4a97be24c756a130bf9becf111d569fbb1d3"
+    },
+    {
+      "path": "Data/DA/preloader3.crp",
+      "size_bytes": 478112,
+      "sha256": "ca06e4d7035a8d3e83e251be702bb593accec2322709092d155b887e42550e34"
+    },
+    {
+      "path": "Data/DA/preloader3_v6_MT6781.crp",
+      "size_bytes": 138932,
+      "sha256": "262e75bacdabbc90d5eeb3663e1977e0e618ad8360fbfb71cb3db2cdccfb8c42"
+    },
+    {
+      "path": "Data/DA/preloader3_v6_MT6789.crp",
+      "size_bytes": 171620,
+      "sha256": "4c9b969c4368e8db6efe60cc4883fce3408cfc5d9d23b1c00eb2462911c114ef"
+    },
+    {
+      "path": "Data/DA/preloader3_v6_MT6835.crp",
+      "size_bytes": 199652,
+      "sha256": "2d7cd28fb23a14bee07b62c92ca42df5fcfecc812a7fceab36b1fe474d99a230"
+    },
+    {
+      "path": "Data/DA/preloader3_v6_MT6855.crp",
+      "size_bytes": 167376,
+      "sha256": "ce282c030c4b7a1a905dbfd725438297308c92e21ccf2b50c42461fa12677460"
+    },
+    {
+      "path": "Data/DA/preloader3_v6_MT6886.crp",
+      "size_bytes": 167760,
+      "sha256": "30e21001e9954d73201d2effea437a0147874d5f1ba0d760eeee35ad9df15a52"
+    },
+    {
+      "path": "Data/DA/preloader3_v6_MT6895.crp",
+      "size_bytes": 173736,
+      "sha256": "61e297b9670f156f459764cdbe8b0578037946a16740469c65cfce09b7f9d578"
+    },
+    {
+      "path": "Data/DA/preloader3_v6_MT6983.crp",
+      "size_bytes": 149184,
+      "sha256": "b013e645928888810b3ecdf08047a0798eb860b822f05555480c03f35c3e0a73"
+    },
+    {
+      "path": "Data/DA/preloader4.crp",
+      "size_bytes": 395064,
+      "sha256": "d8e6d4e0c2b40d277e0634bbfdf9cc6cfe7ec030633bd05c42a946beccd16e2c"
+    },
+    {
+      "path": "Data/DA/preloader5.crp",
+      "size_bytes": 16308,
+      "sha256": "580644e4fe539cc76149d65cc3091a6fab12770f70ffb8c99053161501d18b7a"
+    },
+    {
+      "path": "Data/DA/REALME.da",
+      "size_bytes": 4198400,
+      "sha256": "edf905b2fbc0fc246d8a5770c3fb711352d3dbbd688d3abb46b10b6dbdf47f68"
+    },
+    {
+      "path": "Data/DA/samsung.da",
+      "size_bytes": 18984960,
+      "sha256": "a3ccb94d69e13443086a533ce0e334d3799c0e46325e10e7a0809f2199cb9635"
+    },
+    {
+      "path": "Data/DA/TCL.da",
+      "size_bytes": 8796160,
+      "sha256": "e34a5554f6bb10dbeb0d43bf1e9cbe78307ea170d52718f46208d18c909b7855"
+    },
+    {
+      "path": "Data/DA/TECLAST.da",
+      "size_bytes": 235520,
+      "sha256": "e12b63df2051425052644f3f0a6abaecb6129c7cc39adf64d11e3753a29d1412"
+    },
+    {
+      "path": "Data/DA/ULEFONE.da",
+      "size_bytes": 430080,
+      "sha256": "a9234f0c019c3df55e89ff0583c446cfb84cf902fe2175c4bffa8e8c0000b2ef"
+    },
+    {
+      "path": "Data/DA/UMIDIGI.da",
+      "size_bytes": 460800,
+      "sha256": "677bc47918764edc2b3591b5fe2b75c6aca31611e4eda995e3fe45d1133c7ee6"
+    },
+    {
+      "path": "Data/DA/VIVO.da",
+      "size_bytes": 6574080,
+      "sha256": "d175740bb813262fa16bb71f8aa2961d1af0f98c313d9c7fef28084ec68889e5"
+    },
+    {
+      "path": "Data/DA/XIAOMI.da",
+      "size_bytes": 1976320,
+      "sha256": "e7c817c47b6631e19dbd573ac1101e3d6cc650345cd0c48d5351cf2c155c646e"
+    },
+    {
+      "path": "Data/FDL1",
+      "size_bytes": 1218560,
+      "sha256": "8e77b1424131bb67b898da91de7b2740e9e608c72687e935b99b27478a027d4c"
+    },
+    {
+      "path": "Data/FDL2",
+      "size_bytes": 17203200,
+      "sha256": "0c7d5296bb99e83876669118bfad542eb4d47b4878e55536c6654ba43edb2400"
+    },
+    {
+      "path": "liblz4.dll",
+      "size_bytes": 97792,
+      "sha256": "313a0ee6066d19aed21c248f389d8728792a27ef836de97a981bc81b552a2510"
+    },
+    {
+      "path": "libusb/amd64/install-filter-win.exe",
+      "size_bytes": 74240,
+      "sha256": "b04a4a556f823ad3566d8488b533c3b2cff72869f63d86107ea5f7f5e3fd29e3"
+    },
+    {
+      "path": "libusb/amd64/install-filter-win.pdb",
+      "size_bytes": 675840,
+      "sha256": "f83e55a44d3927b492b54a81e228503025c370cac305f1b2825d56ab4b88bfc6"
+    },
+    {
+      "path": "libusb/amd64/install-filter.exe",
+      "size_bytes": 69360,
+      "sha256": "95f4f575639b9a4bf4f8a2f2ee226720cf87fb962aa33b6327ef0c704b63a3c4"
+    },
+    {
+      "path": "libusb/amd64/install-filter.pdb",
+      "size_bytes": 634880,
+      "sha256": "7275381b687201f15c53a4640956c2c1fd734e434dddb4e7da8a944ddcb5f213"
+    },
+    {
+      "path": "libusb/amd64/libusb-dll.pdb",
+      "size_bytes": 716800,
+      "sha256": "ec6f2bc3f427f8254c7f12ff7d859dc2911a209a237cf87956fd446cb8b946cd"
+    },
+    {
+      "path": "libusb/amd64/libusb0.dll",
+      "size_bytes": 123552,
+      "sha256": "0cd18719d5701e9cc642fc93a83f13830931d6f29f664fedbdf212bcb7c349bd"
+    },
+    {
+      "path": "libusb/amd64/libusb0.pdb",
+      "size_bytes": 610304,
+      "sha256": "f27e6fb56813a05437577c32f949b57010f88d1224f499c7a78eb8f4791b8189"
+    },
+    {
+      "path": "libusb/amd64/libusb0.sys",
+      "size_bytes": 99224,
+      "sha256": "cda0070fe4f7c5de5d3bb06fa6d7e29e6f6740c0f2fa319fb5c1af235d78d616"
+    },
+    {
+      "path": "libusb/amd64/testlibusb-win.exe",
+      "size_bytes": 31984,
+      "sha256": "ad0c35a7f754998ed3a4f2152d2cc9e94ee6de665a960b054ef8faf14cd61da6"
+    },
+    {
+      "path": "libusb/amd64/testlibusb-win.pdb",
+      "size_bytes": 479232,
+      "sha256": "77c34374d74378d63d71d95c359835310425d0df3d60ca5ad2ef86c199d1d095"
+    },
+    {
+      "path": "libusb/amd64/testlibusb.exe",
+      "size_bytes": 28400,
+      "sha256": "9a0091efa4c99fa4d10f1539a33659630bba0cc977ab3ee7f01a60b7ecf108bc"
+    },
+    {
+      "path": "libusb/amd64/testlibusb.pdb",
+      "size_bytes": 454656,
+      "sha256": "1472b77eedbd2913bc4ed7a02941be6b0a8db0ade0d050480d31c30776ec532b"
+    },
+    {
+      "path": "libusb/arm64/install-filter-win.exe",
+      "size_bytes": 70656,
+      "sha256": "8904c2fa4ace1c6ff774706649bcf82987ada68a72ee7ae3a17d91ad71fefa5e"
+    },
+    {
+      "path": "libusb/arm64/install-filter-win.pdb",
+      "size_bytes": 675840,
+      "sha256": "6f20eec4e105dbb70e7d5430c11e492bbafa5facf6f3f3e6d1197db20671a717"
+    },
+    {
+      "path": "libusb/arm64/install-filter.exe",
+      "size_bytes": 66288,
+      "sha256": "56dcc6d31efa89dcbcf071525689a81a22c8fbe176db9d9f83a884d32fecd9ef"
+    },
+    {
+      "path": "libusb/arm64/install-filter.pdb",
+      "size_bytes": 626688,
+      "sha256": "c66bdcd2f804c31f8aa6c53e95d731120d548c485c0b0c5351c052e9a922870f"
+    },
+    {
+      "path": "libusb/arm64/libusb-dll.pdb",
+      "size_bytes": 700416,
+      "sha256": "fb93f2650de4ee293e4e7726d0d36ccb95952690cadd2735e0b90bc63dd12751"
+    },
+    {
+      "path": "libusb/arm64/libusb0.dll",
+      "size_bytes": 119968,
+      "sha256": "8b85274c64261d7affbc897a15ccfe78ee35b682a4595f870980e17667aac7d1"
+    },
+    {
+      "path": "libusb/arm64/libusb0.pdb",
+      "size_bytes": 716800,
+      "sha256": "e4a7fdcf19e7d81ddeec3bb0e55f662b2e18507710382b6791cb0f35f6488725"
+    },
+    {
+      "path": "libusb/arm64/libusb0.sys",
+      "size_bytes": 99736,
+      "sha256": "d9d279b943aa71bd4933b9791afa53c4d5751829d4e78c12b3a4632839a9e60c"
+    },
+    {
+      "path": "libusb/arm64/testlibusb-win.exe",
+      "size_bytes": 30448,
+      "sha256": "86cad5e8c0208aa671049762b2a8811984287c591af5140bf7e36a1c7cd169b4"
+    },
+    {
+      "path": "libusb/arm64/testlibusb-win.pdb",
+      "size_bytes": 471040,
+      "sha256": "a2618a44f507ee788d2f1431b6feae1635e407362a90e0e84331aa8d8cd91f02"
+    },
+    {
+      "path": "libusb/arm64/testlibusb.exe",
+      "size_bytes": 27888,
+      "sha256": "0dc705df274bf980e47c5ba98d8b55683e75f88bafda8242220cf524f1386bd2"
+    },
+    {
+      "path": "libusb/arm64/testlibusb.pdb",
+      "size_bytes": 454656,
+      "sha256": "0f9d261b7c62e2c175badec1323194e82be647bfba20f8da411b975f5b16d546"
+    },
+    {
+      "path": "libusb/libusb-win32-devel-filter-1.4.0.2.exe",
+      "size_bytes": 1948429,
+      "sha256": "f07ecc81cd75094efd4a097c1549ff63b5fabe6eaf57e8b970000be5a18bf86d"
+    },
+    {
+      "path": "libusb/libusb0.cat",
+      "size_bytes": 14724,
+      "sha256": "8556e3387cede278353d0f6bbd74197f0ed43186e4891b1114491855bb9c66ab"
+    },
+    {
+      "path": "libusb/libusb0.inf",
+      "size_bytes": 6005,
+      "sha256": "62abab852a7fe61cfc9490a57908ed2793f3681575fabfb52987feb44fd51aa3"
+    },
+    {
+      "path": "libusb/x86/install-filter-win.exe",
+      "size_bytes": 62464,
+      "sha256": "920c6396185977c1c99187774773bca57b7332f9e140aa11ccfa7b8f26a5b49a"
+    },
+    {
+      "path": "libusb/x86/install-filter-win.pdb",
+      "size_bytes": 692224,
+      "sha256": "05544a8c2e57d5a5cbe2324737139f2d4d897a959db84bfd36206b14c71e73ff"
+    },
+    {
+      "path": "libusb/x86/install-filter.exe",
+      "size_bytes": 59120,
+      "sha256": "2abbbd0b4c437e7686eba452445a928800626d377a572b3acf5456056e0d5072"
+    },
+    {
+      "path": "libusb/x86/install-filter.pdb",
+      "size_bytes": 651264,
+      "sha256": "a56ca70438403eba64eba6162b12f741e6659a614d1a9f054a3a0104c83ca0be"
+    },
+    {
+      "path": "libusb/x86/libusb-dll.pdb",
+      "size_bytes": 716800,
+      "sha256": "bfd7d504683bc86e2920d4dd1579c2fe3a860dd4ac77f098a5a5830c4e447253"
+    },
+    {
+      "path": "libusb/x86/libusb0.pdb",
+      "size_bytes": 569344,
+      "sha256": "6fa0af4ab92d8638325fc3e1a4e9d54f9c34fb649b3b456ae76f28d762adff2c"
+    },
+    {
+      "path": "libusb/x86/libusb0.sys",
+      "size_bytes": 90008,
+      "sha256": "96627d2d9d3a4683e58d5bc3d4c40337e6410d6279a301f49a4586985a10833e"
+    },
+    {
+      "path": "libusb/x86/libusb0_x86.dll",
+      "size_bytes": 107680,
+      "sha256": "f56c6f28bfb864761cebc05494b56af8bed97493f3b6e7b19afcb8f1abcd2cbe"
+    },
+    {
+      "path": "libusb/x86/testlibusb-win.exe",
+      "size_bytes": 28912,
+      "sha256": "7e4ae020b196cd2082904b1de3bfb1fe7040d5b3d40f596a9abcc4cf143cb608"
+    },
+    {
+      "path": "libusb/x86/testlibusb-win.pdb",
+      "size_bytes": 479232,
+      "sha256": "be9cdc341c3996eab213dea938e993de1ed0a18af0063b38dcacd6dff06a98eb"
+    },
+    {
+      "path": "libusb/x86/testlibusb.exe",
+      "size_bytes": 26352,
+      "sha256": "a9cc0538ff4daec27f69fd1eadc7596cc1fff4c842dbacb69700464a2fd869f9"
+    },
+    {
+      "path": "libusb/x86/testlibusb.pdb",
+      "size_bytes": 462848,
+      "sha256": "3fca2ac55da661217802ae28e9e575c8b5c6a59b545888255b6aae8417d5d23d"
+    }
+  ]
+}

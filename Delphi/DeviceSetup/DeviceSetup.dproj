@@ -52,6 +52,7 @@
       <Form>frmMain2</Form>
     </DCCReference>
     <DCCReference Include="DeviceCatalog.pas" />
+    <DCCReference Include="DaLoader.pas" />
     <DCCReference Include="ToolbarIcons.pas" />
     <DCCReference Include="SampleAssets.pas" />
     <DCCReference Include="SampleControls.pas" />

@@ -281,7 +281,10 @@ type
     FSessionLog: TStringList;
     FManualFormat: Boolean;
     FAiExceptBootloader: Boolean;
+    FDataAssetPath: string;
+    FDataAssetInfo: string;
     procedure AssignGlyph(AButton: TSampleButton; const AKind: TActionGlyph);
+    procedure RefreshAgentSelection;
     procedure SetupLogFont;
     procedure AddLogLine(const ALine: string);
     procedure LogSettings;
@@ -473,6 +476,18 @@ begin
   for I := 1 to Length(Result) do
     if CharInSet(Result[I], ['\', '/', ':', '*', '?', '"', '<', '>', '|', ' ']) then
       Result[I] := '_';
+end;
+
+function FormatDataSize(const ABytes: Int64): string;
+begin
+  if ABytes < 0 then
+    Result := 'size unavailable'
+  else if ABytes >= 1024 * 1024 then
+    Result := FormatFloat('0.0', ABytes / (1024.0 * 1024.0)) + ' MiB'
+  else if ABytes >= 1024 then
+    Result := FormatFloat('0', ABytes / 1024.0) + ' KiB'
+  else
+    Result := IntToStr(ABytes) + ' bytes';
 end;
 
 { ---------------------------------------------------------------- setup }
@@ -721,6 +736,88 @@ begin
   chkForceBrom.Enabled := I <> CPlatformGeneric;
   chkReadEmi.Enabled := I <> CPlatformGeneric;
   chkReadPhoneInfo.Enabled := True;
+  RefreshAgentSelection;
+end;
+
+procedure TMain2Form.RefreshAgentSelection;
+var
+  DataRes: TDaLoadResult;
+  Fdl1, Fdl2, DisplayText: string;
+  TotalBytes: Int64;
+begin
+  FDataAssetPath := '';
+  FDataAssetInfo := '';
+  DisplayText := '';
+
+  case cbPlatform.ItemIndex of
+    CPlatformMtk:
+      begin
+        DataRes := ResolveAndExtractDa(FBrand, FModelCode, FModelName);
+        if DataRes.Found then
+        begin
+          FDataAssetPath := DataRes.AgentFile;
+          FDataAssetInfo := DataRes.Message;
+          DisplayText := ExtractFileName(DataRes.AgentFile) + ' (' +
+            FormatDataSize(DataRes.FileSizeBytes) + ')';
+        end
+        else
+        begin
+          FDataAssetInfo := DataRes.Message;
+          DisplayText := 'No bundled DA for this brand/model';
+        end;
+      end;
+    CPlatformUnisoc:
+      begin
+        Fdl1 := GetFdl1Path;
+        Fdl2 := GetFdl2Path;
+        if (Fdl1 <> '') and (Fdl2 <> '') then
+        begin
+          FDataAssetPath := Fdl1 + ';' + Fdl2;
+          TotalBytes := FileSizeOf(Fdl1) + FileSizeOf(Fdl2);
+          FDataAssetInfo := 'Bundled FDL files are catalogued byte-for-byte; '
+            + 'exact chipset compatibility is not verified.' + sLineBreak +
+            'FDL1: ' + Fdl1 + sLineBreak + 'FDL2: ' + Fdl2;
+          DisplayText := 'FDL1 + FDL2 (' + FormatDataSize(TotalBytes) + ')';
+        end
+        else
+        begin
+          FDataAssetInfo := 'A complete FDL1/FDL2 pair is not bundled.';
+          DisplayText := 'No bundled FDL pair';
+        end;
+      end;
+    CPlatformQualcomm:
+      begin
+        FDataAssetInfo := 'No Qualcomm programmer is included in this support tree. '
+          + 'Use only a vendor-signed programmer when required.';
+        DisplayText := 'No bundled Qualcomm programmer';
+      end;
+    CPlatformSamsung:
+      begin
+        DataRes := ResolveAndExtractDa('Samsung', FModelCode, FModelName);
+        if DataRes.Found then
+        begin
+          FDataAssetPath := DataRes.AgentFile;
+          FDataAssetInfo := DataRes.Message;
+          DisplayText := ExtractFileName(DataRes.AgentFile) + ' (' +
+            FormatDataSize(DataRes.FileSizeBytes) + ')';
+        end
+        else
+        begin
+          FDataAssetInfo := DataRes.Message;
+          DisplayText := 'No bundled Samsung package';
+        end;
+      end;
+  else
+    begin
+      FDataAssetInfo := 'No generic service payload is included.';
+      DisplayText := 'No bundled generic payload';
+    end;
+  end;
+
+  ReplaceComboItems(cbDownloadAgent, [DisplayText]);
+  cbDownloadAgent.Hint := FDataAssetInfo + sLineBreak +
+    'Data folder: ' + GetDataFolder;
+  cbDownloadAgent.ShowHint := True;
 end;
 
 procedure TMain2Form.AssignGlyph(AButton: TSampleButton; const AKind: TActionGlyph);
@@ -746,8 +843,6 @@ end;
 procedure TMain2Form.SetDevice(const ABrand, AModelEntry: string);
 var
   SepPos: Integer;
-  DaRes: TDaLoadResult;
-  Fdl1, Fdl2: string;
 begin
   { Model entries look like "RMX3382 : Realme 8s 5G". }
   FBrand := ABrand;
@@ -764,35 +859,7 @@ begin
   end;
 
   Caption := AppTitle + ' - ' + FModelName;
-
-  { Check for Unisoc FDL files }
-  Fdl1 := GetFdl1Path;
-  Fdl2 := GetFdl2Path;
-  if (Fdl1 <> '') and (Fdl2 <> '') and (cbPlatform.ItemIndex = CPlatformUnisoc) then
-  begin
-    ReplaceComboItems(cbDownloadAgent, [ExtractFileName(Fdl1) + ' / ' + ExtractFileName(Fdl2)]);
-  end;
-
-  { Automatic DA discovery and extraction }
-  DaRes := ResolveAndExtractDa(FBrand, FModelCode, FModelName);
-  if DaRes.Found then
-  begin
-    if DaRes.ExtractedDaBin <> '' then
-      ReplaceComboItems(cbDownloadAgent, [ExtractFileName(DaRes.DaFile) + ' -> ' + ExtractFileName(DaRes.ExtractedDaBin)]);
-
-    if DaRes.HasAuth then
-    begin
-      edtAuth.Text := DaRes.ExtractedAuthBin;
-      chkAuthPreloader.Checked := True;
-      chkAuthBrom.Checked := True;
-    end
-    else
-    begin
-      { Safe fallback: clear auth path and uncheck preloader auth }
-      edtAuth.Text := '';
-      chkAuthPreloader.Checked := False;
-    end;
-  end;
+  RefreshAgentSelection;
 end;
 
 procedure TMain2Form.FormKeyDown(Sender: TObject; var Key: Word;
@@ -1088,15 +1155,16 @@ end;
 
 procedure TMain2Form.ShowDemoLog;
 begin
-  { Sample lines in the style of the reference screenshot (used by the
-    self-test screenshots only). }
+  { Deterministic presentation output used by the self-test only. None of
+    these lines are collected from a connected phone. }
+  Log(LMuted('[SIMULATED SELF-TEST OUTPUT -- no phone was queried]'));
   Log('Force Charge... ' + LOk);
   Log('Disable WatchDog Timer... ' + LOk);
   Log('Preloader exist. Skip connection verification.');
   Log('Get ME ID... ' + LOk);
-  Log('ME_ID =  ' + LInfo('0x79E2F16C, 0x28109B51, 0x6D061FBF, 0x9B47BCDA'));
+  Log('ME_ID =  ' + LInfo('[simulated value]'));
   Log('Load DownloadAgent... ' + LOk);
-  Log('Search DA... ' + LOk + ' ' + LInfo('[0]'));
+  Log('Search DA... ' + LOk + ' ' + LInfo('[sample package]'));
   Log('Get device connection agent... ' + LInfo('[PRELOADER]'));
   Log('Send preloader... ' + LErr('error(STATUS_DA_HASH_MISMATCH)'));
 end;
@@ -1360,7 +1428,14 @@ end;
 procedure TMain2Form.pbHelpClick(Sender: TObject);
 begin
   MessageDlg(AppTitle + sLineBreak + AppVersionText + sLineBreak + sLineBreak +
-    'Selected device: ' + FBrand + ' ' + FModelName + sLineBreak + sLineBreak +
+    'Selected device: ' + FBrand + ' ' + FModelName + sLineBreak +
+    'Bundled DA/FDL payloads: ' + IntToStr(GetBundledDataAssetCount) +
+    ' file(s), ' + FormatDataSize(GetBundledDataAssetBytes) + sLineBreak +
+    'Selected data: ' + cbDownloadAgent.Text + sLineBreak +
+    'Data path: ' + FDataAssetPath + sLineBreak + sLineBreak +
+    'Payload files are catalogued as supplied. Their authenticity and exact '
+    + 'device compatibility are not verified; no data is sent to a phone.' +
+    sLineBreak + sLineBreak +
     'Esc - back to the model list' + sLineBreak +
     'Ctrl+C / Ctrl+A in the log - copy / select all' + sLineBreak + sLineBreak +
     'Settings and logs: ' + DataDir, mtInformation, [mbOK], 0);
@@ -1967,6 +2042,8 @@ var
   V: UInt64;
   Before: Integer;
   Imei: Integer;
+  DataRes: TDaLoadResult;
+  Fdl1, Fdl2: string;
 
   procedure Check(const AName: string; const AOk: Boolean);
   begin
@@ -1988,6 +2065,26 @@ begin
   Check('hex: rejects "12G4"', not TryParseHex64('12G4', V));
   Check('hex: rejects 17 digits', not TryParseHex64('11111111111111111', V));
   Check('hex: rejects empty', not TryParseHex64('  ', V));
+
+  DataRes := ResolveAndExtractDa('Oppo', 'CPH1909', 'OPPO A5s');
+  Check('real OPPO agent resolves to the supplied opaque vendor payload',
+    DataRes.Found and DataRes.IsOpaque and
+    SameText(ExtractFileName(DataRes.AgentFile), 'OPPO.da') and
+    (DataRes.FileSizeBytes > 500000));
+  DataRes := ResolveAndExtractDa('Realme', 'RMX3511', 'Realme C35');
+  Check('real Realme agent resolves to the supplied brand payload',
+    DataRes.Found and DataRes.IsOpaque and
+    SameText(ExtractFileName(DataRes.AgentFile), 'REALME.da') and
+    (DataRes.FileSizeBytes > 1000000));
+  Fdl1 := GetFdl1Path;
+  Fdl2 := GetFdl2Path;
+  Check('full-size Unisoc FDL1 and FDL2 files are present',
+    (Fdl1 <> '') and (Fdl2 <> '') and
+    (FileSizeOf(Fdl1) > 1000000) and (FileSizeOf(Fdl2) > 10000000));
+  Check('all supplied DA/FDL payloads are catalogued',
+    (GetBundledDataAssetCount >= 39) and
+    (GetBundledDataAssetBytes > 100 * 1024 * 1024));
+
   Check('log codes stripped',
     StripLogCodes('Search DA... ' + LOk + ' ' + LInfo('[0]')) = 'Search DA... OK [0]');
   Check('four file rows in the Files group',

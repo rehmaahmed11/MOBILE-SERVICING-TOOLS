@@ -1,47 +1,145 @@
-import os
+"""Contracts for the real bundled payloads and portable support tree.
+
+Run with ``python tools/test_da_integration.py``. The SHA-256 inventory is
+checked against every non-empty support file; hashes establish file identity,
+not vendor authenticity or model compatibility.
+"""
+import configparser
+from pathlib import Path
+import sys
+import tempfile
 import unittest
 import zipfile
-from pathlib import Path
 
-# Repo root is 3 levels up from tools: tools -> DeviceSetup -> Delphi -> Repo root
 TOOLS_DIR = Path(__file__).resolve().parent
 DEVICE_SETUP_DIR = TOOLS_DIR.parent
-REPO_ROOT = DEVICE_SETUP_DIR.parent.parent
+REPO_ROOT = DEVICE_SETUP_DIR.parents[1]
+ASSET_ROOT = REPO_ROOT / "FULL APP STRUCTURE" / "MOBILO TOOLZ"
+DATA_ROOT = ASSET_ROOT / "Data"
+DA_ROOT = DATA_ROOT / "DA"
 
-class DaIntegrationTests(unittest.TestCase):
-    def test_data_folders_exist(self):
-        for root in (REPO_ROOT, DEVICE_SETUP_DIR):
-            data_dir = root / "data"
-            da_dir = data_dir / "da"
-            self.assertTrue(data_dir.exists(), f"data folder should exist at {data_dir}")
-            self.assertTrue(da_dir.exists(), f"data/da folder should exist at {data_dir}")
+sys.path.insert(0, str(TOOLS_DIR))
+from package_app import (  # noqa: E402
+    copy_bundle,
+    verify_asset_manifest,
+    write_archive,
+)
 
-    def test_fdl_files_exist(self):
-        for root in (REPO_ROOT, DEVICE_SETUP_DIR):
-            fdl1 = root / "data" / "fdl1.bin"
-            fdl2 = root / "data" / "fdl2.bin"
-            self.assertTrue(fdl1.exists(), f"fdl1.bin should exist at {fdl1}")
-            self.assertTrue(fdl2.exists(), f"fdl2.bin should exist at {fdl2}")
 
-    def test_da_files_created_and_valid(self):
-        da_dir = DEVICE_SETUP_DIR / "data" / "da"
-        da_files = list(da_dir.glob("**/*.da"))
-        self.assertGreater(len(da_files), 0, "There should be at least one .da file in data/da")
-        
-        # Verify that zip-based .da files contain da.bin and optionally auth.bin
-        for da_path in da_files:
-            if zipfile.is_zipfile(da_path):
-                with zipfile.ZipFile(da_path, "r") as zf:
-                    names = [n.lower() for n in zf.namelist()]
-                    self.assertTrue(any("da" in n and n.endswith(".bin") for n in names),
-                                    f"{da_path.name} must contain a da.bin file")
+class RealDataIntegrationTests(unittest.TestCase):
+    def test_manifest_covers_and_verifies_the_complete_support_tree(self):
+        entries = verify_asset_manifest()
+        paths = {entry["path"] for entry in entries}
+        self.assertGreaterEqual(len(entries), 80)
+        self.assertIn("Data/DA/models_map.ini", paths)
+        self.assertIn("Data/FDL1", paths)
+        self.assertIn("Data/FDL2", paths)
+        self.assertIn("7z.dll", paths)
+        self.assertIn("AdbWinApi.dll", paths)
+        self.assertIn("libusb/amd64/libusb0.dll", paths)
+        self.assertIn("libusb/arm64/libusb0.dll", paths)
+        self.assertIn("libusb/x86/libusb0_x86.dll", paths)
 
-    def test_models_map_exists_and_maps_models(self):
-        map_path = DEVICE_SETUP_DIR / "data" / "da" / "models_map.ini"
-        self.assertTrue(map_path.exists(), "models_map.ini should exist")
-        content = map_path.read_text()
-        self.assertIn("[Models]", content)
-        self.assertIn("A59=", content)
+    def test_portable_zip_contains_every_verified_asset_and_the_executable(self):
+        entries = verify_asset_manifest()
+        with tempfile.TemporaryDirectory(prefix="device-setup-package-") as temp_dir:
+            temp = Path(temp_dir)
+            exe = temp / "source.exe"
+            exe.write_bytes(b"MZ portable bundle packaging test")
+            bundle = temp / "bundle"
+            archive = temp / "DeviceSetup.zip"
+
+            copy_bundle(exe, bundle)
+            write_archive(bundle, archive)
+
+            with zipfile.ZipFile(archive) as package:
+                names = set(package.namelist())
+                self.assertIn("DeviceSetup.exe", names)
+                self.assertIn("assets-manifest.json", names)
+                self.assertTrue(
+                    {entry["path"] for entry in entries} <= names,
+                    "portable ZIP must contain every file verified by the asset manifest",
+                )
+                for relative in ("Data/DA/OPPO.da", "Data/FDL1", "Data/FDL2"):
+                    with self.subTest(asset=relative):
+                        self.assertEqual(
+                            package.getinfo(relative).file_size,
+                            (ASSET_ROOT / relative).stat().st_size,
+                        )
+
+    def test_full_size_payloads_replace_the_old_placeholders(self):
+        self.assertGreater((DATA_ROOT / "FDL1").stat().st_size, 1_000_000)
+        self.assertGreater((DATA_ROOT / "FDL2").stat().st_size, 10_000_000)
+        self.assertGreater((DA_ROOT / "OPPO.da").stat().st_size, 5_000_000)
+        self.assertGreater((DA_ROOT / "REALME.da").stat().st_size, 4_000_000)
+        self.assertGreater((DA_ROOT / "samsung.da").stat().st_size, 15_000_000)
+        self.assertGreater((DA_ROOT / "MTK_AllInOne_DA.bin").stat().st_size, 15_000_000)
+
+        for path in DA_ROOT.glob("*.da"):
+            with self.subTest(path=path.name):
+                with path.open("rb") as source:
+                    header = source.read(4096)
+                self.assertFalse(header.startswith(b"PK\x03\x04"),
+                                 f"{path.name} should be the supplied opaque payload, not a mock ZIP")
+                self.assertNotIn(b"MTK_DA_BINARY_CONTENT", header)
+
+        old_data = DEVICE_SETUP_DIR / "data"
+        self.assertFalse(any(path.is_file() for path in old_data.rglob("*"))
+                         if old_data.exists() else False,
+                         "legacy placeholder data must not shadow the real package")
+
+    def test_brand_and_known_model_routes_resolve_to_existing_files(self):
+        parser = configparser.ConfigParser(interpolation=None)
+        map_path = DA_ROOT / "models_map.ini"
+        self.assertTrue(parser.read(map_path, encoding="utf-8"))
+        self.assertTrue(parser.has_section("Models"))
+        self.assertTrue(parser.has_section("Brands"))
+        for brand, file_name in {
+            "oppo": "OPPO.da",
+            "realme": "REALME.da",
+            "samsung": "samsung.da",
+            "mediatek": "MTK_AllInOne_DA.bin",
+            "tecno": "INFINIX_TECNO.da",
+            "huawei": "HUAWEI_HONOR.da",
+        }.items():
+            with self.subTest(brand=brand):
+                self.assertEqual(parser["Brands"][brand].casefold(), file_name.casefold())
+                self.assertTrue((DA_ROOT / file_name).is_file())
+        self.assertEqual(parser["Models"]["cph1909"], "OPPO.da")
+        self.assertEqual(parser["Models"]["rmx3511"], "REALME.da")
+        for section in ("Brands", "Models"):
+            for route, file_name in parser[section].items():
+                with self.subTest(section=section, route=route):
+                    self.assertTrue((DA_ROOT / file_name).is_file(),
+                                    f"{section} route {route} points to missing {file_name}")
+
+    def test_application_catalogs_opaque_payloads_without_claiming_device_io(self):
+        loader = (DEVICE_SETUP_DIR / "DaLoader.pas").read_text(encoding="utf-8")
+        main = (DEVICE_SETUP_DIR / "Main2Form.pas").read_text(encoding="utf-8")
+        self.assertIn("FULL APP STRUCTURE", loader)
+        self.assertIn("MOBILO TOOLZ", loader)
+        self.assertIn("AgentFile", loader)
+        self.assertIn("IsOpaque", loader)
+        self.assertIn("GetBundledDataAssetCount", loader)
+        self.assertIn("RefreshAgentSelection", main)
+        self.assertIn("ResolveAndExtractDa", main)
+        self.assertIn("error(NOT_IMPLEMENTED)", main)
+        self.assertIn("no phone was queried", main)
+
+    def test_payload_inventory_has_the_expected_scale(self):
+        manifest = (ASSET_ROOT / "assets-manifest.json").read_text(encoding="utf-8")
+        self.assertIn('"schema_version": 1', manifest)
+        self.assertIn('"sha256"', manifest)
+        payloads = [
+            path for path in DATA_ROOT.rglob("*")
+            if path.is_file() and (
+                path.suffix.lower() in {".da", ".bin", ".crp"}
+                or path.name.upper() in {"FDL1", "FDL2"}
+            )
+        ]
+        self.assertEqual(len(payloads), 39)
+        self.assertGreater(sum(path.stat().st_size for path in payloads), 100 * 1024 * 1024)
+
 
 if __name__ == "__main__":
-    unittest.main()
+    unittest.main(verbosity=2)

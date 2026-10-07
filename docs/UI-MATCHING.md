@@ -2,7 +2,7 @@
 
 ## Verified Windows previews
 
-These are real Win64 client captures from the completed UI, not mockups:
+These are real Win64 client captures from the completed UI, not mockups. They remain the layout/artwork references; after the support-data integration, the disabled Download agent field shows the resolved bundled filename and size instead of the earlier generic label.
 
 ### MAIN 1
 
@@ -126,6 +126,9 @@ python Delphi/DeviceSetup/tools/read_ci_screenshots.py --sha <commit> --output <
 Unlike the old GIF transport, this does not introduce
 256-colour dithering or alter the appearance of fonts and backgrounds.
 
-**Scope:** this change completes the reference interface. Real device
+**Scope:** the reference interface now catalogs the real supplied DA/FDL
+payloads and the portable package preserves the complete support tree. This
+only proves file presence and integrity against the checked-in hash inventory;
+it does not prove vendor authenticity or exact device compatibility. Real device
 communication is still unimplemented. Job buttons continue to validate and
 log `error(NOT_IMPLEMENTED)`; no phone read/write/format action is performed.
