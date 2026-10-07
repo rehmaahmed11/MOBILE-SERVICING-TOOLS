@@ -5,22 +5,13 @@ unit DaLoader;
 {$ENDIF}
 
 { DaLoader
-  Handles discovering and loading Download Agent (.da) containers, FDL files,
-  and standalone DA files from the data directory:
-    data/
-      fdl1.bin
-      fdl2.bin
-      da/
-        <Brand>/<Model>.da
-        <Model>.da
-        multi_model.da
-        models_map.ini (optional mapping of model codes / aliases to DA files)
+  Locates the supplied portable data layout (Data/DA and Data/FDL1/FDL2),
+  and keeps the real vendor agent payloads byte-for-byte. It also retains
+  support for optional ZIP/.da archives containing da.bin and auth.bin.
 
-  Each .da file is an archive container (7z created with ZArchiver / 7-Zip,
-  or standard ZIP format) containing:
-    - da.bin   (mandatory MTK download agent binary)
-    - auth.bin (optional brand/model authorization key binary)
-  If auth.bin is absent, it safely falls back to using only da.bin.
+  The shipped .da/.crp/.bin files are opaque vendor payloads; their format,
+  signature and exact handset compatibility are not inferred here. Finding a
+  file only catalogs it. No device communication is performed by this unit.
 }
 
 interface
@@ -39,10 +30,13 @@ uses
 type
   TDaLoadResult = record
     Found: Boolean;
-    DaFile: string;         { Path to the .da container file }
-    ExtractedDaBin: string; { Path to extracted da.bin }
-    ExtractedAuthBin: string; { Path to extracted auth.bin (empty if not present) }
+    DaFile: string;           { Path to the source payload / archive }
+    AgentFile: string;        { Direct raw payload or extracted da.bin }
+    ExtractedDaBin: string;   { Path to extracted da.bin (archives only) }
+    ExtractedAuthBin: string; { Path to extracted auth.bin (empty when absent) }
     HasAuth: Boolean;
+    IsOpaque: Boolean;       { True for supplied vendor payloads kept byte-for-byte }
+    FileSizeBytes: Int64;
     Message: string;
   end;
 
@@ -50,13 +44,14 @@ function GetDataFolder: string;
 function GetDaFolder: string;
 function GetFdl1Path: string;
 function GetFdl2Path: string;
+function GetBundledDataAssetCount: Integer;
+function GetBundledDataAssetBytes: Int64;
 
-{ Attempts to find and parse the DA container for the given Brand and Model.
-  Supports multi-model matching, brand subfolders, flat da folders,
-  and models_map.ini if present. }
+{ Resolve a real payload for the given Brand and Model. Opaque supplied files
+  are returned unchanged; only ZIP/7z archives are extracted. }
 function ResolveAndExtractDa(const ABrand, AModelCode, AModelName: string): TDaLoadResult;
 
-{ Direct archive extraction of .da (7z or ZIP) to output directory }
+{ Direct archive extraction of a ZIP/7z container to output directory }
 function ExtractDaArchive(const ADaPath, ATargetDir: string;
   out ADaBinPath, AAuthBinPath: string; out AError: string): Boolean;
 
@@ -65,54 +60,224 @@ implementation
 uses
   AppInfo;
 
+function IsDataRoot(const AFolder: string): Boolean;
+var
+  Root: string;
+begin
+  Root := IncludeTrailingPathDelimiter(AFolder);
+  Result := DirectoryExists(Root + 'DA') or DirectoryExists(Root + 'da') or
+    FileExists(Root + 'FDL1') or FileExists(Root + 'FDL2') or
+    FileExists(Root + 'fdl1.bin') or FileExists(Root + 'fdl2.bin');
+end;
+
+function ParentDirectory(const ADirectory: string): string;
+var
+  Current: string;
+begin
+  Current := ExcludeTrailingPathDelimiter(ADirectory);
+  Result := ExtractFileDir(Current);
+  if SameText(Result, Current) then
+    Result := '';
+end;
+
+function FindDataRootFrom(const AStartDirectory: string): string;
+var
+  Current, Candidate: string;
+  I: Integer;
+begin
+  Result := '';
+  if AStartDirectory = '' then
+    Exit;
+  Current := ExpandFileName(AStartDirectory);
+  for I := 0 to 12 do
+  begin
+    Candidate := IncludeTrailingPathDelimiter(Current) + 'Data' + PathDelim;
+    if IsDataRoot(Candidate) then
+    begin
+      Result := IncludeTrailingPathDelimiter(Candidate);
+      Exit;
+    end;
+    Candidate := IncludeTrailingPathDelimiter(Current) + 'data' + PathDelim;
+    if IsDataRoot(Candidate) then
+    begin
+      Result := IncludeTrailingPathDelimiter(Candidate);
+      Exit;
+    end;
+
+    { Development checkout: find the supplied product tree without copying
+      130+ MiB of payloads into Delphi/DeviceSetup/data. }
+    Candidate := IncludeTrailingPathDelimiter(Current) + 'FULL APP STRUCTURE' +
+      PathDelim + 'MOBILO TOOLZ' + PathDelim + 'Data' + PathDelim;
+    if IsDataRoot(Candidate) then
+    begin
+      Result := IncludeTrailingPathDelimiter(Candidate);
+      Exit;
+    end;
+    Candidate := IncludeTrailingPathDelimiter(Current) + 'MOBILO TOOLZ' +
+      PathDelim + 'Data' + PathDelim;
+    if IsDataRoot(Candidate) then
+    begin
+      Result := IncludeTrailingPathDelimiter(Candidate);
+      Exit;
+    end;
+
+    Current := ParentDirectory(Current);
+    if Current = '' then
+      Break;
+  end;
+end;
+
+function FindFileInsensitive(const ADirectory, AFileName: string): string;
+var
+  SR: TSearchRec;
+  Dir: string;
+begin
+  Result := '';
+  Dir := IncludeTrailingPathDelimiter(ADirectory);
+  if FileExists(Dir + AFileName) then
+  begin
+    Result := Dir + AFileName;
+    Exit;
+  end;
+  if FindFirst(Dir + '*', faAnyFile, SR) = 0 then
+  begin
+    repeat
+      if ((SR.Attr and faDirectory) = 0) and SameText(SR.Name, AFileName) then
+      begin
+        Result := Dir + SR.Name;
+        Break;
+      end;
+    until FindNext(SR) <> 0;
+    SysUtils.FindClose(SR);
+  end;
+end;
+
 function GetDataFolder: string;
 var
   Candidate: string;
 begin
-  { Check directory next to exe or working directory }
-  Candidate := ExeDir + 'data' + PathDelim;
-  if DirectoryExists(Candidate) then
-  begin
-    Result := Candidate;
-    Exit;
-  end;
+  { Installed bundle: Data/DA and Data/FDL1/FDL2 sit beside the EXE. }
+  Candidate := FindDataRootFrom(ExeDir);
+  if Candidate = '' then
+    Candidate := FindDataRootFrom(GetCurrentDir);
 
-  Candidate := DataDir + 'data' + PathDelim;
-  if DirectoryExists(Candidate) then
-  begin
-    Result := Candidate;
-    Exit;
-  end;
+  { User-managed data may be placed beside settings, including the APPDATA
+    fallback used when the application folder is read-only. }
+  if (Candidate = '') and IsDataRoot(DataDir + 'Data') then
+    Candidate := DataDir + 'Data' + PathDelim;
+  if (Candidate = '') and IsDataRoot(DataDir + 'data') then
+    Candidate := DataDir + 'data' + PathDelim;
 
-  { Default fallback to ExeDir\data }
-  Result := ExeDir + 'data' + PathDelim;
+  if Candidate <> '' then
+    Result := IncludeTrailingPathDelimiter(Candidate)
+  else
+    Result := ExeDir + 'Data' + PathDelim;
 end;
 
 function GetDaFolder: string;
+var
+  Root: string;
 begin
-  Result := GetDataFolder + 'da' + PathDelim;
+  Root := GetDataFolder;
+  if DirectoryExists(Root + 'DA') then
+    Result := Root + 'DA' + PathDelim
+  else if DirectoryExists(Root + 'da') then
+    Result := Root + 'da' + PathDelim
+  else
+    Result := Root + 'DA' + PathDelim;
 end;
 
 function GetFdl1Path: string;
 var
-  P: string;
+  Root: string;
 begin
-  P := GetDataFolder + 'fdl1.bin';
-  if FileExists(P) then
-    Result := P
-  else
-    Result := '';
+  Root := GetDataFolder;
+  Result := FindFileInsensitive(Root, 'FDL1');
+  if Result = '' then
+    Result := FindFileInsensitive(Root, 'fdl1.bin');
 end;
 
 function GetFdl2Path: string;
 var
-  P: string;
+  Root: string;
 begin
-  P := GetDataFolder + 'fdl2.bin';
-  if FileExists(P) then
-    Result := P
-  else
-    Result := '';
+  Root := GetDataFolder;
+  Result := FindFileInsensitive(Root, 'FDL2');
+  if Result = '' then
+    Result := FindFileInsensitive(Root, 'fdl2.bin');
+end;
+
+function FileSizeByPath(const AFileName: string): Int64;
+var
+  SR: TSearchRec;
+begin
+  Result := -1;
+  if (AFileName <> '') and (FindFirst(AFileName, faAnyFile, SR) = 0) then
+  begin
+    Result := SR.Size;
+    SysUtils.FindClose(SR);
+  end;
+end;
+
+function IsPayloadExtension(const AFileName: string): Boolean;
+var
+  Ext: string;
+begin
+  Ext := LowerCase(ExtractFileExt(AFileName));
+  Result := (Ext = '.da') or (Ext = '.bin') or (Ext = '.crp');
+end;
+
+function GetBundledDataAssetCount: Integer;
+var
+  SR: TSearchRec;
+  Dir: string;
+begin
+  Result := 0;
+  Dir := GetDaFolder;
+  if FindFirst(Dir + '*', faAnyFile, SR) = 0 then
+  begin
+    repeat
+      if ((SR.Attr and faDirectory) = 0) and IsPayloadExtension(SR.Name) then
+        Inc(Result);
+    until FindNext(SR) <> 0;
+    SysUtils.FindClose(SR);
+  end;
+  if GetFdl1Path <> '' then
+    Inc(Result);
+  if GetFdl2Path <> '' then
+    Inc(Result);
+end;
+
+function GetBundledDataAssetBytes: Int64;
+var
+  SR: TSearchRec;
+  Dir, FdlPath: string;
+  FdlSize: Int64;
+begin
+  Result := 0;
+  Dir := GetDaFolder;
+  if FindFirst(Dir + '*', faAnyFile, SR) = 0 then
+  begin
+    repeat
+      if ((SR.Attr and faDirectory) = 0) and IsPayloadExtension(SR.Name) then
+        Inc(Result, SR.Size);
+    until FindNext(SR) <> 0;
+    SysUtils.FindClose(SR);
+  end;
+  FdlPath := GetFdl1Path;
+  if FdlPath <> '' then
+  begin
+    FdlSize := FileSizeByPath(FdlPath);
+    if FdlSize >= 0 then
+      Inc(Result, FdlSize);
+  end;
+  FdlPath := GetFdl2Path;
+  if FdlPath <> '' then
+  begin
+    FdlSize := FileSizeByPath(FdlPath);
+    if FdlSize >= 0 then
+      Inc(Result, FdlSize);
+  end;
 end;
 
 function CleanFileName(const S: string): string;
@@ -148,6 +313,33 @@ begin
         Result := (Magic[0] = $37) and (Magic[1] = $7A) and
                   (Magic[2] = $BC) and (Magic[3] = $AF) and
                   (Magic[4] = $27) and (Magic[5] = $1C);
+      end;
+    finally
+      F.Free;
+    end;
+  except
+    Result := False;
+  end;
+end;
+
+function CheckZipMagic(const AFilePath: string): Boolean;
+var
+  F: TFileStream;
+  Magic: array[0..3] of Byte;
+begin
+  Result := False;
+  if not FileExists(AFilePath) then
+    Exit;
+  try
+    F := TFileStream.Create(AFilePath, fmOpenRead or fmShareDenyNone);
+    try
+      if F.Size >= SizeOf(Magic) then
+      begin
+        F.ReadBuffer(Magic, SizeOf(Magic));
+        Result := (Magic[0] = $50) and (Magic[1] = $4B) and
+          (((Magic[2] = $03) and (Magic[3] = $04)) or
+           ((Magic[2] = $05) and (Magic[3] = $06)) or
+           ((Magic[2] = $07) and (Magic[3] = $08)));
       end;
     finally
       F.Free;
@@ -354,27 +546,71 @@ begin
     AError := 'da.bin was not found inside ' + ExtractFileName(ADaPath);
 end;
 
+function SafeRelativePath(const APath: string): Boolean;
+begin
+  Result := False;
+  if APath = '' then
+    Exit;
+  Result := (ExtractFileDrive(APath) = '') and
+    (APath[1] <> '\') and (APath[1] <> '/') and
+    (Pos(':', APath) = 0) and (Pos('..', APath) = 0);
+end;
+
+function MappedPayloadPath(const ADirectory, ARelativePath: string): string;
+var
+  RelativePath: string;
+  I: Integer;
+begin
+  Result := '';
+  if not SafeRelativePath(ARelativePath) then
+    Exit;
+  RelativePath := ARelativePath;
+  for I := 1 to Length(RelativePath) do
+    if RelativePath[I] = '/' then
+      RelativePath[I] := PathDelim;
+  Result := IncludeTrailingPathDelimiter(ADirectory) + RelativePath;
+  if not FileExists(Result) then
+    Result := '';
+end;
+
+function FindPayloadByStem(const ADirectory, AStem: string): string;
+const
+  CExtensions: array[0..2] of string = ('.da', '.bin', '.crp');
+var
+  I: Integer;
+begin
+  Result := '';
+  if AStem = '' then
+    Exit;
+  for I := Low(CExtensions) to High(CExtensions) do
+  begin
+    Result := FindFileInsensitive(ADirectory, AStem + CExtensions[I]);
+    if Result <> '' then
+      Exit;
+  end;
+end;
+
 function FindDaFile(const ABrand, AModelCode, AModelName: string): string;
 var
-  DaDir: string;
-  Candidate: string;
-  MapFile: string;
+  DaDir, BrandDir, Candidate, MapFile: string;
   Ini: TIniFile;
   Mapped: string;
   SR: TSearchRec;
-  CleanCode, CleanModel: string;
+  CleanBrand, CleanCode, CleanModel: string;
 begin
   Result := '';
   DaDir := GetDaFolder;
   if not DirectoryExists(DaDir) then
     Exit;
 
+  CleanBrand := CleanFileName(ABrand);
   CleanCode := CleanFileName(AModelCode);
   CleanModel := CleanFileName(AModelName);
+  BrandDir := IncludeTrailingPathDelimiter(DaDir + CleanBrand);
 
-  { 1. Check models_map.ini if present for alias / multi-model mapping }
-  MapFile := DaDir + 'models_map.ini';
-  if FileExists(MapFile) then
+  { The checked-in brand map points to the actual supplied payload files. }
+  MapFile := FindFileInsensitive(DaDir, 'models_map.ini');
+  if MapFile <> '' then
   begin
     Ini := TIniFile.Create(MapFile);
     try
@@ -382,131 +618,132 @@ begin
       if Mapped = '' then
         Mapped := Ini.ReadString('Models', CleanModel, '');
       if Mapped = '' then
-        Mapped := Ini.ReadString(ABrand, CleanCode, '');
+        Mapped := Ini.ReadString(CleanBrand, CleanCode, '');
       if Mapped = '' then
-        Mapped := Ini.ReadString(ABrand, CleanModel, '');
+        Mapped := Ini.ReadString(CleanBrand, CleanModel, '');
+      if Mapped = '' then
+        Mapped := Ini.ReadString('Brands', CleanBrand, '');
+      if Mapped = '' then
+        Mapped := Ini.ReadString(CleanBrand, 'default', '');
 
-      if Mapped <> '' then
+      Candidate := MappedPayloadPath(DaDir, Mapped);
+      if Candidate = '' then
+        Candidate := MappedPayloadPath(BrandDir, Mapped);
+      if Candidate <> '' then
       begin
-        if FileExists(DaDir + Mapped) then
-        begin
-          Result := DaDir + Mapped;
-          Exit;
-        end
-        else if FileExists(DaDir + IncludeTrailingPathDelimiter(ABrand) + Mapped) then
-        begin
-          Result := DaDir + IncludeTrailingPathDelimiter(ABrand) + Mapped;
-          Exit;
-        end;
+        Result := Candidate;
+        Exit;
       end;
     finally
       Ini.Free;
     end;
   end;
 
-  { 2. Brand subfolder: data/da/<Brand>/<ModelCode>.da or <ModelName>.da }
-  if (CleanCode <> '') and FileExists(DaDir + IncludeTrailingPathDelimiter(ABrand) + CleanCode + '.da') then
+  { Exact model payloads take precedence over a brand-level package. }
+  Candidate := FindPayloadByStem(BrandDir, CleanCode);
+  if Candidate = '' then
+    Candidate := FindPayloadByStem(BrandDir, CleanModel);
+  if Candidate = '' then
+    Candidate := FindPayloadByStem(DaDir, CleanCode);
+  if Candidate = '' then
+    Candidate := FindPayloadByStem(DaDir, CleanModel);
+  if Candidate <> '' then
   begin
-    Result := DaDir + IncludeTrailingPathDelimiter(ABrand) + CleanCode + '.da';
-    Exit;
-  end;
-  if (CleanModel <> '') and FileExists(DaDir + IncludeTrailingPathDelimiter(ABrand) + CleanModel + '.da') then
-  begin
-    Result := DaDir + IncludeTrailingPathDelimiter(ABrand) + CleanModel + '.da';
-    Exit;
-  end;
-
-  { 3. Flat folder: data/da/<Brand>_<ModelCode>.da or <ModelCode>.da }
-  if (CleanCode <> '') and FileExists(DaDir + CleanCode + '.da') then
-  begin
-    Result := DaDir + CleanCode + '.da';
-    Exit;
-  end;
-  if (CleanModel <> '') and FileExists(DaDir + CleanModel + '.da') then
-  begin
-    Result := DaDir + CleanModel + '.da';
-    Exit;
-  end;
-  if (CleanCode <> '') and FileExists(DaDir + ABrand + '_' + CleanCode + '.da') then
-  begin
-    Result := DaDir + ABrand + '_' + CleanCode + '.da';
+    Result := Candidate;
     Exit;
   end;
 
-  { 4. Multi-model search: Look for DA file where model code or name is part of the filename }
+  { Also accept flat <Brand>_<Model>.da files and multi-model filenames. }
   if CleanCode <> '' then
   begin
-    if FindFirst(DaDir + '*' + CleanCode + '*.da', faAnyFile, SR) = 0 then
+    Candidate := FindFileInsensitive(DaDir, CleanBrand + '_' + CleanCode + '.da');
+    if Candidate <> '' then
     begin
-      Result := DaDir + SR.Name;
-      SysUtils.FindClose(SR);
+      Result := Candidate;
       Exit;
     end;
-    if FindFirst(DaDir + IncludeTrailingPathDelimiter(ABrand) + '*' + CleanCode + '*.da', faAnyFile, SR) = 0 then
+    if FindFirst(DaDir + '*' + CleanCode + '*.da', faAnyFile, SR) = 0 then
     begin
-      Result := DaDir + IncludeTrailingPathDelimiter(ABrand) + SR.Name;
+      if (SR.Attr and faDirectory) = 0 then
+        Result := DaDir + SR.Name;
       SysUtils.FindClose(SR);
-      Exit;
+      if Result <> '' then
+        Exit;
     end;
   end;
 
-  { 5. Fallback: Brand-level generic DA e.g. Oppo_Multi.da, MTK_AllInOne.da, default.da }
-  Candidate := DaDir + IncludeTrailingPathDelimiter(ABrand) + 'default.da';
-  if FileExists(Candidate) then
+  { Finally accept a literal brand-named payload. No unrelated generic DA is
+    selected when a brand/model has no matching file. }
+  Candidate := FindPayloadByStem(DaDir, CleanBrand);
+  if Candidate <> '' then
   begin
     Result := Candidate;
     Exit;
   end;
-  Candidate := DaDir + ABrand + '.da';
-  if FileExists(Candidate) then
+  if DirectoryExists(BrandDir) then
   begin
-    Result := Candidate;
-    Exit;
-  end;
-  Candidate := DaDir + 'default.da';
-  if FileExists(Candidate) then
-  begin
-    Result := Candidate;
-    Exit;
+    Candidate := FindPayloadByStem(BrandDir, 'default');
+    if Candidate <> '' then
+      Result := Candidate;
   end;
 end;
 
 function ResolveAndExtractDa(const ABrand, AModelCode, AModelName: string): TDaLoadResult;
 var
-  DaFile: string;
-  TargetDir: string;
+  DaFile, TargetDir: string;
   DaBin, AuthBin, Err: string;
   SafeName: string;
 begin
-  FillChar(Result, SizeOf(Result), 0);
   Result.Found := False;
+  Result.DaFile := '';
+  Result.AgentFile := '';
+  Result.ExtractedDaBin := '';
+  Result.ExtractedAuthBin := '';
+  Result.HasAuth := False;
+  Result.IsOpaque := False;
+  Result.FileSizeBytes := 0;
+  Result.Message := '';
 
   DaFile := FindDaFile(ABrand, AModelCode, AModelName);
   if DaFile = '' then
   begin
-    Result.Message := 'No specific .da file found for ' + ABrand + ' ' + AModelCode;
+    Result.Message := 'No bundled agent payload found for ' + ABrand + ' ' + AModelCode;
     Exit;
   end;
 
   Result.DaFile := DaFile;
-  SafeName := ChangeFileExt(ExtractFileName(DaFile), '');
-  TargetDir := GetDataFolder + 'extracted' + PathDelim + SafeName;
-
-  if ExtractDaArchive(DaFile, TargetDir, DaBin, AuthBin, Err) then
+  if Check7zMagic(DaFile) or CheckZipMagic(DaFile) then
   begin
-    Result.Found := True;
-    Result.ExtractedDaBin := DaBin;
-    Result.ExtractedAuthBin := AuthBin;
-    Result.HasAuth := (AuthBin <> '') and FileExists(AuthBin);
-    if Result.HasAuth then
-      Result.Message := 'Loaded DA and Auth from ' + ExtractFileName(DaFile)
+    { Archive support is retained for explicit ZIP/.da containers. Extracted
+      files are written to the writable app-data area, not the installed bundle. }
+    SafeName := CleanFileName(ChangeFileExt(ExtractFileName(DaFile), ''));
+    TargetDir := DataDir + 'extracted' + PathDelim + SafeName + PathDelim;
+    if ExtractDaArchive(DaFile, TargetDir, DaBin, AuthBin, Err) then
+    begin
+      Result.Found := True;
+      Result.AgentFile := DaBin;
+      Result.ExtractedDaBin := DaBin;
+      Result.ExtractedAuthBin := AuthBin;
+      Result.HasAuth := (AuthBin <> '') and FileExists(AuthBin);
+      Result.FileSizeBytes := FileSizeByPath(DaBin);
+      if Result.HasAuth then
+        Result.Message := 'Archive contains da.bin and auth.bin; exact device compatibility is not verified.'
+      else
+        Result.Message := 'Archive contains da.bin; no auth.bin was supplied.';
+    end
     else
-      Result.Message := 'Loaded DA from ' + ExtractFileName(DaFile) + ' (Auth not present, safe fallback)';
-  end
-  else
-  begin
-    Result.Message := 'Failed to unpack ' + ExtractFileName(DaFile) + ': ' + Err;
+      Result.Message := 'Could not extract ' + ExtractFileName(DaFile) + ': ' + Err;
+    Exit;
   end;
+
+  { Supplied vendor .da/.bin/.crp resources are opaque binary payloads, not
+    ZIP/7z archives. Keep the original file intact; do not fabricate da.bin. }
+  Result.Found := True;
+  Result.AgentFile := DaFile;
+  Result.IsOpaque := True;
+  Result.FileSizeBytes := FileSizeByPath(DaFile);
+  Result.Message := 'Vendor payload found for brand ' + ABrand +
+    '; exact model compatibility and authenticity are not verified.';
 end;
 
 end.

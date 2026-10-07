@@ -3,10 +3,9 @@ name: Build EXEs (fast)
 # Builds the app on GitHub-hosted Windows runners with the free Lazarus /
 # Free Pascal compiler - no self-hosted runner or Delphi licence needed.
 # Lazarus is cached after the first run, so later runs only compile.
-# Every build runs "DeviceSetup.exe --selftest" (forms load, checks pass,
-# screenshots of the screens are uploaded). Pushes to main publish the EXEs
-# as the "Latest build" release; pushing a tag like v1.1.0 publishes a
-# versioned release.
+# Every build runs "DeviceSetup.exe --selftest" from the portable package
+# (forms, real-data lookup and screenshots are checked). Releases contain the
+# EXE plus the complete verified support tree, not a data-less standalone EXE.
 
 on:
   push:
@@ -33,7 +32,7 @@ jobs:
   build:
     name: Build ${{ matrix.platform }}
     runs-on: windows-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     permissions:
       contents: read
       checks: write
@@ -108,18 +107,27 @@ jobs:
           Copy-Item $exe "artifacts\DeviceSetup-${{ matrix.platform }}.exe"
           Get-Item "artifacts\*.exe" | Format-Table Name, Length
 
-      - name: Self-test (forms load, checks pass, screenshots)
+      - name: Assemble portable bundle with verified support data
         shell: pwsh
         run: |
+          python tools/package_app.py `
+            --exe "artifacts/DeviceSetup-${{ matrix.platform }}.exe" `
+            --output "artifacts/package-${{ matrix.platform }}" `
+            --archive "artifacts/DeviceSetup-${{ matrix.platform }}.zip"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Self-test (forms, real data, checks and screenshots)
+        shell: pwsh
+        run: |
+          $package = "artifacts\package-${{ matrix.platform }}"
           New-Item -ItemType Directory -Force selftest-run | Out-Null
-          Copy-Item "artifacts\DeviceSetup-${{ matrix.platform }}.exe" selftest-run\DeviceSetup.exe
-          if (Test-Path "data") {
-            Copy-Item -Recurse -Force "data" "selftest-run\data"
-          }
-          $p = Start-Process -FilePath selftest-run\DeviceSetup.exe -ArgumentList '--selftest' -PassThru
+          $p = Start-Process -FilePath "$package\DeviceSetup.exe" -ArgumentList '--selftest' -PassThru
           $null = $p.Handle
           $timedOut = -not $p.WaitForExit(120000)
           New-Item -ItemType Directory -Force selftest-run\selftest | Out-Null
+          if (Test-Path "$package\selftest") {
+            Copy-Item -Recurse -Force "$package\selftest\*" selftest-run\selftest
+          }
           Add-Type -AssemblyName System.Drawing, System.Windows.Forms
           if ($timedOut) {
             # something (usually an error dialog) blocked the app: grab the screen
@@ -213,11 +221,11 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-      - name: Upload EXE
+      - name: Upload portable bundle
         uses: actions/upload-artifact@v4
         with:
           name: DeviceSetup-${{ matrix.platform }}-${{ github.sha }}
-          path: Delphi/DeviceSetup/artifacts/*.exe
+          path: Delphi/DeviceSetup/artifacts/DeviceSetup-${{ matrix.platform }}.zip
           if-no-files-found: error
           retention-days: 30
 
@@ -229,7 +237,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Download EXEs
+      - name: Download portable bundles
         uses: actions/download-artifact@v4
         with:
           pattern: DeviceSetup-Win*-${{ github.sha }}
@@ -244,11 +252,11 @@ jobs:
           ls -l exe
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             tag="${GITHUB_REF#refs/tags/}"
-            gh release create "$tag" exe/*.exe --verify-tag \
+            gh release create "$tag" exe/*.zip --verify-tag \
               --title "Mobile Servicing Tools $tag" --generate-notes
           else
             gh release delete latest-build --yes --cleanup-tag 2>/dev/null || true
-            gh release create latest-build exe/*.exe --target "$GITHUB_SHA" --latest \
+            gh release create latest-build exe/*.zip --target "$GITHUB_SHA" --latest \
               --title "Latest build (main)" \
-              --notes "Built from ${GITHUB_SHA::7} on main. Download DeviceSetup-Win64.exe (64-bit Windows) or DeviceSetup-Win32.exe (32-bit). This release is replaced on every push to main."
+              --notes "Built from ${GITHUB_SHA::7} on main. Download and extract DeviceSetup-Win64.zip (64-bit) or DeviceSetup-Win32.zip (32-bit); each bundle includes the EXE and verified support data. This release is replaced on every push to main."
           fi

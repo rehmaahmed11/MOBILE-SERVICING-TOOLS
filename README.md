@@ -5,13 +5,13 @@ A native **Delphi VCL** Windows application (also builds with free Lazarus / Fre
 ## Download
 
 - **Releases (easiest):** open the repository's **Releases** page and download from **Latest build (main)**:
-  - `DeviceSetup-Win64.exe` for 64-bit Windows
-  - `DeviceSetup-Win32.exe` for 32-bit Windows
+  - `DeviceSetup-Win64.zip` for 64-bit Windows
+  - `DeviceSetup-Win32.zip` for 32-bit Windows
 
-  This release is replaced on every push to `main`. Pushing a tag such as `v1.1.0` also creates a versioned release that stays.
-- **Build artifacts:** every CI run also uploads the EXEs under **Artifacts**. You need to be logged in to GitHub, they come zipped, and they're kept for 30 days.
+  Extract the ZIP and run `DeviceSetup.exe` from the extracted folder. Each bundle includes the EXE and the complete checked-in support tree (`Data`, DLLs and the architecture-specific `libusb` folders). This release is replaced on every push to `main`. Pushing a tag such as `v1.1.0` also creates a versioned release that stays.
+- **Build artifacts:** every CI run uploads the portable ZIP bundles under **Artifacts**. You need to be logged in to GitHub, and they are kept for 30 days.
 
-The EXE is portable: it saves its settings and logs next to itself. If that folder is read-only (e.g. Program Files), it uses `%APPDATA%\MobileServicingTools` instead.
+The app saves its settings and logs next to the EXE. If that folder is read-only (e.g. Program Files), it uses `%APPDATA%\MobileServicingTools` instead. Keep the `Data` folder beside the EXE; the standalone executable alone does not contain the servicing payloads.
 
 ## Screens
 
@@ -81,6 +81,23 @@ It only reads the device list (SetupAPI) and never sends anything to the phone. 
 - Remember file paths and job options (on).
 - Detect phones connected by USB (on).
 
+## Integrated support data
+
+The release bundles carry the actual files from `FULL APP STRUCTURE/MOBILO TOOLZ` in their original directory layout. The application locates `Data/DA` and `Data/FDL1` / `Data/FDL2` beside the executable; in a source checkout it can locate the same tree without copying the 130+ MiB data into the Delphi project.
+
+- The data folder contains **39 DA/FDL payload files** (about **131 MiB**): brand-level `.da` packages, MediaTek `.bin` / `.crp` resources, preloader resources and the full-size Unisoc FDL1/FDL2 pair.
+- `Data/DA/models_map.ini` routes the supported brand/model aliases to existing files. A route is only a file-availability hint; it does not prove exact handset/chipset compatibility.
+- The portable bundle also preserves the supplied ADB, 7-Zip and LZ4 DLLs and the complete x86 / amd64 / arm64 `libusb` subfolders. Driver installers are not run automatically.
+- The former 133–280 byte demo DA/FDL files have been removed. Bundled `.da`, `.bin` and `.crp` files are kept byte-for-byte; opaque vendor payloads are not unpacked or rewritten as invented `da.bin` files.
+
+`FULL APP STRUCTURE/MOBILO TOOLZ/assets-manifest.json` records SHA-256 and byte size for every non-empty support file. `tools/package_app.py` verifies that inventory before making the portable ZIP. These hashes establish package identity/copy integrity only—not vendor authenticity, licensing, or compatibility. The app can display the matching data filename and size, but **device communication is still not implemented** and no agent or driver is sent/installed by the app.
+
+To assemble a bundle after compiling the EXE, run from `Delphi/DeviceSetup`:
+
+```sh
+python tools/package_app.py --exe path/to/DeviceSetup.exe --output artifacts/package --archive artifacts/DeviceSetup.zip
+```
+
 ## Model list (`models.csv`)
 
 The app has a built-in starter list. The visible OPPO models and brand headings match S1; the existing Realme and other starter models are retained. A heading without supplied model data is an empty category, not a fabricated device. CSV export preserves those categories as `Brand,,` rows. This is not a complete manufacturer/model database. To use your own list:
@@ -103,7 +120,8 @@ Buttons, group frames and compact tab strips are interactive controls in `Sample
 | --- | --- |
 | `MainForm` / `Main2Form` | the two screens (`UI SAMPLE/S1.png` … `S10.png` are the layout references) |
 | `DeviceCatalog` | built-in model list and `models.csv` loading/export |
-| `AppInfo` | version, data folder, settings file (`DeviceSetup.ini`), options |
+| `AppInfo` | version, settings file (`DeviceSetup.ini`), options and writable data folder |
+| `DaLoader` | real DA/FDL asset discovery, brand/model routing and opaque-payload inventory |
 | `LogView` | colour codes and drawing for the log |
 | `UsbDetect` | read-only USB service-mode detection (SetupAPI) |
 | `SettingsDialog` | the Settings window (built in code) |
@@ -116,12 +134,12 @@ Buttons, group frames and compact tab strips are interactive controls in `Sample
 `.github/workflows/build-fast.yml` runs on pushes to `main`, on `v*` tags, on every pull request, and manually. It runs on GitHub-hosted Windows runners and builds Win32 and Win64 in parallel with **Lazarus 4.4 / Free Pascal 3.2.2**, which is cached after the first run. Each job:
 
 1. Generates the `.lfm` forms from the `.dfm` files (`tools/dfm2lfm.py`). Edit only the `.dfm` files.
-2. Runs the platform-independent UI/resource contracts (`python tools/test_ui_contract.py`, 13 tests) and checks the embedded artwork is up to date.
+2. Runs the platform-independent UI/resource contracts, checks the embedded artwork, validates the real support-tree SHA-256 inventory and DA/FDL routing, and smoke-tests that a portable ZIP contains every manifested asset.
 3. Stamps the commit id into `BuildInfo.inc`, which is shown in Help.
 4. Compiles.
 5. Runs **`DeviceSetup.exe --selftest`**, which:
    - opens both screens (this catches form-loading errors that the compiler cannot see)
-   - checks hex parsing, file checks, the `models.csv` round trip, search and the SetupAPI calls
+   - checks hex parsing, file checks, the `models.csv` round trip, search, SetupAPI calls, and actual OPPO/Realme DA plus full-size FDL1/FDL2 lookup
    - checks actual control bounds, all seven tabs, empty idle log, connection defaults and independent radio groups
    - captures clean **client-only**, lossless screenshots of MAIN 1 and MAIN 2 (including the open Flash dropdown from S4) before running tests that write to the log
    - separately captures the colour log, advanced Flash, progress, service-mode profiles and 144/192-DPI layouts; scaled layouts must keep all tabs and Format actions visible
@@ -129,10 +147,10 @@ Buttons, group frames and compact tab strips are interactive controls in `Sample
    The results and PNG screenshots are uploaded as `DeviceSetup-selftest-<platform>-<sha>`. The self-test result is also shown as a notice on the run page.
 
    **Screenshots of every screen are also published as check runs** (named `ci-shot <screen> <n>/<m>`, lossless base64 PNG chunks) so the UI can be reviewed through the GitHub API without downloading artifacts. This happens on every **pull request**, when you start the workflow by hand (**Actions > Build EXEs (fast) > Run workflow**) and tick *screenshots*, and for any commit that contains the marker file `.github/ci-screenshots`.
-6. Uploads the EXE.
-7. On `main` or a `v*` tag, publishes the GitHub Release.
+6. Verifies the support manifest and produces a portable ZIP containing `DeviceSetup.exe` plus the complete support tree.
+7. Uploads the ZIP bundle; on `main` or a `v*` tag, publishes that bundle as the GitHub Release.
 
-To build locally with Lazarus: `python tools/dfm2lfm.py`, then `lazbuild DeviceSetup.lpi`.
+To build locally with Lazarus: `python tools/dfm2lfm.py`, then `lazbuild DeviceSetup.lpi`. Use `python tools/package_app.py` to verify and assemble the portable bundle as shown above.
 
 ### Optional: Delphi build
 
