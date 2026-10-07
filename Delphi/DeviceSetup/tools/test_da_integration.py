@@ -1,4 +1,4 @@
-"""Contracts for the real bundled payloads and portable support tree.
+"""Contracts for the support payloads, portable tree, and installer layout.
 
 Run with ``python tools/test_da_integration.py``. The SHA-256 inventory is
 checked against every non-empty support file; hashes establish file identity,
@@ -22,6 +22,7 @@ sys.path.insert(0, str(TOOLS_DIR))
 from package_app import (  # noqa: E402
     copy_bundle,
     verify_asset_manifest,
+    verify_bundle,
     write_archive,
 )
 
@@ -50,6 +51,7 @@ class RealDataIntegrationTests(unittest.TestCase):
             archive = temp / "DeviceSetup.zip"
 
             copy_bundle(exe, bundle)
+            self.assertEqual(verify_bundle(bundle, entries), len(entries))
             write_archive(bundle, archive)
 
             with zipfile.ZipFile(archive) as package:
@@ -66,6 +68,38 @@ class RealDataIntegrationTests(unittest.TestCase):
                             package.getinfo(relative).file_size,
                             (ASSET_ROOT / relative).stat().st_size,
                         )
+
+    def test_installer_places_the_complete_bundle_at_the_selected_app_root(self):
+        script = (DEVICE_SETUP_DIR / "DeviceSetup.iss").read_text(encoding="utf-8")
+        normalized = " ".join(script.replace("\\", "/").split()).casefold()
+        self.assertIn(
+            'source: "artifacts/package/*"; destdir: "{app}"; '
+            'flags: ignoreversion recursesubdirs createallsubdirs',
+            normalized,
+        )
+        self.assertIn(
+            r'defaultdirname={localappdata}/programs/mobile servicing tools',
+            normalized,
+        )
+        self.assertIn("privilegesrequired=lowest", normalized)
+        self.assertIn("#ifdef appplatform64", normalized)
+        self.assertIn("architecturesallowed=x64", normalized)
+        self.assertIn("architecturesinstallin64bitmode=x64", normalized)
+        self.assertIn("outputbasefilename=devicesetup-setup-{#installerplatform}", normalized)
+        self.assertIn('name: "{autoprograms}/{#appname}"; filename: "{app}/devicesetup.exe"', normalized)
+
+        # This tree becomes {app} itself; therefore the app stays in the root,
+        # with DA/FDL beneath Data and the supplied USB library beneath libusb.
+        for relative in (
+            "Data/DA/OPPO.da",
+            "Data/FDL1",
+            "Data/FDL2",
+            "libusb/x86/libusb0_x86.dll",
+            "libusb/amd64/libusb0.dll",
+            "libusb/arm64/libusb0.dll",
+        ):
+            with self.subTest(asset=relative):
+                self.assertTrue((ASSET_ROOT / relative).is_file())
 
     def test_full_size_payloads_replace_the_old_placeholders(self):
         self.assertGreater((DATA_ROOT / "FDL1").stat().st_size, 1_000_000)
@@ -118,6 +152,9 @@ class RealDataIntegrationTests(unittest.TestCase):
         main = (DEVICE_SETUP_DIR / "Main2Form.pas").read_text(encoding="utf-8")
         self.assertIn("FULL APP STRUCTURE", loader)
         self.assertIn("MOBILO TOOLZ", loader)
+        self.assertIn("Candidate := FindDataRootFrom(ExeDir)", loader)
+        self.assertIn("FindFileInsensitive(Root, 'FDL1')", loader)
+        self.assertIn("FindFileInsensitive(Root, 'FDL2')", loader)
         self.assertIn("AgentFile", loader)
         self.assertIn("IsOpaque", loader)
         self.assertIn("GetBundledDataAssetCount", loader)

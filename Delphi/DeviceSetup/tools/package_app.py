@@ -11,7 +11,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import shutil
 import sys
 import zipfile
@@ -123,6 +123,48 @@ def copy_bundle(exe_path: Path, output_dir: Path) -> None:
     shutil.copy2(exe_path, output_dir / "DeviceSetup.exe")
 
 
+def verify_bundle(bundle_dir: Path, entries: list[dict[str, object]] | None = None) -> int:
+    """Verify an assembled/installed app root against the support manifest."""
+    if not bundle_dir.is_dir():
+        raise ValueError(f"bundle directory not found: {bundle_dir}")
+    if not (bundle_dir / "DeviceSetup.exe").is_file():
+        raise ValueError(f"DeviceSetup.exe is missing from bundle: {bundle_dir}")
+
+    if entries is None:
+        entries = verify_asset_manifest()
+
+    bundled_manifest = bundle_dir / "assets-manifest.json"
+    if not bundled_manifest.is_file():
+        raise ValueError(f"assets-manifest.json is missing from bundle: {bundle_dir}")
+    if bundled_manifest.read_bytes() != MANIFEST_PATH.read_bytes():
+        raise ValueError("bundled assets-manifest.json does not match the source manifest")
+
+    for entry in entries:
+        relative = entry["path"]
+        if not isinstance(relative, str):
+            raise ValueError(f"invalid path in verified support manifest: {relative!r}")
+        # Manifest paths are validated by verify_asset_manifest and use POSIX
+        # separators; convert the components for the host OS without allowing
+        # a path to escape the app root.
+        path = bundle_dir.joinpath(*PurePosixPath(relative).parts)
+        try:
+            path.resolve().relative_to(bundle_dir.resolve())
+        except ValueError as exc:
+            raise ValueError(f"unsafe path in support manifest: {relative!r}") from exc
+        if not path.is_file():
+            raise ValueError(f"support file is missing from bundle: {relative}")
+        expected_size = entry["size_bytes"]
+        if path.stat().st_size != expected_size:
+            raise ValueError(
+                f"bundle size mismatch for {relative}: expected {expected_size}, "
+                f"got {path.stat().st_size}"
+            )
+        expected_hash = entry["sha256"]
+        if sha256_file(path).casefold() != str(expected_hash).casefold():
+            raise ValueError(f"bundle SHA-256 mismatch for {relative}")
+    return len(entries)
+
+
 def write_archive(bundle_dir: Path, archive_path: Path) -> None:
     archive_path.parent.mkdir(parents=True, exist_ok=True)
     if archive_path.exists():
@@ -144,18 +186,37 @@ def write_archive(bundle_dir: Path, archive_path: Path) -> None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--verify-only", action="store_true", help="verify the checked-in support tree")
+    parser.add_argument(
+        "--verify-bundle",
+        type=Path,
+        metavar="DIR",
+        help="verify a packaged or installed app root against the support manifest",
+    )
     parser.add_argument("--exe", type=Path, help="compiled DeviceSetup.exe to include")
     parser.add_argument("--output", type=Path, help="new/empty portable bundle directory")
     parser.add_argument("--archive", type=Path, help="optional ZIP to create from the bundle directory")
     args = parser.parse_args(argv)
 
     try:
-        entries = verify_asset_manifest()
         if args.verify_only:
-            if args.exe or args.output or args.archive:
-                parser.error("--verify-only cannot be combined with packaging arguments")
+            if args.verify_bundle or args.exe or args.output or args.archive:
+                parser.error("--verify-only cannot be combined with other arguments")
+            entries = verify_asset_manifest()
             print(f"Verified {len(entries)} support files from {ASSET_ROOT}")
             return 0
+        if args.verify_bundle:
+            if args.exe or args.output or args.archive:
+                parser.error("--verify-bundle cannot be combined with packaging arguments")
+            bundle_dir = (
+                args.verify_bundle
+                if args.verify_bundle.is_absolute()
+                else Path.cwd() / args.verify_bundle
+            )
+            entries = verify_asset_manifest()
+            count = verify_bundle(bundle_dir, entries)
+            print(f"Verified {count} support files and DeviceSetup.exe in {bundle_dir}")
+            return 0
+        entries = verify_asset_manifest()
         if not args.exe or not args.output:
             parser.error("--exe and --output are required unless --verify-only is used")
         exe_path = args.exe if args.exe.is_absolute() else (Path.cwd() / args.exe)
