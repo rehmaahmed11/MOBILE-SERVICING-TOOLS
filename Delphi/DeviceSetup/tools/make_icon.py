@@ -62,11 +62,13 @@ def draw_icon():
 def main():
     root = pathlib.Path(__file__).resolve().parent.parent
     big = draw_icon()
-    sizes = [256, 128, 64, 48, 32, 24, 16]
+    # Classic BMP frames only: the Lazarus/LCL icon reader cannot read
+    # PNG-compressed frames ("Bitmap with unknown compression").
+    sizes = [128, 64, 48, 32, 24, 16]
     frames = [big.resize((s, s), Image.LANCZOS) for s in sizes]
     out = root / "DeviceSetup.ico"
     frames[0].save(out, format="ICO", sizes=[(s, s) for s in sizes],
-                   append_images=frames[1:])
+                   append_images=frames[1:], bitmap_format="bmp")
     print(f"wrote {out} ({out.stat().st_size} bytes)")
 
 
