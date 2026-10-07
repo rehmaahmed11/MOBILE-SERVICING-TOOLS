@@ -18,7 +18,7 @@ object frmMain: TMainForm
   ShowHint = True
   ActiveControl = cbSearch
   OnCreate = FormCreate
-  OnDestroy = FormDestroy
+  OnClose = FormClose
   OnShow = FormShow
   PixelsPerInch = 96
   TextHeight = 13

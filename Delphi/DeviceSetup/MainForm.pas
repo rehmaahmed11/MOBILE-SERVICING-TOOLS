@@ -54,7 +54,7 @@ type
     miSeparator2: TMenuItem;
     miExit: TMenuItem;
     procedure FormCreate(Sender: TObject);
-    procedure FormDestroy(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure miReloadModelsClick(Sender: TObject);
     procedure miExportModelsClick(Sender: TObject);
     procedure miSettingsClick(Sender: TObject);
@@ -154,8 +154,10 @@ begin
   RestoreWindow;
 end;
 
-procedure TMainForm.FormDestroy(Sender: TObject);
+procedure TMainForm.FormClose(Sender: TObject; var Action: TCloseAction);
 begin
+  { Saved here and not in OnDestroy: the main form is destroyed during
+    program shutdown, after the settings object is gone. }
   SaveWindowAndSelection;
 end;
 

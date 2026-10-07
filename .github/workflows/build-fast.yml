@@ -122,6 +122,31 @@ jobs:
             exit 1
           }
 
+      - name: Report self-test as annotations
+        if: always()
+        shell: pwsh
+        run: |
+          $dir = 'selftest-run\selftest'
+          $log = "$dir\selftest.log"
+          if (Test-Path $log) {
+            $text = (Get-Content $log) -join '%0A'
+            Write-Output "::notice title=selftest-${{ matrix.platform }}::$text"
+          } else {
+            Write-Output "::notice title=selftest-${{ matrix.platform }}::no selftest.log"
+          }
+          if ('${{ matrix.platform }}' -eq 'Win64') {
+            Add-Type -AssemblyName System.Drawing
+            Get-ChildItem "$dir\*.png" -ErrorAction SilentlyContinue | ForEach-Object {
+              $img = [System.Drawing.Image]::FromFile($_.FullName)
+              $gif = $_.FullName -replace '\.png$', '.gif'
+              $img.Save($gif, [System.Drawing.Imaging.ImageFormat]::Gif)
+              $img.Dispose()
+              $b64 = [Convert]::ToBase64String([IO.File]::ReadAllBytes($gif))
+              Remove-Item $gif
+              Write-Output "::notice title=shot-$($_.BaseName)::$b64"
+            }
+          }
+
       - name: Upload self-test results and screenshots
         if: always()
         uses: actions/upload-artifact@v4

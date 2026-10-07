@@ -174,6 +174,7 @@ end;
 initialization
 
 finalization
-  GSettings.Free;
+  FlushSettings;
+  FreeAndNil(GSettings);
 
 end.
