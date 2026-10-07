@@ -15,6 +15,8 @@ The EXE is portable: it saves its settings and logs next to itself. If that fold
 
 ## Screens
 
+[Verified Windows UI previews and reference matching](docs/UI-MATCHING.md#verified-windows-previews)
+
 ### MAIN 1 — first screen (`MainForm.pas` / `MainForm.dfm`)
 
 Reference client layout: `UI SAMPLE/S1.png`, **1023 × 575 at 96 DPI**. A fresh install opens the OPPO / CPH1909 selection shown in the sample; existing saved selections are preserved:

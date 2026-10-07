@@ -1,5 +1,33 @@
 # Reference UI implementation and verification
 
+## Verified Windows previews
+
+These are real Win64 client captures from the completed UI, not mockups:
+
+### MAIN 1
+
+![MAIN 1 — OPPO selector](ui/MAIN-1.png)
+
+### MAIN 2
+
+![MAIN 2 — Read operations](ui/MAIN-2.png)
+
+## Verification results
+
+- Win32 and Win64 builds and `--selftest`: **passed**.
+- 13 platform-independent UI/resource contracts: **passed**.
+- Actual 96-, 144- and 192-DPI control/tab bounds: **passed**.
+- Enter/Space activation, disabled buttons and Tab navigation: **passed**.
+- Complete visible 14-digit IMEI, independent Format radio groups, CSV
+  round-trip, platform profiles and existing input validation: **passed**.
+- Pixel comparison of the Win64 MAIN 1 capture against S1: all **eight
+  toolbar cards and the OPPO logo are pixel-identical** (zero channel error).
+- All reference operation states, the Flash dropdown and the separate
+  log/progress/profile views were captured and visually reviewed.
+
+Validation build: [Windows CI run 37610161230](https://github.com/rehmaahmed11/MOBILE-SERVICING-TOOLS/actions/runs/37610161230)
+(source commit `05936fe`; these previews do not alter application code).
+
 ## Reference states
 
 The supplied images are the source of truth for client layout and artwork:
