@@ -1,0 +1,17 @@
+*.dcu
+*.exe
+*.dll
+*.bpl
+*.dcp
+*.identcache
+*.local
+*.dsk
+*.stat
+*.res
+*.map
+*.rsm
+*.tds
+__history/
+Win32/
+Win64/
+artifacts/
