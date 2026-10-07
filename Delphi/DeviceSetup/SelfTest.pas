@@ -50,7 +50,15 @@ function PrintWindow(hwnd: HWND; hdcBlt: HDC; nFlags: UINT): BOOL; stdcall;
 
 type
   TSelfTestHandler = class
+    ButtonClicks: Integer;
+    procedure ButtonClicked(Sender: TObject);
     procedure AppException(Sender: TObject; E: Exception);
+  end;
+
+  TButtonInteractionProbe = class(TSampleButton)
+  public
+    procedure PressKey(const AKey: Word);
+    procedure ReleaseKey(const AKey: Word);
   end;
 
 var
@@ -74,6 +82,27 @@ begin
     if (S = '--selftest') or (S = '-selftest') or (S = '/selftest') then
       Result := True;
   end;
+end;
+
+procedure TSelfTestHandler.ButtonClicked(Sender: TObject);
+begin
+  Inc(ButtonClicks);
+end;
+
+procedure TButtonInteractionProbe.PressKey(const AKey: Word);
+var
+  K: Word;
+begin
+  K := AKey;
+  KeyDown(K, []);
+end;
+
+procedure TButtonInteractionProbe.ReleaseKey(const AKey: Word);
+var
+  K: Word;
+begin
+  K := AKey;
+  KeyUp(K, []);
 end;
 
 procedure TSelfTestHandler.AppException(Sender: TObject; E: Exception);
@@ -242,7 +271,9 @@ procedure RunSelfTest;
 var
   Out: TStringList;
   AllOk: Boolean;
-  Main2: TMain2Form;
+  Main2, Dpi2: TMain2Form;
+  ButtonProbe: TButtonInteractionProbe;
+  Measure: TBitmap;
   Skipped, Brands, Models: Integer;
   Error: string;
   Devices: TUsbDeviceArray;
@@ -296,6 +327,10 @@ begin
 
       { MAIN 1 }
       frmMain.Show;
+      Pump;
+      Check('MAIN 1 brand list starts at Alcatel like S1',
+        (frmMain.lstBrands.TopIndex = 0) and
+        (frmMain.lstBrands.Items[0] = 'Alcatel'));
       Check('MAIN 1 client matches S1 (1023x575)',
         (frmMain.ClientWidth = 1023) and (frmMain.ClientHeight = 575));
       Check('MAIN 1 uses the original OPPO wordmark',
@@ -321,6 +356,16 @@ begin
           (Main2.ClientWidth = 1026) and (Main2.ClientHeight = 585));
         Check('MAIN 2 layout', CheckLayout(Main2, Out, 'MAIN 2 / 96 DPI'));
         Check('MAIN 2 idle log is empty', Main2.lstLog.Items.Count = 0);
+        Measure := TBitmap.Create;
+        try
+          Measure.SetSize(1, 1);
+          Measure.Canvas.Font.Assign(Main2.edtImei1.Font);
+          Check('all 14 IMEI digits fit in the visible input',
+            Measure.Canvas.TextWidth(Main2.edtImei1.Text) <=
+            Main2.edtImei1.ClientWidth - 4);
+        finally
+          Measure.Free;
+        end;
         Check('both independent Format radio groups retain their selection',
           Main2.rbAutoFormat.Checked and Main2.rbFormatAiFlash.Checked and
           (Main2.rbAutoFormat.Parent <> Main2.rbFormatAiFlash.Parent));
@@ -369,6 +414,30 @@ begin
         Main2.Progress := 0;
 
         Check('MAIN 2 self-test', Main2.SelfTest(Out));
+        ButtonProbe := TButtonInteractionProbe.Create(nil);
+        try
+          ButtonProbe.Parent := Main2;
+          ButtonProbe.Visible := False;
+          ButtonProbe.OnClick := GHandler.ButtonClicked;
+          GHandler.ButtonClicks := 0;
+          ButtonProbe.PressKey(VK_RETURN);
+          Check('sample action button activates with Enter', GHandler.ButtonClicks = 1);
+          ButtonProbe.PressKey(VK_SPACE);
+          Check('Space waits for key release', GHandler.ButtonClicks = 1);
+          ButtonProbe.ReleaseKey(VK_SPACE);
+          Check('sample action button activates with Space', GHandler.ButtonClicks = 2);
+          ButtonProbe.Enabled := False;
+          ButtonProbe.PressKey(VK_RETURN);
+          Check('disabled sample action button does not activate', GHandler.ButtonClicks = 2);
+          Check('Enter is requested by the button dialog-key handler',
+            (SendMessage(ButtonProbe.Handle, WM_GETDLGCODE, VK_RETURN, 0) and
+             DLGC_WANTALLKEYS) <> 0);
+          Check('sample action buttons preserve Tab navigation',
+            (SendMessage(ButtonProbe.Handle, WM_GETDLGCODE, VK_TAB, 0) and
+             DLGC_WANTTAB) = 0);
+        finally
+          ButtonProbe.Free;
+        end;
         Main2.miClearLogClick(nil);
         Main2.ShowDemoLog;
         Capture(Main2, 'main2-log');
@@ -379,13 +448,25 @@ begin
           reference-size captures. }
         Main2.pcOperations.ActivePage := Main2.tsFormat;
         Main2.ScaleBy(3, 2);
+        Main2.FormResize(nil);
         Pump;
         Check('MAIN 2 144-DPI layout', CheckLayout(Main2, Out, 'MAIN 2 / 144 DPI'));
         Capture(Main2, 'main2-dpi144');
-        Main2.ScaleBy(4, 3);
-        Pump;
-        Check('MAIN 2 192-DPI layout', CheckLayout(Main2, Out, 'MAIN 2 / 192 DPI'));
-        Capture(Main2, 'main2-dpi192');
+        { A fresh 2x scale models a real 192-DPI startup rather than
+          accumulating rounding errors from 96 -> 144 -> 192. }
+        Dpi2 := TMain2Form.Create(frmMain);
+        try
+          Dpi2.SetDevice('Realme', 'RMX3511 : Realme C35');
+          Dpi2.Show;
+          Dpi2.pcOperations.ActivePage := Dpi2.tsFormat;
+          Dpi2.ScaleBy(2, 1);
+          Dpi2.FormResize(nil);
+          Pump;
+          Check('MAIN 2 192-DPI layout', CheckLayout(Dpi2, Out, 'MAIN 2 / 192 DPI'));
+          Capture(Dpi2, 'main2-dpi192');
+        finally
+          Dpi2.Free;
+        end;
       finally
         Main2.Free;  { saves settings + session log }
       end;

@@ -128,6 +128,12 @@ object frmMain: TMainForm
     OnEnter = cbSearchEnter
     OnExit = cbSearchExit
     OnKeyDown = cbSearchKeyDown
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -10
+    Font.Name = 'Tahoma'
+    Font.Style = []
+    ParentFont = False
   end
   object lstBrands: TListBox
     Left = 3
@@ -145,6 +151,8 @@ object frmMain: TMainForm
     Font.Name = 'Tahoma'
     Font.Style = []
     ParentFont = False
+    Style = lbOwnerDrawFixed
+    OnDrawItem = lstCatalogDrawItem
   end
   object lstModels: TListBox
     Left = 136
@@ -164,6 +172,8 @@ object frmMain: TMainForm
     Font.Name = 'Tahoma'
     Font.Style = []
     ParentFont = False
+    Style = lbOwnerDrawFixed
+    OnDrawItem = lstCatalogDrawItem
   end
   object btnSelect: TSampleButton
     Left = 3
@@ -177,6 +187,13 @@ object frmMain: TMainForm
     TabOrder = 3
     OnClick = pbNextClick
     Centered = True
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -9
+    Font.Name = 'Tahoma'
+    Font.Style = []
+    ParentFont = False
+    ReferenceHeight = 31
   end
   object pmMain: TPopupMenu
     Left = 760

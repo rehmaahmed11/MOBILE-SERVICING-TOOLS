@@ -196,6 +196,7 @@ type
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure FormShow(Sender: TObject);
+    procedure FormResize(Sender: TObject);
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure cbPlatformChange(Sender: TObject);
     procedure pbMenuPaint(Sender: TObject);
@@ -553,9 +554,25 @@ end;
 
 procedure TMain2Form.FormShow(Sender: TObject);
 begin
+  FormResize(nil);
   ApplyOptions;
   if GOptions.DetectUsb then
     CheckUsb(True);
+end;
+
+procedure TMain2Form.FormResize(Sender: TObject);
+var
+  H: Integer;
+begin
+  if (pcJobs = nil) or not HandleAllocated or (cbStorage = nil) then
+    Exit;
+  H := pcJobs.ScaleValue(18);
+  CompactCombo(cbPresets, H);
+  CompactCombo(cbDownloadAgent, H);
+  CompactCombo(cbUsbSpeed, H);
+  CompactCombo(cbBattery, H);
+  CompactCombo(cbStorage, H);
+  CompactCombo(cbFlashMode, H);
 end;
 
 procedure TMain2Form.FormDestroy(Sender: TObject);
@@ -603,7 +620,7 @@ begin
   if grpFiles.Height <> CFilesHeight + Extra then
   begin
     grpFiles.Height := CFilesHeight + Extra;
-    grpLog.Top := grpFiles.Top + grpFiles.Height + 4;
+    grpLog.Top := grpFiles.Top + grpFiles.Height + 3;
     I := pbProgress.Top - 4;
     if I > grpLog.Top + 120 then
       grpLog.Height := I - grpLog.Top;
@@ -1128,8 +1145,10 @@ begin
   S := IntToStr(FProgress) + '%';
   C.Brush.Style := bsClear;
   C.Font.Assign(Font);
+  C.Font.Height := -pcJobs.ScaleValue(9);
   C.Font.Color := clWindowText;
-  C.TextOut(R.Left + (R.Right - R.Left - C.TextWidth(S)) div 2,
+  C.TextOut(R.Left + (R.Right - R.Left - C.TextWidth(S)) div 2 +
+    pcJobs.ScaleValue(12),
     R.Top + (R.Bottom - R.Top - 2 - C.TextHeight(S)) div 2, S);
   C.Brush.Style := bsSolid;
 end;
@@ -1459,10 +1478,20 @@ var
   Enable: Boolean;
 begin
   Enable := chkAdvancedWrite.Checked;
-  edtAddress.Enabled := Enable;
+  edtAddress.Enabled := True;
+  edtAddress.ReadOnly := not Enable;
+  edtAddress.TabStop := Enable;
+  edtAddress.Color := clWhite;
+  if Enable then
+    edtAddress.Font.Color := clWindowText
+  else
+    edtAddress.Font.Color := clGrayText;
   btnWriteBin.Enabled := Enable;
   btnBin.Enabled := Enable;
-  edtBin.Enabled := Enable;
+  edtBin.Enabled := True;
+  edtBin.ReadOnly := not Enable;
+  edtBin.TabStop := Enable;
+  edtBin.Color := clWhite;
 end;
 
 procedure TMain2Form.chkAdvancedWriteClick(Sender: TObject);

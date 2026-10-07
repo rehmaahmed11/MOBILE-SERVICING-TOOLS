@@ -26,7 +26,7 @@ CROPS = {
     "UI_FACEBOOK": ("S1", (946, 0, 974, 28), False),
     "UI_HELP": ("S1", (990, 0, 1018, 28), False),
     "UI_OPPO": ("S1", (587, 274, 857, 322), True),
-    "UI_SELECT": ("S1", (183, 503, 211, 531), True),
+    "UI_SELECT": ("S1", (183, 502, 211, 530), True),
     "UI_WRITE_FIRMWARE": ("S3", (697, 317, 725, 345), True),
     "UI_RESTORE": ("S3", (697, 353, 725, 381), True),
     "UI_WRITE_BIN": ("S3", (697, 429, 725, 457), True),

@@ -15,18 +15,25 @@ interface
 
 uses
 {$IFDEF FPC}
-  Windows, Classes, SysUtils, Types, Controls, Graphics;
+  Windows, Classes, SysUtils, Types, Controls, Graphics, StdCtrls, LMessages;
 {$ELSE}
-  Winapi.Windows, System.Classes, System.SysUtils, System.Types,
-  Vcl.Controls, Vcl.Graphics;
+  Winapi.Windows, Winapi.Messages, System.Classes, System.SysUtils, System.Types,
+  Vcl.Controls, Vcl.Graphics, Vcl.StdCtrls;
 {$ENDIF}
 
 type
+{$IFDEF FPC}
+  TNativeControlMessage = TLMessage;
+{$ELSE}
+  TNativeControlMessage = TMessage;
+{$ENDIF}
+
   TSamplePageControl = class;
 
   TSampleGroupBox = class(TCustomControl)
   private
     FTitle: string;
+    FCaptionInset: Integer;
     procedure SetTitle(const AValue: string);
   protected
     procedure Paint; override;
@@ -34,6 +41,7 @@ type
     constructor Create(AOwner: TComponent); override;
   published
     property Caption: string read FTitle write SetTitle;
+    property CaptionInset: Integer read FCaptionInset write FCaptionInset default 5;
     property Align;
     property Anchors;
     property Color;
@@ -58,6 +66,8 @@ type
     FNumGlyphs: Integer;
     FCentered: Boolean;
     FPressed: Boolean;
+    FReferenceHeight: Integer;
+    procedure WMGetDlgCode(var AMessage: TNativeControlMessage); message WM_GETDLGCODE;
     procedure SetTitle(const AValue: string);
     procedure SetGlyph(AValue: TBitmap);
     procedure GlyphChanged(Sender: TObject);
@@ -69,6 +79,7 @@ type
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState;
       X, Y: Integer); override;
     procedure KeyDown(var Key: Word; Shift: TShiftState); override;
+    procedure KeyUp(var Key: Word; Shift: TShiftState); override;
     procedure DoEnter; override;
     procedure DoExit; override;
   public
@@ -80,6 +91,7 @@ type
     property Margin: Integer read FMargin write FMargin default 2;
     property Spacing: Integer read FSpacing write FSpacing default 8;
     property NumGlyphs: Integer read FNumGlyphs write FNumGlyphs default 1;
+    property ReferenceHeight: Integer read FReferenceHeight write FReferenceHeight default 34;
     property Centered: Boolean read FCentered write SetCentered default False;
     property Align;
     property Anchors;
@@ -124,6 +136,7 @@ type
     FActivePage: TSampleTabSheet;
     FTabWidth: Integer;
     FOnChange: TNotifyEvent;
+    procedure WMGetDlgCode(var AMessage: TNativeControlMessage); message WM_GETDLGCODE;
     function GetPageCount: Integer;
     function GetPage(const AIndex: Integer): TSampleTabSheet;
     function GetActivePageIndex: Integer;
@@ -145,6 +158,7 @@ type
     destructor Destroy; override;
     function TabRect(const AIndex: Integer): TRect;
     function HeaderHeight: Integer;
+    function ScaleValue(const AValue: Integer): Integer;
     property PageCount: Integer read GetPageCount;
     property Pages[const AIndex: Integer]: TSampleTabSheet read GetPage;
     property ActivePageIndex: Integer read GetActivePageIndex
@@ -164,18 +178,20 @@ type
     property OnChange: TNotifyEvent read FOnChange write FOnChange;
   end;
 
+procedure CompactCombo(ACombo: TComboBox; const AHeight: Integer);
+
 implementation
 
 function ScaleFont(AFont: TFont; const AValue: Integer): Integer;
 var
   H: Integer;
 begin
-  { The reference controls use an 11-pixel Tahoma font at 96 DPI. Scaling
+  { The reference controls use a 10-pixel Tahoma font at 96 DPI. Scaling
     with the font also works with Form.ScaleBy in the 144/192-DPI tests. }
   H := Abs(AFont.Height);
   if H <= 0 then
-    H := 11;
-  Result := MulDiv(AValue, H, 11);
+    H := 10;
+  Result := MulDiv(AValue, H, 10);
   if (AValue > 0) and (Result < 1) then
     Result := 1;
 end;
@@ -186,6 +202,8 @@ begin
   ControlStyle := ControlStyle + [csAcceptsControls, csOpaque];
   Color := $00F0F0F0;
   ParentColor := True;
+  ParentFont := True;
+  FCaptionInset := 5;
   TabStop := False;
 end;
 
@@ -203,12 +221,12 @@ begin
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := Color;
   Canvas.FillRect(ClientRect);
-  Y := Canvas.TextHeight('Wg') div 2;
+  Y := (Canvas.TextHeight('Wg') - 1) div 2;
   Canvas.Pen.Color := $00E0E0E0;
   Canvas.Pen.Width := 1;
   Canvas.Brush.Style := bsClear;
   Canvas.Rectangle(0, Y, ClientWidth, ClientHeight);
-  X := ScaleFont(Font, 5);
+  X := ScaleFont(Font, FCaptionInset);
   W := Canvas.TextWidth(FTitle);
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := Color;
@@ -226,6 +244,8 @@ begin
   FMargin := 2;
   FSpacing := 8;
   FNumGlyphs := 1;
+  FReferenceHeight := 34;
+  ParentFont := True;
   FGlyph := TBitmap.Create;
   FGlyph.OnChange := GlyphChanged;
   FDisabledGlyph := TBitmap.Create;
@@ -288,6 +308,12 @@ var
   R, IconRect: TRect;
   X, Y, GW, GH, Gap, TextW, TextH, Offset: Integer;
   B: TBitmap;
+
+  function Scale(const AValue: Integer): Integer;
+  begin
+    Result := MulDiv(AValue, ClientHeight, FReferenceHeight);
+  end;
+
 begin
   Canvas.Font.Assign(Font);
   Canvas.Brush.Style := bsSolid;
@@ -300,7 +326,7 @@ begin
   Canvas.Pen.Color := $00AAAAAA;
   Canvas.Pen.Width := 1;
   Canvas.RoundRect(0, 0, ClientWidth, ClientHeight,
-    ScaleFont(Font, 4), ScaleFont(Font, 4));
+    Scale(4), Scale(4));
   if not Enabled then
     Canvas.Font.Color := $00989898;
   TextW := Canvas.TextWidth(FTitle);
@@ -311,14 +337,14 @@ begin
   Gap := 0;
   if not FGlyph.Empty then
   begin
-    GW := ScaleFont(Font, FGlyph.Width);
-    GH := ScaleFont(Font, FGlyph.Height);
-    Gap := ScaleFont(Font, FSpacing);
+    GW := Scale(FGlyph.Width);
+    GH := Scale(FGlyph.Height);
+    Gap := Scale(FSpacing);
   end;
   if FCentered or FGlyph.Empty then
     X := (ClientWidth - GW - Gap - TextW) div 2
   else
-    X := ScaleFont(Font, FMargin);
+    X := Scale(FMargin);
   if GW > 0 then
   begin
     Y := (ClientHeight - GH) div 2;
@@ -364,13 +390,44 @@ begin
   inherited MouseUp(Button, Shift, X, Y);
 end;
 
+procedure TSampleButton.WMGetDlgCode(var AMessage: TNativeControlMessage);
+begin
+  AMessage.Result := DLGC_BUTTON;
+  if AMessage.WParam in [VK_SPACE, VK_RETURN] then
+    AMessage.Result := AMessage.Result or DLGC_WANTALLKEYS;
+end;
+
 procedure TSampleButton.KeyDown(var Key: Word; Shift: TShiftState);
 begin
   inherited KeyDown(Key, Shift);
-  if Enabled and (Key in [VK_SPACE, VK_RETURN]) then
+  if not Enabled then
+    Exit;
+  if Key = VK_SPACE then
+  begin
+    FPressed := True;
+    Invalidate;
+    Key := 0;
+  end
+  else if Key = VK_RETURN then
   begin
     Key := 0;
     Click;
+  end;
+end;
+
+procedure TSampleButton.KeyUp(var Key: Word; Shift: TShiftState);
+var
+  Activate: Boolean;
+begin
+  inherited KeyUp(Key, Shift);
+  if Key = VK_SPACE then
+  begin
+    Activate := FPressed and Enabled;
+    FPressed := False;
+    Invalidate;
+    Key := 0;
+    if Activate then
+      Click;
   end;
 end;
 
@@ -393,6 +450,7 @@ begin
   ControlStyle := ControlStyle + [csAcceptsControls, csOpaque];
   Color := $00F0F0F0;
   FImageIndex := -1;
+  ParentFont := True;
   TabStop := False;
 end;
 
@@ -436,6 +494,7 @@ begin
   inherited Create(AOwner);
   ControlStyle := ControlStyle + [csAcceptsControls, csOpaque];
   FPages := TList.Create;
+  ParentFont := True;
   Color := $00F0F0F0;
   TabStop := True;
   Width := 337;
@@ -474,9 +533,16 @@ begin
     Result := FPages.IndexOf(FActivePage);
 end;
 
+function TSamplePageControl.ScaleValue(const AValue: Integer): Integer;
+begin
+  { The right column stays fixed when the window is resized. Its width
+    scales with DPI, unlike integer font-point metrics which round again. }
+  Result := MulDiv(AValue, ClientWidth, 337);
+end;
+
 function TSamplePageControl.HeaderHeight: Integer;
 begin
-  Result := ScaleFont(Font, 18);
+  Result := ScaleValue(18);
 end;
 
 function TSamplePageControl.TabRect(const AIndex: Integer): TRect;
@@ -488,14 +554,16 @@ begin
     Exit;
   Canvas.Font.Assign(Font);
   X := 0;
+  if FTabWidth > 0 then
+    X := ScaleValue(5);
   for I := 0 to AIndex do
   begin
     if FTabWidth > 0 then
-      W := ScaleFont(Font, FTabWidth)
+      W := ScaleValue(FTabWidth)
     else
-      W := Canvas.TextWidth(Pages[I].Caption) + ScaleFont(Font, 14);
+      W := Canvas.TextWidth(Pages[I].Caption) + ScaleValue(14);
     if I = AIndex then
-      Result := Rect(X, 0, X + W, HeaderHeight - ScaleFont(Font, 2));
+      Result := Rect(X, 0, X + W, HeaderHeight - ScaleValue(2));
     Inc(X, W);
   end;
 end;
@@ -577,25 +645,36 @@ begin
 end;
 
 procedure TSamplePageControl.Paint;
+const
+  { Native reference headers do not centre every word identically. These
+    small insets match the Flash/Read/Format/IMEI/Locks/Service/RPMB row. }
+  CTextInsets: array[0..6] of Integer = (3, 5, 5, 9, 1, 5, 3);
 var
-  I: Integer;
+  I, X: Integer;
   R: TRect;
 begin
-  Canvas.Font.Assign(Font);
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := Color;
   Canvas.FillRect(ClientRect);
   for I := 0 to PageCount - 1 do
   begin
+    Canvas.Font.Assign(Font);
     R := TabRect(I);
+    if (FTabWidth > 0) and (Pages[I].Caption = 'IMEI') then
+    begin
+      Canvas.Font.Name := 'Times New Roman';
+      Canvas.Font.Height := -ScaleValue(11);
+    end;
     if Pages[I] = FActivePage then
     begin
       Canvas.Brush.Color := $00D0D0D0;
       Canvas.FillRect(R);
     end;
+    X := ScaleValue(6);
+    if (FTabWidth > 0) and (I <= High(CTextInsets)) then
+      X := ScaleValue(CTextInsets[I]);
     Canvas.Brush.Style := bsClear;
-    Canvas.TextOut(R.Left + ScaleFont(Font, 6), ScaleFont(Font, 1),
-      Pages[I].Caption);
+    Canvas.TextOut(R.Left + X, ScaleValue(1), Pages[I].Caption);
     Canvas.Brush.Style := bsSolid;
   end;
 end;
@@ -618,6 +697,13 @@ begin
     end;
 end;
 
+procedure TSamplePageControl.WMGetDlgCode(var AMessage: TNativeControlMessage);
+begin
+  AMessage.Result := DLGC_WANTARROWS;
+  if AMessage.WParam in [VK_HOME, VK_END] then
+    AMessage.Result := AMessage.Result or DLGC_WANTALLKEYS;
+end;
+
 procedure TSamplePageControl.KeyDown(var Key: Word; Shift: TShiftState);
 var
   I: Integer;
@@ -636,6 +722,24 @@ begin
   end;
   ActivePageIndex := I;
   Key := 0;
+end;
+
+procedure CompactCombo(ACombo: TComboBox; const AHeight: Integer);
+var
+  EditHandle: HWND;
+begin
+  if ACombo = nil then
+    Exit;
+  { Win32 otherwise replaces the DFM height with a font-dependent closed
+    field height. The references have compact 18-pixel fields. }
+  SendMessage(ACombo.Handle, CB_SETITEMHEIGHT, WPARAM(-1), AHeight - 6);
+  ACombo.Height := AHeight;
+  if ACombo.Style = csDropDown then
+  begin
+    EditHandle := FindWindowEx(ACombo.Handle, 0, 'Edit', nil);
+    if EditHandle <> 0 then
+      SendMessage(EditHandle, EM_SETMARGINS, EC_LEFTMARGIN or EC_RIGHTMARGIN, 0);
+  end;
 end;
 
 initialization

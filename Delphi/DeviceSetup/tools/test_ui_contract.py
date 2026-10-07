@@ -76,11 +76,11 @@ class UIContractTests(unittest.TestCase):
         self.assertEqual(self.main2["frmMain2"].props["ClientWidth"], "1026")
         self.assertEqual(self.main2["frmMain2"].props["ClientHeight"], "585")
         for name, rect in {
-            "grpPresets": (3, 37, 661, 44),
+            "grpPresets": (3, 36, 661, 45),
             "grpFiles": (3, 82, 661, 98),
-            "grpLog": (3, 184, 661, 378),
+            "grpLog": (3, 183, 661, 379),
             "pcJobs": (672, 37, 337, 526),
-            "grpConnections": (8, 5, 328, 188),
+            "grpConnections": (8, 3, 328, 190),
             "pcOperations": (0, 201, 337, 305),
         }.items():
             self.assertEqual(self.main2[name].bounds, rect, name)
@@ -90,7 +90,7 @@ class UIContractTests(unittest.TestCase):
         self.assertEqual(pc.kind, "TSamplePageControl")
         self.assertEqual([c.props["Caption"] for c in pc.children],
                          ["'Flash'", "'Read'", "'Format'", "'IMEI'", "'Locks'", "'Service'", "'RPMB'"])
-        self.assertLessEqual(int(pc.props["TabWidth"]) * len(pc.children), pc.bounds[2])
+        self.assertLessEqual(5 + int(pc.props["TabWidth"]) * len(pc.children), pc.bounds[2])
         self.assertNotIn("Style", pc.props)
 
     def test_options_frames_and_jobs_fit(self):
@@ -108,7 +108,7 @@ class UIContractTests(unittest.TestCase):
                     cx, cy, cw, ch = child.bounds
                     self.assertLessEqual(cx + cw, w, child.name)
                     self.assertLessEqual(cy + ch, h, child.name)
-        self.assertEqual(self.main2["btnEraseFrpAndWipe"].bounds, (14, 240, 300, 34))
+        self.assertEqual(self.main2["btnEraseFrpAndWipe"].bounds, (14, 242, 300, 34))
 
     def test_format_radio_groups_are_independent(self):
         self.assertIsNot(self.main2["rbAutoFormat"].parent,
@@ -131,7 +131,7 @@ class UIContractTests(unittest.TestCase):
 
     def test_small_typography_and_connection_defaults(self):
         self.assertEqual(self.main2["frmMain2"].props["Font.Name"], "'Tahoma'")
-        self.assertEqual(self.main2["frmMain2"].props["Font.Height"], "-11")
+        self.assertEqual(self.main2["frmMain2"].props["Font.Height"], "-10")
         self.assertEqual(self.main2["chkAuthBrom"].props["Checked"], "True")
         self.assertNotIn("Checked", self.main2["chkAuthPreloader"].props)
         for name in ("cbUsbSpeed", "cbBattery", "cbStorage", "cbFlashMode"):

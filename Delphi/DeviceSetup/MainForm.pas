@@ -93,6 +93,8 @@ type
       Shift: TShiftState);
     procedure lstBrandsClick(Sender: TObject);
     procedure lstModelsClick(Sender: TObject);
+    procedure lstCatalogDrawItem(Control: TWinControl; Index: Integer;
+      ARect: TRect; State: TOwnerDrawState);
     procedure lstModelsDblClick(Sender: TObject);
     procedure lstModelsKeyDown(Sender: TObject; var Key: Word;
       Shift: TShiftState);
@@ -388,6 +390,10 @@ end;
 
 procedure TMainForm.FormShow(Sender: TObject);
 begin
+  CompactCombo(cbSearch, MulDiv(18, btnSelect.Height, 31));
+  { Selection scrolls the native list when its handle is first created. }
+  if lstBrands.Handle <> 0 then
+    lstBrands.TopIndex := 0;
   if cbSearch.CanFocus then
   begin
     cbSearch.SetFocus;
@@ -615,6 +621,27 @@ begin
   UpdateNextState;
 end;
 
+procedure TMainForm.lstCatalogDrawItem(Control: TWinControl; Index: Integer;
+  ARect: TRect; State: TOwnerDrawState);
+var
+  List: TListBox;
+begin
+  List := TListBox(Control);
+  List.Canvas.Font.Assign(List.Font);
+  if odSelected in State then
+  begin
+    List.Canvas.Brush.Color := clHighlight;
+    List.Canvas.Font.Color := clHighlightText;
+  end
+  else
+  begin
+    List.Canvas.Brush.Color := clWhite;
+    List.Canvas.Font.Color := clWindowText;
+  end;
+  List.Canvas.FillRect(ARect);
+  List.Canvas.TextOut(ARect.Left + 1, ARect.Top, List.Items[Index]);
+end;
+
 procedure TMainForm.lstModelsDblClick(Sender: TObject);
 begin
   if lstModels.ItemIndex >= 0 then
@@ -696,8 +723,8 @@ begin
   begin
     { Actual lowercase manufacturer wordmark, not an uppercase font proxy. }
     B := SampleBitmap('UI_OPPO');
-    W := MulDiv(B.Width, Abs(Font.Height), 11);
-    H := MulDiv(B.Height, Abs(Font.Height), 11);
+    W := MulDiv(B.Width, btnSelect.Height, 31);
+    H := MulDiv(B.Height, btnSelect.Height, 31);
     if W > R.Width - 20 then
     begin
       H := MulDiv(H, R.Width - 20, W);

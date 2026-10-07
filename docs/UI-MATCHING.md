@@ -37,7 +37,7 @@ app retains normal Windows window controls.
   move/reduce the log area without overlapping it.
 - Theme-independent frames and button faces, framed Options panels, real
   compact tabs with no overflowing RPMB tab/native scroll arrows.
-- Small Tahoma UI typography, serif IMEI values, pale check-digit fields,
+- 10-pixel Tahoma labels/tabs and 9-pixel action captions, serif IMEI values, pale check-digit fields,
   the bold blue Advanced settings link and compact hex address fields.
 - Independent Format mode/range radio groups; the last Format action is
   fully visible at the minimum window size.
@@ -89,7 +89,13 @@ native popups are separate windows; other images use client-only PrintWindow.
 
 Win32 and Win64 CI upload the EXEs, self-test log and lossless PNGs. Win64
 also publishes those PNG bytes in numbered `ci-shot` check runs for review
-through the GitHub API. Unlike the old GIF transport, this does not introduce
+through the GitHub API. To reconstruct them without downloading artifacts:
+
+```sh
+python Delphi/DeviceSetup/tools/read_ci_screenshots.py --sha <commit> --output <review-directory>
+```
+
+Unlike the old GIF transport, this does not introduce
 256-colour dithering or alter the appearance of fonts and backgrounds.
 
 **Scope:** this change completes the reference interface. Real device
