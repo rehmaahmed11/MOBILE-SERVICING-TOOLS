@@ -11,6 +11,7 @@ uses
   Interfaces,
   Forms,
   AppInfo,
+  DaLoader,
   MainForm,
   Main2Form,
   DeviceCatalog,

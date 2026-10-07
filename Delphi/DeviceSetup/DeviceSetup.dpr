@@ -3,6 +3,7 @@ program DeviceSetup;
 uses
   Vcl.Forms,
   AppInfo in 'AppInfo.pas',
+  DaLoader in 'DaLoader.pas',
   MainForm in 'MainForm.pas' {frmMain},
   Main2Form in 'Main2Form.pas' {frmMain2},
   DeviceCatalog in 'DeviceCatalog.pas',
