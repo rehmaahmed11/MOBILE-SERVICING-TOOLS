@@ -57,8 +57,18 @@ begin
 end;
 
 function SelfTestRequested: Boolean;
+var
+  I: Integer;
+  S: string;
 begin
-  Result := FindCmdLineSwitch('selftest', ['-', '/'], True);
+  { accepts --selftest, -selftest and /selftest }
+  Result := False;
+  for I := 1 to ParamCount do
+  begin
+    S := LowerCase(ParamStr(I));
+    if (S = '--selftest') or (S = '-selftest') or (S = '/selftest') then
+      Result := True;
+  end;
 end;
 
 procedure TSelfTestHandler.AppException(Sender: TObject; E: Exception);
