@@ -1,5 +1,10 @@
 unit Main2Form;
 
+{$IFDEF FPC}
+  {$MODE DELPHI}
+{$ENDIF}
+
+
 { MAIN 2 - opened from MAIN 1 when the user presses Next.
   Layout follows the MAIN 2 reference screenshot:
     - toolbar: menu (left); next, save, change device, settings,
@@ -14,6 +19,11 @@ unit Main2Form;
 interface
 
 uses
+{$IFDEF FPC}
+  Windows, LCLType, Classes, SysUtils, Types,
+  Buttons, ComCtrls, Controls, Dialogs, ExtCtrls, Forms, Graphics, Menus,
+  StdCtrls,
+{$ELSE}
   Winapi.Windows,
   System.Classes,
   System.SysUtils,
@@ -27,6 +37,7 @@ uses
   Vcl.Graphics,
   Vcl.Menus,
   Vcl.StdCtrls,
+{$ENDIF}
   ToolbarIcons;
 
 type
@@ -165,10 +176,18 @@ type
 
 implementation
 
-{$R *.dfm}
+{$IFDEF FPC}
+  {$R *.lfm}
+{$ELSE}
+  {$R *.dfm}
+{$ENDIF}
 
 uses
+{$IFDEF FPC}
+  ShellApi;
+{$ELSE}
   Winapi.ShellAPI;
+{$ENDIF}
 
 const
   CFacebookUrl = 'https://www.facebook.com/';
@@ -394,7 +413,11 @@ begin
     Dialog.Options := Dialog.Options + [ofOverwritePrompt];
     Dialog.FileName := 'log.txt';
     if Dialog.Execute then
+      {$IFDEF FPC}
+      memLog.Lines.SaveToFile(Dialog.FileName);  { LCL strings are UTF-8 }
+      {$ELSE}
       memLog.Lines.SaveToFile(Dialog.FileName, TEncoding.UTF8);
+      {$ENDIF}
   finally
     Dialog.Free;
   end;
@@ -539,20 +562,41 @@ begin
   UpdateAdvancedWrite;
 end;
 
+function TryParseHex(const S: string; out AValue: UInt64): Boolean;
+var
+  I: Integer;
+  Digit: Integer;
+begin
+  AValue := 0;
+  Result := (Length(S) > 0) and (Length(S) <= 16);
+  if not Result then
+    Exit;
+  for I := 1 to Length(S) do
+  begin
+    case S[I] of
+      '0'..'9': Digit := Ord(S[I]) - Ord('0');
+      'a'..'f': Digit := Ord(S[I]) - Ord('a') + 10;
+      'A'..'F': Digit := Ord(S[I]) - Ord('A') + 10;
+    else
+      Result := False;
+      Exit;
+    end;
+    AValue := (AValue shl 4) or UInt64(Digit);
+  end;
+end;
+
 function TMain2Form.ParseAddress(out AStart, ALength: UInt64): Boolean;
 var
-  Parts: TArray<string>;
   Clean: string;
+  SpacePos: Integer;
 begin
   AStart := 0;
   ALength := 0;
   Clean := Trim(edtAddress.Text);
-  while Pos('  ', Clean) > 0 do
-    Clean := StringReplace(Clean, '  ', ' ', [rfReplaceAll]);
-  Parts := Clean.Split([' ']);
-  Result := (Length(Parts) = 2) and
-    TryStrToUInt64('$' + Parts[0], AStart) and
-    TryStrToUInt64('$' + Parts[1], ALength);
+  SpacePos := Pos(' ', Clean);
+  Result := (SpacePos > 0) and
+    TryParseHex(Trim(Copy(Clean, 1, SpacePos - 1)), AStart) and
+    TryParseHex(Trim(Copy(Clean, SpacePos + 1, MaxInt)), ALength);
 end;
 
 { ---------------------------------------------------------------- actions }
@@ -607,7 +651,7 @@ begin
     Exit;
   end;
   Log(Format('BIN file : %s', [edtBin.Text]));
-  Log(Format('Address : 0x%.8x  Length : 0x%.8x', [StartAddr, Len]));
+  Log('Address : 0x' + IntToHex(StartAddr, 8) + '  Length : 0x' + IntToHex(Len, 8));
   LogSettings;
   LogNotImplemented('Write BIN');
 end;

@@ -1,5 +1,10 @@
 unit DeviceCatalog;
 
+{$IFDEF FPC}
+  {$MODE DELPHI}
+{$ENDIF}
+
+
 { In-memory brand/model catalog used by MAIN 1.
   Each model entry is shown exactly as "<model code> : <marketing name>".
   This is starter/demo data - replace it with a real data source later. }
@@ -17,17 +22,16 @@ type
 
 implementation
 
-uses
-  System.SysUtils;
-
 type
+  TModelList = array of string;
   TBrandEntry = record
     Name: string;
-    Models: TArray<string>;
+    Models: TModelList;
   end;
+  TBrandList = array of TBrandEntry;
 
 var
-  GBrands: TArray<TBrandEntry>;
+  GBrands: TBrandList;
 
 procedure AddBrand(const AName: string; const AModels: array of string);
 var

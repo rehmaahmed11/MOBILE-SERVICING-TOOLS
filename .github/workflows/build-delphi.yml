@@ -1,9 +1,10 @@
-name: Build Delphi EXEs
+name: Build Delphi EXEs (self-hosted, manual)
+
+# Manual only: needs a self-hosted Windows runner labelled "delphi" with
+# RAD Studio installed. Without one, the job just sits in the queue.
+# The automatic build is .github/workflows/build-fast.yml.
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 permissions:

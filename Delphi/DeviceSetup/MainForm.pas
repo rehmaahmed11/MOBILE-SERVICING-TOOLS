@@ -1,5 +1,10 @@
 unit MainForm;
 
+{$IFDEF FPC}
+  {$MODE DELPHI}
+{$ENDIF}
+
+
 { MAIN 1 - first screen.
   Layout (matching the reference screenshot):
     - blue menu icon top-left
@@ -12,6 +17,10 @@ unit MainForm;
 interface
 
 uses
+{$IFDEF FPC}
+  Windows, LCLType, Classes, SysUtils, StrUtils, Types,
+  Controls, Dialogs, Forms, Graphics, Menus, StdCtrls, ExtCtrls,
+{$ELSE}
   Winapi.Windows,
   System.Classes,
   System.SysUtils,
@@ -24,6 +33,7 @@ uses
   Vcl.Menus,
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
+{$ENDIF}
   DeviceCatalog;
 
 type
@@ -77,7 +87,11 @@ var
 
 implementation
 
-{$R *.dfm}
+{$IFDEF FPC}
+  {$R *.lfm}
+{$ELSE}
+  {$R *.dfm}
+{$ENDIF}
 
 uses
   Main2Form,
@@ -413,7 +427,11 @@ begin
     if lstBrands.ItemIndex >= 0 then
       Dialog.FileName := lstBrands.Items[lstBrands.ItemIndex] + ' models.txt';
     if Dialog.Execute then
+      {$IFDEF FPC}
+      lstModels.Items.SaveToFile(Dialog.FileName);  { LCL strings are UTF-8 }
+      {$ELSE}
       lstModels.Items.SaveToFile(Dialog.FileName, TEncoding.UTF8);
+      {$ENDIF}
   finally
     Dialog.Free;
   end;

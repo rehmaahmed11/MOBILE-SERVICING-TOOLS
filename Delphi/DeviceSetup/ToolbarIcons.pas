@@ -1,14 +1,23 @@
 unit ToolbarIcons;
 
+{$IFDEF FPC}
+  {$MODE DELPHI}
+{$ENDIF}
+
+
 { Vector-drawn icons shared by MAIN 1 and MAIN 2, so the project needs no
   binary image resources. All toolbar icons are drawn into a 28x28 area. }
 
 interface
 
 uses
+{$IFDEF FPC}
+  Windows, Types, Graphics;
+{$ELSE}
   Winapi.Windows,
   System.Types,
   Vcl.Graphics;
+{$ENDIF}
 
 type
   TActionGlyph = (agWriteFirmware, agRestore, agWriteBin, agWriteOfp);
@@ -33,7 +42,22 @@ function CreateActionGlyph(const AKind: TActionGlyph): TBitmap;
 implementation
 
 uses
+{$IFDEF FPC}
+  Math;
+{$ELSE}
   System.Math;
+{$ENDIF}
+
+procedure DrawCenteredText(ACanvas: TCanvas; const R: TRect; const S: string);
+var
+  W, H: Integer;
+begin
+  W := ACanvas.TextWidth(S);
+  H := ACanvas.TextHeight(S);
+  ACanvas.Brush.Style := bsClear;
+  ACanvas.TextOut(R.Left + (R.Right - R.Left - W) div 2,
+    R.Top + (R.Bottom - R.Top - H) div 2, S);
+end;
 
 procedure ClearIcon(ACanvas: TCanvas; const R: TRect);
 begin
@@ -186,9 +210,9 @@ begin
   ACanvas.Font.Height := -21;
   ACanvas.Font.Color := clWhite;
   ACanvas.Brush.Style := bsClear;
-  TextR := Rect(R.Left + 9, R.Top + 4, R.Left + 26, R.Top + 27);
+  TextR := Rect(R.Left + 8, R.Top + 6, R.Left + 26, R.Top + 28);
   S := 'f';
-  DrawText(ACanvas.Handle, PChar(S), 1, TextR, DT_SINGLELINE or DT_BOTTOM or DT_CENTER);
+  DrawCenteredText(ACanvas, TextR, S);
   ACanvas.Brush.Style := bsSolid;
 end;
 
@@ -206,10 +230,10 @@ begin
   { soft shadow + purple question mark }
   ACanvas.Font.Color := RGB(200, 185, 215);
   TextR := Rect(R.Left + 2, R.Top + 1, R.Right + 2, R.Bottom + 1);
-  DrawText(ACanvas.Handle, PChar(S), 1, TextR, DT_SINGLELINE or DT_VCENTER or DT_CENTER);
+  DrawCenteredText(ACanvas, TextR, S);
   ACanvas.Font.Color := RGB(126, 76, 160);
   TextR := R;
-  DrawText(ACanvas.Handle, PChar(S), 1, TextR, DT_SINGLELINE or DT_VCENTER or DT_CENTER);
+  DrawCenteredText(ACanvas, TextR, S);
   ACanvas.Brush.Style := bsSolid;
 end;
 
@@ -293,6 +317,8 @@ begin
   end;
   { keep bottom-left pixel transparent for TBitBtn }
   Result.Canvas.Pixels[0, 23] := clFuchsia;
+  Result.TransparentColor := clFuchsia;
+  Result.Transparent := True;
 end;
 
 end.
