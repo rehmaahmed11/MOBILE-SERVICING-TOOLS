@@ -13,11 +13,14 @@ object frmMain: TMainForm
   Font.Height = -11
   Font.Name = 'Tahoma'
   Font.Style = []
+  KeyPreview = True
   OldCreateOrder = False
   Position = poScreenCenter
   ShowHint = True
   ActiveControl = cbSearch
   OnCreate = FormCreate
+  OnDestroy = FormDestroy
+  OnKeyDown = FormKeyDown
   OnShow = FormShow
   PixelsPerInch = 96
   TextHeight = 13
@@ -102,6 +105,13 @@ object frmMain: TMainForm
   object pmMain: TPopupMenu
     Left = 760
     Top = 120
+    object miDeviceStatus: TMenuItem
+      Caption = 'Device: none detected'
+      Enabled = False
+    end
+    object miStatusSeparator: TMenuItem
+      Caption = '-'
+    end
     object miNext: TMenuItem
       Caption = 'Next'
       OnClick = pbNextClick
@@ -109,6 +119,14 @@ object frmMain: TMainForm
     object miSaveList: TMenuItem
       Caption = 'Save model list...'
       OnClick = pbDownloadClick
+    end
+    object miReloadList: TMenuItem
+      Caption = 'Reload model list  (Ctrl+R)'
+      OnClick = miReloadListClick
+    end
+    object miOpenDataFolder: TMenuItem
+      Caption = 'Open model data folder...'
+      OnClick = miOpenDataFolderClick
     end
     object miSeparator: TMenuItem
       Caption = '-'

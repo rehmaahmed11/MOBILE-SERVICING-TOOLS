@@ -18,6 +18,7 @@ object frmMain2: TMain2Form
   Position = poScreenCenter
   ShowHint = True
   OnCreate = FormCreate
+  OnDestroy = FormDestroy
   OnKeyDown = FormKeyDown
   PixelsPerInch = 96
   TextHeight = 13
@@ -155,10 +156,11 @@ object frmMain2: TMain2Form
     Top = 52
     Width = 807
     Height = 21
+    Hint = 'Presets - use the menu icon to save the current job as a preset'
     Style = csDropDownList
     Anchors = [akLeft, akTop, akRight]
-    Enabled = False
     TabOrder = 0
+    OnChange = cbPresetsChange
   end
   object btnScat: TButton
     Left = 8
@@ -177,6 +179,7 @@ object frmMain2: TMain2Form
     Anchors = [akLeft, akTop, akRight]
     AutoSize = False
     TabOrder = 2
+    OnChange = edtScatChange
   end
   object btnAuth: TButton
     Left = 8
@@ -620,6 +623,17 @@ object frmMain2: TMain2Form
   object pmMain: TPopupMenu
     Left = 600
     Top = 260
+    object miSavePreset: TMenuItem
+      Caption = 'Save preset...'
+      OnClick = miSavePresetClick
+    end
+    object miDeletePreset: TMenuItem
+      Caption = 'Delete preset...'
+      OnClick = miDeletePresetClick
+    end
+    object miPresetSeparator: TMenuItem
+      Caption = '-'
+    end
     object miChangeDevice: TMenuItem
       Caption = 'Change device...'
       OnClick = pbChangeDeviceClick
@@ -631,6 +645,10 @@ object frmMain2: TMain2Form
     object miClearLog: TMenuItem
       Caption = 'Clear log'
       OnClick = miClearLogClick
+    end
+    object miOpenLogFolder: TMenuItem
+      Caption = 'Open log folder...'
+      OnClick = miOpenLogFolderClick
     end
     object miSeparator: TMenuItem
       Caption = '-'

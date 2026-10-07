@@ -12,7 +12,9 @@ uses
   MainForm,
   Main2Form,
   DeviceCatalog,
-  ToolbarIcons;
+  ToolbarIcons,
+  AppSettings,
+  DeviceWatch;
 
 begin
   RequireDerivedFormResource := True;
@@ -20,5 +22,8 @@ begin
   Application.Initialize;
   Application.MainFormOnTaskBar := True;
   Application.CreateForm(TMainForm, frmMain);
+  { Unexpected errors are written to %APPDATA%/MobileServicingTools/logs
+    instead of only showing a raw Windows error. }
+  Application.OnException := frmMain.HandleAppException;
   Application.Run;
 end.

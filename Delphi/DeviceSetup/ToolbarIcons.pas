@@ -6,7 +6,14 @@ unit ToolbarIcons;
 
 
 { Vector-drawn icons shared by MAIN 1 and MAIN 2, so the project needs no
-  binary image resources. All toolbar icons are drawn into a 28x28 area. }
+  binary image resources.
+
+  Every icon is described in a fixed "design space" (28x28 for the toolbar
+  icons, 24x32 for the device state icon) and then mapped onto whatever
+  rectangle it is asked to draw into. That keeps the icons correct when
+  Windows scales the form for a high DPI monitor, or when a paint box is
+  resized. At the design size the mapping is exactly 1:1, so the icons look
+  the same as they did before. }
 
 interface
 
@@ -19,8 +26,38 @@ uses
   Vcl.Graphics;
 {$ENDIF}
 
+const
+  CIconDesignSize = 28;
+
 type
   TActionGlyph = (agWriteFirmware, agRestore, agWriteBin, agWriteOfp);
+
+  { Maps a fixed design space onto a target rectangle. All drawing helpers
+    take design coordinates. }
+  TIconBox = record
+    C: TCanvas;
+    L, T, W, H: Integer;
+    DW, DH: Integer;
+    procedure Init(ACanvas: TCanvas; const R: TRect;
+      const ADesignW: Integer = CIconDesignSize;
+      const ADesignH: Integer = CIconDesignSize);
+    procedure Clear;
+    function PX(const AX: Integer): Integer;
+    function PY(const AY: Integer): Integer;
+    function P(const AX, AY: Integer): TPoint;
+    function Rct(const AX1, AY1, AX2, AY2: Integer): TRect;
+    function SZ(const AValue: Integer): Integer;
+    procedure PenW(const AWidth: Integer);
+    procedure Fill(const AX1, AY1, AX2, AY2: Integer);
+    procedure Frame(const AX1, AY1, AX2, AY2: Integer);
+    procedure RRect(const AX1, AY1, AX2, AY2, ARX, ARY: Integer);
+    procedure Ellipse(const AX1, AY1, AX2, AY2: Integer);
+    procedure Arc(const AX1, AY1, AX2, AY2, ASX, ASY, AEX, AEY: Integer);
+    procedure Line(const AX1, AY1, AX2, AY2: Integer);
+    procedure Poly(const AXY: array of Integer);
+    procedure TextCentered(const S: string; const AX1, AY1, AX2, AY2,
+      AFontHeight: Integer; const AColor: TColor);
+  end;
 
 procedure DrawMenuIcon(ACanvas: TCanvas; const R: TRect);
 procedure DrawNextIcon(ACanvas: TCanvas; const R: TRect; const AEnabled: Boolean);
@@ -48,115 +85,146 @@ uses
   System.Math;
 {$ENDIF}
 
-procedure DrawCenteredText(ACanvas: TCanvas; const R: TRect; const S: string);
+{ ------------------------------------------------------------ icon box }
+
+procedure TIconBox.Init(ACanvas: TCanvas; const R: TRect;
+  const ADesignW, ADesignH: Integer);
+begin
+  C := ACanvas;
+  L := R.Left;
+  T := R.Top;
+  W := R.Right - R.Left;
+  H := R.Bottom - R.Top;
+  DW := ADesignW;
+  DH := ADesignH;
+  if DW <= 0 then
+    DW := CIconDesignSize;
+  if DH <= 0 then
+    DH := CIconDesignSize;
+  if W <= 0 then
+    W := DW;
+  if H <= 0 then
+    H := DH;
+end;
+
+procedure TIconBox.Clear;
+begin
+  C.Pen.Width := 1;
+  C.Pen.Style := psSolid;
+  C.Brush.Style := bsSolid;
+  C.Brush.Color := clBtnFace;
+  C.FillRect(Rect(L, T, L + W, T + H));
+end;
+
+function TIconBox.PX(const AX: Integer): Integer;
+begin
+  Result := L + MulDiv(AX, W, DW);
+end;
+
+function TIconBox.PY(const AY: Integer): Integer;
+begin
+  Result := T + MulDiv(AY, H, DH);
+end;
+
+function TIconBox.P(const AX, AY: Integer): TPoint;
+begin
+  Result.X := PX(AX);
+  Result.Y := PY(AY);
+end;
+
+function TIconBox.Rct(const AX1, AY1, AX2, AY2: Integer): TRect;
+begin
+  Result.Left := PX(AX1);
+  Result.Top := PY(AY1);
+  Result.Right := PX(AX2);
+  Result.Bottom := PY(AY2);
+end;
+
+function TIconBox.SZ(const AValue: Integer): Integer;
+begin
+  { Scale a length (font height, pen width, radius) with the icon. }
+  Result := MulDiv(AValue, W + H, DW + DH);
+  if (AValue > 0) and (Result < 1) then
+    Result := 1;
+end;
+
+procedure TIconBox.PenW(const AWidth: Integer);
+begin
+  C.Pen.Width := Max(1, SZ(AWidth));
+end;
+
+procedure TIconBox.Fill(const AX1, AY1, AX2, AY2: Integer);
+begin
+  C.Brush.Style := bsSolid;
+  C.FillRect(Rct(AX1, AY1, AX2, AY2));
+end;
+
+procedure TIconBox.Frame(const AX1, AY1, AX2, AY2: Integer);
+begin
+  { Leaves the brush style alone: callers that want an outline only set
+    bsClear first. }
+  C.Rectangle(Rct(AX1, AY1, AX2, AY2));
+end;
+
+procedure TIconBox.RRect(const AX1, AY1, AX2, AY2, ARX, ARY: Integer);
+begin
+  C.Brush.Style := bsSolid;
+  C.RoundRect(PX(AX1), PY(AY1), PX(AX2), PY(AY2), SZ(ARX), SZ(ARY));
+end;
+
+procedure TIconBox.Ellipse(const AX1, AY1, AX2, AY2: Integer);
+begin
+  { Leaves the brush style alone, like Frame. }
+  C.Ellipse(Rct(AX1, AY1, AX2, AY2));
+end;
+
+procedure TIconBox.Arc(const AX1, AY1, AX2, AY2, ASX, ASY, AEX, AEY: Integer);
+begin
+  C.Arc(PX(AX1), PY(AY1), PX(AX2), PY(AY2),
+    PX(ASX), PY(ASY), PX(AEX), PY(AEY));
+end;
+
+procedure TIconBox.Line(const AX1, AY1, AX2, AY2: Integer);
+begin
+  C.MoveTo(PX(AX1), PY(AY1));
+  C.LineTo(PX(AX2), PY(AY2));
+end;
+
+procedure TIconBox.Poly(const AXY: array of Integer);
 var
+  Pts: array of TPoint;
+  I, N: Integer;
+begin
+  N := Length(AXY) div 2;
+  if N < 2 then
+    Exit;
+  SetLength(Pts, N);
+  for I := 0 to N - 1 do
+    Pts[I] := P(AXY[I * 2], AXY[I * 2 + 1]);
+  C.Brush.Style := bsSolid;
+  C.Polygon(Pts);
+end;
+
+procedure TIconBox.TextCentered(const S: string; const AX1, AY1, AX2, AY2,
+  AFontHeight: Integer; const AColor: TColor);
+var
+  R: TRect;
   W, H: Integer;
 begin
-  W := ACanvas.TextWidth(S);
-  H := ACanvas.TextHeight(S);
-  ACanvas.Brush.Style := bsClear;
-  ACanvas.TextOut(R.Left + (R.Right - R.Left - W) div 2,
+  C.Font.Name := 'Arial';
+  C.Font.Style := [fsBold];
+  C.Font.Height := -Max(6, SZ(AFontHeight));
+  C.Font.Color := AColor;
+  C.Brush.Style := bsClear;
+  R := Rct(AX1, AY1, AX2, AY2);
+  W := C.TextWidth(S);
+  H := C.TextHeight(S);
+  C.TextOut(R.Left + (R.Right - R.Left - W) div 2,
     R.Top + (R.Bottom - R.Top - H) div 2, S);
+  C.Brush.Style := bsSolid;
 end;
 
-procedure ClearIcon(ACanvas: TCanvas; const R: TRect);
-begin
-  ACanvas.Pen.Width := 1;
-  ACanvas.Pen.Style := psSolid;
-  ACanvas.Brush.Style := bsSolid;
-  ACanvas.Brush.Color := clBtnFace;
-  ACanvas.FillRect(R);
-end;
-
-procedure DrawMenuIcon(ACanvas: TCanvas; const R: TRect);
-var
-  I, Y: Integer;
-begin
-  ClearIcon(ACanvas, R);
-  ACanvas.Pen.Color := RGB(16, 82, 168);
-  ACanvas.Brush.Color := RGB(36, 120, 214);
-  for I := 0 to 2 do
-  begin
-    Y := R.Top + 3 + I * 8;
-    ACanvas.RoundRect(R.Left + 3, Y, R.Right - 3, Y + 7, 4, 4);
-  end;
-end;
-
-procedure DrawNextIcon(ACanvas: TCanvas; const R: TRect; const AEnabled: Boolean);
-var
-  L, T: Integer;
-  Frame, Fill, Arrow, ArrowEdge: TColor;
-begin
-  ClearIcon(ACanvas, R);
-  L := R.Left;
-  T := R.Top;
-  if AEnabled then
-  begin
-    Frame := RGB(70, 70, 70);
-    Fill := clWhite;
-    Arrow := RGB(38, 170, 64);
-    ArrowEdge := RGB(22, 118, 42);
-  end
-  else
-  begin
-    Frame := RGB(150, 150, 150);
-    Fill := RGB(235, 235, 235);
-    Arrow := RGB(170, 200, 175);
-    ArrowEdge := RGB(140, 165, 145);
-  end;
-  ACanvas.Pen.Color := Frame;
-  ACanvas.Brush.Color := Fill;
-  ACanvas.Rectangle(L + 3, T + 3, L + 21, T + 21);
-  ACanvas.Brush.Color := Frame;
-  ACanvas.FillRect(Rect(L + 3, T + 3, L + 21, T + 7));
-  ACanvas.Pen.Color := ArrowEdge;
-  ACanvas.Brush.Color := Arrow;
-  ACanvas.Polygon([Point(L + 12, T + 10), Point(L + 12, T + 26),
-    Point(L + 25, T + 18)]);
-end;
-
-procedure DrawDownloadIcon(ACanvas: TCanvas; const R: TRect);
-var
-  L, T: Integer;
-begin
-  ClearIcon(ACanvas, R);
-  L := R.Left;
-  T := R.Top;
-  ACanvas.Pen.Color := RGB(200, 60, 20);
-  ACanvas.Brush.Color := RGB(242, 92, 34);
-  ACanvas.Rectangle(L + 11, T + 2, L + 18, T + 12);
-  ACanvas.Polygon([Point(L + 5, T + 12), Point(L + 23, T + 12),
-    Point(L + 14, T + 21)]);
-  ACanvas.Rectangle(L + 4, T + 23, L + 25, T + 27);
-end;
-
-procedure DrawPhoneRefreshIcon(ACanvas: TCanvas; const R: TRect);
-var
-  L, T: Integer;
-begin
-  ClearIcon(ACanvas, R);
-  L := R.Left;
-  T := R.Top;
-  { phone body }
-  ACanvas.Pen.Color := RGB(22, 96, 170);
-  ACanvas.Pen.Width := 2;
-  ACanvas.Brush.Color := clWhite;
-  ACanvas.RoundRect(L + 6, T + 2, L + 22, T + 27, 5, 5);
-  ACanvas.Pen.Width := 1;
-  ACanvas.Brush.Color := RGB(22, 96, 170);
-  ACanvas.FillRect(Rect(L + 11, T + 23, L + 17, T + 25));
-  { circular arrow }
-  ACanvas.Pen.Color := RGB(0, 150, 200);
-  ACanvas.Pen.Width := 2;
-  ACanvas.Brush.Style := bsClear;
-  ACanvas.Arc(L + 9, T + 7, L + 20, T + 19, L + 20, T + 10, L + 13, T + 19);
-  ACanvas.Pen.Width := 1;
-  ACanvas.Brush.Style := bsSolid;
-  ACanvas.Brush.Color := RGB(0, 150, 200);
-  ACanvas.Pen.Color := RGB(0, 150, 200);
-  ACanvas.Polygon([Point(L + 17, T + 6), Point(L + 21, T + 12),
-    Point(L + 15, T + 11)]);
-end;
+{ ------------------------------------------------------------ gear shape }
 
 procedure DrawGear(ACanvas: TCanvas; const CX, CY, ROuter, RInner,
   Teeth: Integer; const AColor, AHoleColor: TColor);
@@ -189,82 +257,153 @@ begin
   ACanvas.Ellipse(CX - Hole, CY - Hole, CX + Hole + 1, CY + Hole + 1);
 end;
 
-procedure DrawGearIcon(ACanvas: TCanvas; const R: TRect);
+{ ------------------------------------------------------------ icons }
+
+procedure DrawMenuIcon(ACanvas: TCanvas; const R: TRect);
+var
+  B: TIconBox;
+  I, Y: Integer;
 begin
-  ClearIcon(ACanvas, R);
-  DrawGear(ACanvas, R.Left + 14, R.Top + 14, 12, 9, 8, RGB(105, 105, 105),
-    clBtnFace);
+  B.Init(ACanvas, R);
+  B.Clear;
+  ACanvas.Pen.Color := RGB(16, 82, 168);
+  ACanvas.Brush.Color := RGB(36, 120, 214);
+  for I := 0 to 2 do
+  begin
+    Y := 3 + I * 8;
+    B.RRect(3, Y, 25, Y + 7, 4, 4);
+  end;
+end;
+
+procedure DrawNextIcon(ACanvas: TCanvas; const R: TRect; const AEnabled: Boolean);
+var
+  B: TIconBox;
+  FrameColor, FillColor, Arrow, ArrowEdge: TColor;
+begin
+  B.Init(ACanvas, R);
+  B.Clear;
+  if AEnabled then
+  begin
+    FrameColor := RGB(70, 70, 70);
+    FillColor := clWhite;
+    Arrow := RGB(38, 170, 64);
+    ArrowEdge := RGB(22, 118, 42);
+  end
+  else
+  begin
+    FrameColor := RGB(150, 150, 150);
+    FillColor := RGB(235, 235, 235);
+    Arrow := RGB(170, 200, 175);
+    ArrowEdge := RGB(140, 165, 145);
+  end;
+  ACanvas.Pen.Color := FrameColor;
+  ACanvas.Brush.Color := FillColor;
+  B.Frame(3, 3, 21, 21);
+  { dark band across the top of the button }
+  ACanvas.Brush.Color := FrameColor;
+  B.Fill(3, 3, 21, 7);
+  ACanvas.Pen.Color := ArrowEdge;
+  ACanvas.Brush.Color := Arrow;
+  B.Poly([12, 10, 12, 26, 25, 18]);
+end;
+
+procedure DrawDownloadIcon(ACanvas: TCanvas; const R: TRect);
+var
+  B: TIconBox;
+begin
+  B.Init(ACanvas, R);
+  B.Clear;
+  ACanvas.Pen.Color := RGB(200, 60, 20);
+  ACanvas.Brush.Color := RGB(242, 92, 34);
+  B.Frame(11, 2, 18, 12);
+  B.Poly([5, 12, 23, 12, 14, 21]);
+  B.Frame(4, 23, 25, 27);
+end;
+
+procedure DrawPhoneRefreshIcon(ACanvas: TCanvas; const R: TRect);
+var
+  B: TIconBox;
+begin
+  B.Init(ACanvas, R);
+  B.Clear;
+  { phone body }
+  ACanvas.Pen.Color := RGB(22, 96, 170);
+  ACanvas.Brush.Color := clWhite;
+  B.PenW(2);
+  B.RRect(6, 2, 22, 27, 5, 5);
+  B.PenW(1);
+  ACanvas.Brush.Color := RGB(22, 96, 170);
+  B.Fill(11, 23, 17, 25);
+  { circular arrow }
+  ACanvas.Pen.Color := RGB(0, 150, 200);
+  ACanvas.Brush.Style := bsClear;
+  B.PenW(2);
+  B.Arc(9, 7, 20, 19, 20, 10, 13, 19);
+  B.PenW(1);
+  ACanvas.Brush.Style := bsSolid;
+  ACanvas.Brush.Color := RGB(0, 150, 200);
+  ACanvas.Pen.Color := RGB(0, 150, 200);
+  B.Poly([17, 6, 21, 12, 15, 11]);
+end;
+
+procedure DrawGearIcon(ACanvas: TCanvas; const R: TRect);
+var
+  B: TIconBox;
+begin
+  B.Init(ACanvas, R);
+  B.Clear;
+  DrawGear(ACanvas, B.PX(14), B.PY(14), B.SZ(12), B.SZ(9), 8,
+    RGB(105, 105, 105), clBtnFace);
 end;
 
 procedure DrawFacebookIcon(ACanvas: TCanvas; const R: TRect);
 var
-  TextR: TRect;
-  S: string;
+  B: TIconBox;
 begin
-  ClearIcon(ACanvas, R);
+  B.Init(ACanvas, R);
+  B.Clear;
   ACanvas.Pen.Color := RGB(59, 89, 152);
   ACanvas.Brush.Color := RGB(59, 89, 152);
-  ACanvas.RoundRect(R.Left + 3, R.Top + 3, R.Left + 26, R.Top + 26, 4, 4);
-  ACanvas.Font.Name := 'Arial';
-  ACanvas.Font.Style := [fsBold];
-  ACanvas.Font.Height := -21;
-  ACanvas.Font.Color := clWhite;
-  ACanvas.Brush.Style := bsClear;
-  TextR := Rect(R.Left + 8, R.Top + 6, R.Left + 26, R.Top + 28);
-  S := 'f';
-  DrawCenteredText(ACanvas, TextR, S);
-  ACanvas.Brush.Style := bsSolid;
+  B.RRect(3, 3, 26, 26, 4, 4);
+  B.TextCentered('f', 8, 6, 26, 28, 21, clWhite);
 end;
 
 procedure DrawHelpIcon(ACanvas: TCanvas; const R: TRect);
 var
-  TextR: TRect;
-  S: string;
+  B: TIconBox;
 begin
-  ClearIcon(ACanvas, R);
-  ACanvas.Font.Name := 'Arial';
-  ACanvas.Font.Style := [fsBold];
-  ACanvas.Font.Height := -26;
-  ACanvas.Brush.Style := bsClear;
-  S := '?';
+  B.Init(ACanvas, R);
+  B.Clear;
   { soft shadow + purple question mark }
-  ACanvas.Font.Color := RGB(200, 185, 215);
-  TextR := Rect(R.Left + 2, R.Top + 1, R.Right + 2, R.Bottom + 1);
-  DrawCenteredText(ACanvas, TextR, S);
-  ACanvas.Font.Color := RGB(126, 76, 160);
-  TextR := R;
-  DrawCenteredText(ACanvas, TextR, S);
-  ACanvas.Brush.Style := bsSolid;
+  B.TextCentered('?', 2, 1, 30, 29, 26, RGB(200, 185, 215));
+  B.TextCentered('?', 0, 0, 28, 28, 26, RGB(126, 76, 160));
 end;
 
 procedure DrawBackIcon(ACanvas: TCanvas; const R: TRect);
 var
-  L, T: Integer;
+  B: TIconBox;
 begin
-  ClearIcon(ACanvas, R);
-  L := R.Left;
-  T := R.Top;
+  B.Init(ACanvas, R);
+  B.Clear;
   ACanvas.Pen.Color := RGB(16, 82, 168);
   ACanvas.Brush.Color := RGB(36, 120, 214);
-  ACanvas.Polygon([Point(L + 3, T + 14), Point(L + 13, T + 4), Point(L + 13, T + 10),
-    Point(L + 25, T + 10), Point(L + 25, T + 18), Point(L + 13, T + 18),
-    Point(L + 13, T + 24)]);
+  B.Poly([3, 14, 13, 4, 13, 10, 25, 10, 25, 18, 13, 18, 13, 24]);
 end;
 
 procedure DrawDeviceStateIcon(ACanvas: TCanvas; const R: TRect;
   const AConnected: Boolean);
 var
-  L, T: Integer;
+  B: TIconBox;
   Mark: TColor;
 begin
-  ClearIcon(ACanvas, R);
-  L := R.Left;
-  T := R.Top;
+  { This icon is designed for the 24x32 device state panel. }
+  B.Init(ACanvas, R, 24, 32);
+  B.Clear;
   ACanvas.Pen.Color := RGB(60, 60, 60);
   ACanvas.Brush.Color := clWhite;
-  ACanvas.RoundRect(L + 6, T + 1, L + 20, T + 29, 4, 4);
+  B.RRect(6, 1, 20, 29, 4, 4);
   ACanvas.Brush.Color := RGB(60, 60, 60);
-  ACanvas.FillRect(Rect(L + 6, T + 23, L + 20, T + 29));
+  B.Fill(6, 23, 20, 29);
   if AConnected then
     Mark := RGB(30, 160, 60)
   else
@@ -272,12 +411,13 @@ begin
   { USB plug mark }
   ACanvas.Pen.Color := Mark;
   ACanvas.Brush.Style := bsClear;
-  ACanvas.Rectangle(L + 1, T + 9, L + 9, T + 16);
-  ACanvas.MoveTo(L + 9, T + 12);
-  ACanvas.LineTo(L + 15, T + 12);
-  ACanvas.Ellipse(L + 12, T + 14, L + 19, T + 21);
+  B.Frame(1, 9, 9, 16);
+  B.Line(9, 12, 15, 12);
+  B.Ellipse(12, 14, 19, 21);
   ACanvas.Brush.Style := bsSolid;
 end;
+
+{ ------------------------------------------------------------ button glyphs }
 
 procedure DrawGlyphPhone(ACanvas: TCanvas);
 begin

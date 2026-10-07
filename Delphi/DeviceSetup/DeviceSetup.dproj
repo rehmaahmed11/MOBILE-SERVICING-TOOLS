@@ -44,6 +44,8 @@
     </DCCReference>
     <DCCReference Include="DeviceCatalog.pas" />
     <DCCReference Include="ToolbarIcons.pas" />
+    <DCCReference Include="AppSettings.pas" />
+    <DCCReference Include="DeviceWatch.pas" />
   </ItemGroup>
 
   <ProjectExtensions>

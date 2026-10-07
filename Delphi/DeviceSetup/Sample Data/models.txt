@@ -1,0 +1,43 @@
+# Sample model database for Mobile Servicing Tools
+#
+# Copy this folder (or just the models.txt file) to one of the two places the
+# app reads model data from:
+#
+#   <folder of DeviceSetup.exe>\Data\models.txt
+#   %APPDATA%\MobileServicingTools\Data\models.txt
+#
+# Then press Ctrl+R on MAIN 1 (or use the menu -> "Reload model list") to pick
+# the files up without restarting the app. The folder can also be opened from
+# the MAIN 1 menu ("Open model data folder").
+#
+# Two file layouts are supported:
+#
+#   1. models.txt        several brands in one file, one model per line:
+#                          Brand|CODE : Marketing name
+#                          Brand|CODE|Marketing name
+#
+#   2. <Brand>.txt       one brand per file, named after the brand, one model
+#                        per line:  CODE : Marketing name
+#                        A file named after a brand REPLACES that brand's
+#                        built-in list, so your own data always wins.
+#
+# Rules for both layouts:
+#   - blank lines are ignored
+#   - lines starting with # or ; are comments
+#   - UTF-8 is supported
+#   - brands are shown in case-insensitive alphabetical order
+#   - models are shown in the order they appear in the file
+
+# ------------------------------------------------------------------ examples
+Realme|RMX3511 : Realme C35
+Realme|RMX3710 : Realme C55
+Realme|RMX3760 : Realme C53
+Infinix|X669 : Infinix Hot 30i
+Infinix|X6831 : Infinix Hot 30
+Tecno|KG5 : Tecno Spark 8C
+Tecno|KI5q : Tecno Spark 10
+Tecno|CK6n : Tecno Camon 20
+Samsung|SM-A155F : Galaxy A15
+Samsung|SM-A556B : Galaxy A55 5G
+Xiaomi|2201117TG : Redmi Note 11
+Xiaomi|23021RAAEG : Redmi Note 12

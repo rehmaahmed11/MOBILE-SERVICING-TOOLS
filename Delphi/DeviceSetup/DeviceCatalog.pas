@@ -5,9 +5,24 @@ unit DeviceCatalog;
 {$ENDIF}
 
 
-{ In-memory brand/model catalog used by MAIN 1.
+{ Brand/model catalog used by MAIN 1.
   Each model entry is shown exactly as "<model code> : <marketing name>".
-  This is starter/demo data - replace it with a real data source later. }
+
+  The catalog is built from two sources:
+
+    1. The built-in starter data in BuildCatalog below. The Realme entries
+       match the reference screenshot; the other brands are samples.
+    2. Plain text files the technician drops into a Data folder, either next
+       to the EXE or in %APPDATA%\MobileServicingTools\Data:
+
+         Data\Realme.txt        one model per line:  RMX3511 : Realme C35
+         Data\models.txt        several brands:      Realme|RMX3511 : Realme C35
+                                                    (or Realme|RMX3511|Realme C35)
+
+       A file named after a brand replaces that brand's built-in list, so
+       your own data always wins. Blank lines and # or ; comments are skipped.
+       UTF-8 is supported. Press Ctrl+R on MAIN 1 (or use the menu) to reload
+       the Data folders without restarting the app. }
 
 interface
 
@@ -18,9 +33,33 @@ type
     class function BrandName(const ABrandIndex: Integer): string; static;
     class function ModelCount(const ABrandIndex: Integer): Integer; static;
     class function ModelName(const ABrandIndex, AModelIndex: Integer): string; static;
+
+    { Whole-catalog helpers. }
+    class function TotalModelCount: Integer; static;
+    class function BrandIndex(const ABrandName: string): Integer; static;
+    class function ModelIndexOf(const ABrandIndex: Integer;
+      const AModelEntry: string): Integer; static;
+    { "RMX3511 : Realme C35" -> "RMX3511" / "Realme C35" }
+    class function ModelCode(const ABrandIndex, AModelIndex: Integer): string; static;
+    class function ModelTitle(const ABrandIndex, AModelIndex: Integer): string; static;
+
+    { Rebuilds the catalog: built-in entries plus the .txt files found in
+      Data\ next to the EXE and in %APPDATA%\MobileServicingTools\Data\. }
+    class procedure Reload; static;
+    class function ExternalFileCount: Integer; static;
+    class function Summary: string; static;
   end;
 
 implementation
+
+uses
+{$IFDEF FPC}
+  Classes, SysUtils,
+{$ELSE}
+  System.Classes,
+  System.SysUtils,
+{$ENDIF}
+  AppSettings;
 
 type
   TModelList = array of string;
@@ -32,6 +71,7 @@ type
 
 var
   GBrands: TBrandList;
+  GExternalFiles: Integer = 0;
 
 procedure AddBrand(const AName: string; const AModels: array of string);
 var
@@ -224,6 +264,8 @@ begin
     'ZTE A2022 : Axon 30 5G']);
 end;
 
+{ ------------------------------------------------------------ lookup }
+
 class function TDeviceCatalog.BrandCount: Integer;
 begin
   Result := Length(GBrands);
@@ -254,7 +296,307 @@ begin
   Result := GBrands[ABrandIndex].Models[AModelIndex];
 end;
 
-initialization
+class function TDeviceCatalog.TotalModelCount: Integer;
+var
+  I: Integer;
+begin
+  Result := 0;
+  for I := 0 to High(GBrands) do
+    Result := Result + Length(GBrands[I].Models);
+end;
+
+class function TDeviceCatalog.BrandIndex(const ABrandName: string): Integer;
+var
+  I: Integer;
+begin
+  Result := -1;
+  for I := 0 to High(GBrands) do
+    if SameText(GBrands[I].Name, ABrandName) then
+      Exit(I);
+end;
+
+class function TDeviceCatalog.ModelIndexOf(const ABrandIndex: Integer;
+  const AModelEntry: string): Integer;
+var
+  I: Integer;
+begin
+  Result := -1;
+  if (ABrandIndex < 0) or (ABrandIndex > High(GBrands)) then
+    Exit;
+  for I := 0 to High(GBrands[ABrandIndex].Models) do
+    if SameText(GBrands[ABrandIndex].Models[I], AModelEntry) then
+      Exit(I);
+end;
+
+function SplitEntry(const AEntry: string; out ALeft, ARight: string): Boolean;
+var
+  P: Integer;
+begin
+  P := Pos(' : ', AEntry);
+  Result := P > 0;
+  if Result then
+  begin
+    ALeft := Trim(Copy(AEntry, 1, P - 1));
+    ARight := Trim(Copy(AEntry, P + 3, Length(AEntry)));
+  end
+  else
+  begin
+    ALeft := '';
+    ARight := Trim(AEntry);
+  end;
+end;
+
+class function TDeviceCatalog.ModelCode(const ABrandIndex,
+  AModelIndex: Integer): string;
+var
+  Right: string;
+begin
+  SplitEntry(ModelName(ABrandIndex, AModelIndex), Result, Right);
+  if Result = '' then
+    Result := Right;
+end;
+
+class function TDeviceCatalog.ModelTitle(const ABrandIndex,
+  AModelIndex: Integer): string;
+var
+  Left: string;
+begin
+  SplitEntry(ModelName(ABrandIndex, AModelIndex), Left, Result);
+end;
+
+{ ------------------------------------------------------------ external data }
+
+procedure ApplyGroupedLines(ALines: TStrings); forward;
+
+procedure SetBrandModels(const ABrandName: string; AModels: TStrings);
+var
+  Idx, I: Integer;
+  Entry: TBrandEntry;
+begin
+  if (ABrandName = '') or (AModels = nil) then
+    Exit;
+  Idx := TDeviceCatalog.BrandIndex(ABrandName);
+  if Idx >= 0 then
+  begin
+    { An external file replaces the built-in list for that brand, so the
+      technician's own data always wins. }
+    SetLength(GBrands[Idx].Models, AModels.Count);
+    for I := 0 to AModels.Count - 1 do
+      GBrands[Idx].Models[I] := AModels[I];
+  end
+  else
+  begin
+    Entry.Name := ABrandName;
+    SetLength(Entry.Models, AModels.Count);
+    for I := 0 to AModels.Count - 1 do
+      Entry.Models[I] := AModels[I];
+    SetLength(GBrands, Length(GBrands) + 1);
+    GBrands[High(GBrands)] := Entry;
+  end;
+end;
+
+procedure LoadStringFile(const AFileName: string; ALines: TStrings);
+begin
+  ALines.Clear;
+  try
+    {$IFDEF FPC}
+    ALines.LoadFromFile(AFileName);   { LCL strings are UTF-8 }
+    {$ELSE}
+    ALines.LoadFromFile(AFileName, TEncoding.UTF8);
+    {$ENDIF}
+  except
+    ALines.Clear;
+  end;
+end;
+
+{ One model per line: "CODE : Name". Blank lines and # or ; comments are
+  ignored. }
+procedure LoadBrandFile(const AFileName, ABrandName: string);
+var
+  Lines, Models: TStringList;
+  I: Integer;
+  Line: string;
+begin
+  Lines := TStringList.Create;
+  Models := TStringList.Create;
+  try
+    LoadStringFile(AFileName, Lines);
+    for I := 0 to Lines.Count - 1 do
+    begin
+      Line := Trim(Lines[I]);
+      if (Line = '') or (Line[1] = '#') or (Line[1] = ';') then
+        Continue;
+      Models.Add(Line);
+    end;
+    if Models.Count > 0 then
+    begin
+      SetBrandModels(ABrandName, Models);
+      Inc(GExternalFiles);
+    end;
+  finally
+    Lines.Free;
+    Models.Free;
+  end;
+end;
+
+{ Several brands in one file, one model per line:
+    Brand|CODE : Name      or      Brand|CODE|Name }
+procedure LoadCombinedFile(const AFileName: string);
+var
+  Lines: TStringList;
+  Brands: TStringList;
+  I, P: Integer;
+  Line, BrandName, Rest: string;
+  Used: Boolean;
+begin
+  Lines := TStringList.Create;
+  Brands := TStringList.Create;
+  try
+    LoadStringFile(AFileName, Lines);
+    Used := False;
+    for I := 0 to Lines.Count - 1 do
+    begin
+      Line := Trim(Lines[I]);
+      if (Line = '') or (Line[1] = '#') or (Line[1] = ';') then
+        Continue;
+      P := Pos('|', Line);
+      if P <= 1 then
+        Continue;
+      BrandName := Trim(Copy(Line, 1, P - 1));
+      Rest := Trim(Copy(Line, P + 1, Length(Line)));
+      if (BrandName = '') or (Rest = '') then
+        Continue;
+      P := Pos('|', Rest);
+      if P > 1 then
+        Rest := Trim(Copy(Rest, 1, P - 1)) + ' : ' +
+          Trim(Copy(Rest, P + 1, Length(Rest)));
+      Brands.Add(Trim(BrandName) + #9 + Rest);
+      Used := True;
+    end;
+    if Used then
+    begin
+      Brands.Sort;
+      ApplyGroupedLines(Brands);
+      Inc(GExternalFiles);
+    end;
+  finally
+    Lines.Free;
+    Brands.Free;
+  end;
+end;
+
+{ Turns "Brand<TAB>CODE : Name" lines (already sorted by brand) into catalog
+  entries. }
+procedure ApplyGroupedLines(ALines: TStrings);
+var
+  I, TabPos: Integer;
+  Models: TStringList;
+  BrandName, Line: string;
+begin
+  Models := TStringList.Create;
+  try
+    BrandName := '';
+    for I := 0 to ALines.Count - 1 do
+    begin
+      Line := ALines[I];
+      TabPos := Pos(#9, Line);
+      if TabPos <= 0 then
+        Continue;
+      if Copy(Line, 1, TabPos - 1) <> BrandName then
+      begin
+        if (BrandName <> '') and (Models.Count > 0) then
+          SetBrandModels(BrandName, Models);
+        BrandName := Copy(Line, 1, TabPos - 1);
+        Models.Clear;
+      end;
+      Models.Add(Trim(Copy(Line, TabPos + 1, Length(Line))));
+    end;
+    if (BrandName <> '') and (Models.Count > 0) then
+      SetBrandModels(BrandName, Models);
+  finally
+    Models.Free;
+  end;
+end;
+
+procedure SortBrands;
+var
+  I, J: Integer;
+  Tmp: TBrandEntry;
+begin
+  { Simple insertion sort: the list is small and is normally already in
+    case-insensitive alphabetical order. }
+  for I := 1 to High(GBrands) do
+  begin
+    Tmp := GBrands[I];
+    J := I - 1;
+    while (J >= 0) and (CompareText(GBrands[J].Name, Tmp.Name) > 0) do
+    begin
+      GBrands[J + 1] := GBrands[J];
+      Dec(J);
+    end;
+    GBrands[J + 1] := Tmp;
+  end;
+end;
+
+procedure LoadExternalFiles;
+var
+  Search: TSearchRec;
+  Found: Integer;
+  Dir, FileName, BrandName: string;
+  Dirs: array[0..1] of string;
+  D: Integer;
+begin
+  Dirs[0] := TAppSettings.ExeDataDir;
+  Dirs[1] := TAppSettings.DataDir;
+  for D := 0 to 1 do
+  begin
+    Dir := Dirs[D];
+    if not DirectoryExists(Dir) then
+      Continue;
+    Found := SysUtils.FindFirst(Dir + '*.txt', faAnyFile, Search);
+    try
+      while Found = 0 do
+      begin
+        if (Search.Attr and faDirectory) = 0 then
+        begin
+          FileName := Dir + Search.Name;
+          BrandName := ChangeFileExt(Search.Name, '');
+          if SameText(BrandName, 'models') then
+            LoadCombinedFile(FileName)
+          else
+            LoadBrandFile(FileName, BrandName);
+        end;
+        Found := SysUtils.FindNext(Search);
+      end;
+    finally
+      SysUtils.FindClose(Search);
+    end;
+  end;
+end;
+
+class procedure TDeviceCatalog.Reload;
+begin
+  SetLength(GBrands, 0);
+  GExternalFiles := 0;
   BuildCatalog;
+  LoadExternalFiles;
+  SortBrands;
+end;
+
+class function TDeviceCatalog.ExternalFileCount: Integer;
+begin
+  Result := GExternalFiles;
+end;
+
+class function TDeviceCatalog.Summary: string;
+begin
+  Result := IntToStr(BrandCount) + ' brands, ' + IntToStr(TotalModelCount) +
+    ' models';
+  if GExternalFiles > 0 then
+    Result := Result + ' (+' + IntToStr(GExternalFiles) + ' data file(s))';
+end;
+
+initialization
+  TDeviceCatalog.Reload;
 
 end.
