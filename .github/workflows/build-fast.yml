@@ -163,10 +163,12 @@ jobs:
           } else {
             Write-Output "::notice title=selftest-${{ matrix.platform }}::no selftest.log"
           }
-          # Optional (manual run with "screenshots" ticked): screenshots as
+          # Optional (manual run with "screenshots" ticked, or the file
+          # .github/ci-screenshots present in the commit): screenshots as
           # neutral check runs (base64 GIF chunks, readable through the GitHub
           # API) so they can be reviewed without downloading artifacts.
-          if (('${{ matrix.platform }}' -eq 'Win64') -and ('${{ inputs.screenshots }}' -eq 'true')) {
+          $wantShots = ('${{ inputs.screenshots }}' -eq 'true') -or (Test-Path '../../.github/ci-screenshots')
+          if (('${{ matrix.platform }}' -eq 'Win64') -and $wantShots) {
             $env:GH_TOKEN = '${{ github.token }}'
             $sha = '${{ github.event.pull_request.head.sha || github.sha }}'
             Add-Type -AssemblyName System.Drawing

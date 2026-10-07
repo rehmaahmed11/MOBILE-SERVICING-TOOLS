@@ -113,7 +113,7 @@ Toolbar icons and button glyphs are drawn in code (`ToolbarIcons.pas`). The only
    - checks hex parsing, file checks, the `models.csv` round trip, search and the SetupAPI calls
    - takes screenshots of MAIN 1 and MAIN 2 (Flash and Read tabs)
 
-   The results and PNG screenshots are uploaded as `DeviceSetup-selftest-<platform>-<sha>`. The self-test result is also shown as a notice on the run page. When you start the workflow by hand (**Actions > Build EXEs (fast) > Run workflow**) and tick *screenshots*, the screenshots are also published as check runs, so they can be read through the GitHub API without downloading artifacts.
+   The results and PNG screenshots are uploaded as `DeviceSetup-selftest-<platform>-<sha>`. The self-test result is also shown as a notice on the run page. When you start the workflow by hand (**Actions > Build EXEs (fast) > Run workflow**) and tick *screenshots*, or commit an empty `.github/ci-screenshots` file, the screenshots are also published as check runs, so they can be read through the GitHub API without downloading artifacts.
 5. Uploads the EXE.
 6. On `main` or a `v*` tag, publishes the GitHub Release.
 
