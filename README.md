@@ -17,46 +17,45 @@ The EXE is portable: it saves its settings and logs next to itself. If that fold
 
 ### MAIN 1 — first screen (`MainForm.pas` / `MainForm.dfm`)
 
+Layout follows `UI SAMPLE/S1.png` (1023 x 575):
+
 - **Blue menu icon** (top-left): *Next*, *Save model list…*, *Reload models*, *Export models.csv…*, *Settings…*, *Exit*.
-- **Green play icon** (top-right) = **Next**: opens MAIN 2 for the selected model. It is greyed out until a model is selected. Double-clicking a model or pressing **Enter** on it does the same.
-- **Orange arrow icon**: saves the model list currently shown to a `.txt` file.
+- **Toolbar** (top-right, left to right): green **play** = Next, orange **download** = save the model list, green **document** = reload models, **gear** = Settings, **paper plane** = report a problem (opens the issue tracker), **f** = Facebook, **?** = help (version, build and shortcuts).
 - **Quick search**: matches the model code (e.g. `RMX3511`), the model name or the brand, across all brands. **Esc** clears it.
 - **Brand list** (left) and **model list** (right), with models shown as `CODE : Name`.
+- **Brand wordmark** painted in the free area on the right, like the manufacturer logo of the reference screen.
+- **Select** button at the bottom-left, with a green tick. It is greyed out until a model is selected; double-clicking a model or pressing **Enter** does the same as pressing Select.
 - The **title bar** shows the version and the model count (e.g. `Realme : 35 model(s)` or `3 result(s) for "RMX35"`).
 - The last selected brand/model and the window size and position are remembered.
 
 ### MAIN 2 — opened by Next (`Main2Form.pas` / `Main2Form.dfm`)
 
-Laid out to match the MAIN 2 reference screenshot:
+Layout follows `UI SAMPLE/S2.png` … `S10.png` (1026 x 585):
 
-- **Toolbar:** menu (left), a **Platform** selector (MediaTek, Unisoc/Spreadtrum, Qualcomm, Samsung or Generic), then on the right:
-  - **settings**
-  - **Facebook**
-  - **help**: version, build and shortcuts
-  - **change device**: back to MAIN 1
-  - **save log**
-  - **start**: runs the first job of the open tab
+- **Toolbar**: menu (left); on the right, left to right: **start** (runs the first job of the open tab), **save log**, **change device** (back to MAIN 1), **settings**, **report a problem**, **Facebook**, **help**.
 - **Presets** box.
-- **Files** box: **SCAT**, **AUTH**, **BIN**, **OFP**, **BL**, **AP**, **CP**, **CSC**, **USER**. BIN only turns on when *Advanced write* is ticked.
-- **Log**: fixed-width font with colours, as in the screenshot: green `OK`, blue values, red `error(...)`. Right-click the log for *Copy*, *Copy all*, *Select all*, *Save* and *Clear*. **Ctrl+C** and **Ctrl+A** also work.
-- **Progress** percentage under the log.
+- **Files** box: **SCAT**, **AUTH**, **BIN**, **OFP**. BIN only turns on when *Advanced write* is ticked. On the **Samsung** profile the box grows to show **BL**, **AP**, **CP**, **CSC** and **USER** as well.
+- **Log**: fixed-width font with colours, as in the samples: green `OK`, blue values, red `error(...)`. Right-click the log for *Copy*, *Copy all*, *Select all*, *Save* and *Clear*. **Ctrl+C** and **Ctrl+A** also work.
+- **Progress** percentage with a red strip along the bottom edge.
 - **Jobs** tab:
-  - *Connections*: download agent, BROM/Preloader authorization, Force BROM, Read EMI, Read Phone Info, USB speed and battery.
-  - *Storage*: one region list (`EMMC(USER) || UFS(LU2)`, …).
-- **Flash** tab: mode, **Write Firmware**, **Restore from backup**, *Advanced write* with a 64-bit start address, **Write BIN** and **Write OFP**.
-  - Write Firmware takes either a SCAT file (MediaTek) or BL/AP/CP/CSC/USER files (Samsung).
-- **Read** tab: **Read Flash Info**, **Read Partitions**, *Address 0x* / *Size 0x*, **Read BIN**, **Read Region** and **Read OTP**.
-- The top-level **META** service tab follows the selected platform: it changes to **DIAG** for Unisoc/Spreadtrum and Qualcomm, **DOWNLOAD** for Samsung, and **SERVICE** for Generic. MediaTek keeps **META**. The selector also changes the connection profile and the choices/help text in **Format**, **Service**, and **RPMB**; it is remembered with the job settings.
-- **Format**: platform-specific mode and target, optional custom address/size range, and a checked-by-default option to preserve calibration/NV data.
-- **Service**: platform-specific service-mode actions and log detail option.
-- **RPMB**: platform-specific information/counter/backup choices with eMMC/UFS target selection. RPMB key-write/erase controls are intentionally not exposed.
-- **IMEI** and **Locks** remain informational placeholders.
-- **Device state** (bottom-right): see *USB detection* below.
+  - *Connections*: download agent, BROM/Preloader authorization, Force BROM, Read EMI, Read Phone Info, USB speed, battery and the storage list (`EMMC(USER) || UFS(LU2)`, …).
+  - Then the operations pages.
+- **Operations pages** (top row: *Flash | Read | Format | IMEI | Locks | Service | RPMB*), each starting with an **Options** header:
+  - *Flash*: mode (`Download only`, `Firmware upgrade`, `Format all + Download`), **Write Firmware**, **Restore from backup**, *Advanced write* with a 64-bit start address, **Write BIN** and **Write OFP**.
+    Write Firmware takes either a SCAT file (MediaTek) or BL/AP/CP/CSC/USER files (Samsung).
+  - *Read*: **Read Flash info**, **Read Partitions**, *Address 0x* / *Size 0x*, **Read BIN**, **Read Region** and **Read OTP**.
+  - *Format*: **Auto/Manual Format**, **Format AI Flash / Except Bootloader**, **Format**, *Create Default FS*, **Wipe Data**, **Wipe Partitions**, **Erase FRP**, **Erase FRP and Wipe**.
+  - *IMEI*: **IMEI1** and **IMEI2** with their Luhn check digit shown next to the field, an *Advanced settings* link, **Repair** and **Read IMEI**.
+  - *Locks*: **Unlock Bootloader**, **Relock Bootloader**, **Unlock Network**, **Read Codes**, **Reset Password [SAFE WIPE]**, **Reset Account**.
+  - *Service*: **Reboot to Recovery**, **Disable OTA Updates**, **Reset Dm-Verity Error**, **Disable Orange State**, **Switch Slot**, **Fix DL Image Fail**.
+  - *RPMB*: **Backup RPMB**, *Address 0x*, **Write RPMB**, **Format RPMB**.
+- The **service-mode tab** next to *Jobs* follows the selected platform: **META** for MediaTek, **DIAG** for Unisoc/Spreadtrum and Qualcomm, **DOWNLOAD** for Samsung and **SERVICE** for Generic. The **Platform** selector lives on that tab; it also changes the connection profile and the button set. It is remembered with the job settings.
+- **Device state** (bottom, next to the progress strip) appears only while a phone is connected.
 - **Esc** goes back to MAIN 1.
 
 Address boxes use the `00000000  00000000` format (high and low 32 bits of a 64-bit hex value). Spaces are ignored.
 
-> **Device communication is not implemented.** The action buttons (including Format, Service and RPMB) validate applicable inputs and write the chosen profile/options to the log, ending with `error(NOT_IMPLEMENTED)`. Nothing is sent to a phone, and no format/read/write action is performed.
+> **Device communication is not implemented.** The action buttons (including Format, Locks, Service and RPMB) validate applicable inputs and write the chosen profile/options to the log, ending with `error(NOT_IMPLEMENTED)`. Nothing is sent to a phone, and no format/read/write action is performed.
 
 ### USB detection (read only)
 
@@ -92,11 +91,11 @@ When `models.csv` is next to the EXE it **replaces** the built-in list. Delete t
 
 Open [`Delphi/DeviceSetup/DeviceSetup.dproj`](Delphi/DeviceSetup/DeviceSetup.dproj) in RAD Studio. The project targets both **Win32** and **Win64** (`TargetedPlatforms=3`). The icon (`DeviceSetup.ico`), version info and DPI awareness are set in the project files. The version number is `CAppVersion` in `AppInfo.pas`.
 
-Toolbar icons and button glyphs are drawn in code (`ToolbarIcons.pas`). The only image file is the app icon, which is generated by `tools/make_icon.py`.
+Toolbar icons and the 30-odd button glyphs are drawn in code (`ToolbarIcons.pas`) in the style of the samples: white cards with a green play, an orange download cube, a green document, a blue gear, a paper plane, an `f` and a `?`. The only image file is the app icon, which is generated by `tools/make_icon.py`.
 
 | Unit | What it does |
 | --- | --- |
-| `MainForm` / `Main2Form` | the two screens |
+| `MainForm` / `Main2Form` | the two screens (`UI SAMPLE/S1.png` … `S10.png` are the layout references) |
 | `DeviceCatalog` | built-in model list and `models.csv` loading/export |
 | `AppInfo` | version, data folder, settings file (`DeviceSetup.ini`), options |
 | `LogView` | colour codes and drawing for the log |
@@ -115,7 +114,7 @@ Toolbar icons and button glyphs are drawn in code (`ToolbarIcons.pas`). The only
 4. Runs **`DeviceSetup.exe --selftest`**, which:
    - opens both screens (this catches form-loading errors that the compiler cannot see)
    - checks hex parsing, file checks, the `models.csv` round trip, search and the SetupAPI calls
-   - takes screenshots of MAIN 1 and MAIN 2 (Flash, Read, Format, Service, RPMB and Unisoc DIAG views)
+   - takes screenshots of MAIN 1 and MAIN 2 (Jobs, Flash, Read, Format, IMEI, Locks, Service, RPMB, the service-mode tab and the Unisoc DIAG view), named after the UI samples they match
 
    The results and PNG screenshots are uploaded as `DeviceSetup-selftest-<platform>-<sha>`. The self-test result is also shown as a notice on the run page. When you start the workflow by hand (**Actions > Build EXEs (fast) > Run workflow**) and tick *screenshots*, or commit an empty `.github/ci-screenshots` file, the screenshots are also published as check runs, so they can be read through the GitHub API without downloading artifacts.
 5. Uploads the EXE.

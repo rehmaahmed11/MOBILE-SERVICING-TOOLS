@@ -77,23 +77,23 @@ uses
 {$ENDIF}
 
 const
-  { palette taken from the UI samples }
-  CGreen = TColor(RGB(33, 187, 79));
-  CGreenDark = TColor(RGB(18, 138, 58));
-  COrange = TColor(RGB(253, 129, 18));
-  COrangeDark = TColor(RGB(200, 92, 6));
-  CDocGreen = TColor(RGB(24, 160, 74));
-  CDocGreenDark = TColor(RGB(16, 118, 54));
-  CGearBlue = TColor(RGB(87, 180, 217));
-  CGearBlueDark = TColor(RGB(52, 138, 180));
-  CPlaneBlue = TColor(RGB(0, 149, 225));
-  CPlaneBlueDark = TColor(RGB(0, 108, 175));
-  CFbBlue = TColor(RGB(64, 124, 229));
-  CHelpPurple = TColor(RGB(150, 122, 205));
-  CShadow = TColor(RGB(205, 205, 205));
-  CGrayIcon = TColor(RGB(120, 120, 120));
-  CCardWhite = TColor(RGB(252, 252, 252));
-  CCardEdge = TColor(RGB(214, 214, 214));
+  { Palette taken from the UI samples. TColor literals are $00BBGGRR. }
+  CGreen         = $004FBB21;  { RGB( 33, 187,  79) }
+  CGreenDark     = $003A8A12;  { RGB( 18, 138,  58) }
+  COrange        = $001281FD;  { RGB(253, 129,  18) }
+  COrangeDark    = $00065CC8;  { RGB(200,  92,   6) }
+  CDocGreen      = $004AA018;  { RGB( 24, 160,  74) }
+  CDocGreenDark  = $00367610;  { RGB( 16, 118,  54) }
+  CGearBlue      = $00D9B457;  { RGB( 87, 180, 217) }
+  CGearBlueDark  = $00B48A34;  { RGB( 52, 138, 180) }
+  CPlaneBlue     = $00E19500;  { RGB(  0, 149, 225) }
+  CPlaneBlueDark = $00AF6C00;  { RGB(  0, 108, 175) }
+  CFbBlue        = $00E57C40;  { RGB( 64, 124, 229) }
+  CHelpPurple    = $00CD7A96;  { RGB(150, 122, 205) }
+  CShadow        = $00CDCDCD;  { RGB(205, 205, 205) }
+  CGrayIcon      = $00787878;  { RGB(120, 120, 120) }
+  CCardWhite     = $00FCFCFC;  { RGB(252, 252, 252) }
+  CCardEdge      = $00D6D6D6;  { RGB(214, 214, 214) }
 
 procedure DrawCenteredText(ACanvas: TCanvas; const R: TRect; const S: string);
 var
