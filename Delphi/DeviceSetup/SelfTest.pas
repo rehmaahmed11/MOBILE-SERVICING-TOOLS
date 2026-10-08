@@ -70,18 +70,10 @@ begin
 end;
 
 function SelfTestRequested: Boolean;
-var
-  I: Integer;
-  S: string;
 begin
-  { accepts --selftest, -selftest and /selftest }
-  Result := False;
-  for I := 1 to ParamCount do
-  begin
-    S := LowerCase(ParamStr(I));
-    if (S = '--selftest') or (S = '-selftest') or (S = '/selftest') then
-      Result := True;
-  end;
+  { accepts --selftest, -selftest and /selftest; AppInfo.CmdSwitch is the one
+    place that parses the command line, so MAIN 2 sees the same answer. }
+  Result := CmdSwitch('selftest');
 end;
 
 procedure TSelfTestHandler.ButtonClicked(Sender: TObject);

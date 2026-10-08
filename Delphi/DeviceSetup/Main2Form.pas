@@ -635,8 +635,7 @@ begin
   { --selftest runs the device layer against the simulated phone; --simulate
     does the same for a manual demo. Neither is available to a normal user,
     and every result is then flagged SIMULATED. }
-  if FindCmdLineSwitch('selftest', True) or
-     FindCmdLineSwitch('simulate', True) then
+  if CmdSwitch('selftest') or CmdSwitch('simulate') then
     EnableSimulatedDevice;
 
   { Windows tells us the moment a phone is plugged in, so the capture window
@@ -2445,7 +2444,7 @@ begin
     RunJobInline(Params);
     Exit;
   end;
-  if FindCmdLineSwitch('selftest', True) then
+  if CmdSwitch('selftest') then
   begin
     { The CI self-test has no window to pump; run the same pipeline inline. }
     RunJobInline(Params);

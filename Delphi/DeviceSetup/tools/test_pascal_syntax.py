@@ -1622,6 +1622,24 @@ class PascalStructureTests(unittest.TestCase):
                         f"make it a method")
 
 
+    def test_command_line_switches_go_through_appinfo_cmdswitch(self):
+        """FindCmdLineSwitch cannot see the app's own switches.
+
+        Delphi strips both dashes of `--selftest` and FPC strips one, so the
+        same call answers differently on each compiler - and when it answered
+        False under FPC, MAIN 2 opened the modal capture window during the CI
+        self-test and the run hung for the full 120 s timeout.
+        AppInfo.CmdSwitch is the only parser.
+        """
+        for path in self.sources:
+            code = self.code(path)
+            for m in re.finditer(r"\bFindCmdLineSwitch\s*\(", code):
+                self.fail(
+                    f"{path.name}:{line_of(code, m.start())}: "
+                    f"FindCmdLineSwitch strips a different number of dashes on "
+                    f"Delphi and FPC - use AppInfo.CmdSwitch")
+
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
