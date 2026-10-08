@@ -682,13 +682,14 @@ procedure TSimPort.EmitLegacyStorageInfo;
 var
   I: Integer;
 begin
-  { NOR info, 28 bytes. }
+  { NOR info, 28 bytes: ret (4), chip select (2), flash id (2), flash size
+    (4), four device-code shorts (8), OTP status (4), OTP size (4). The host
+    reads exactly these lengths, so every byte here must be present. }
   EmitDwordBe($00000000);
   EmitRepeat($00, 2);
   EmitWordBe($0000);
   EmitDwordBe($00000000);
-  EmitWordBe($0000);
-  EmitDwordBe($00000000);
+  EmitRepeat($00, 8);
   EmitDwordBe($00000000);
   EmitDwordBe($00000000);
 
@@ -698,6 +699,14 @@ begin
   EmitWordBe($0000);
   EmitQwordBe(0);
   EmitWordBe($0000);
+  { NAND info part 2, 9 bytes: page size, spare size, pages per block,
+    I/O interface, address cycles, BMT flag. The host always reads it. }
+  EmitWordBe($0000);
+  EmitWordBe($0000);
+  EmitWordBe($0000);
+  Emit($00);
+  Emit($00);
+  Emit($00);
 
   { eMMC info, 92 bytes. A non-zero user-area size is what makes the DA report
     eMMC storage. }

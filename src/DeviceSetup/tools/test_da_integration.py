@@ -206,5 +206,95 @@ class RealDataIntegrationTests(unittest.TestCase):
         self.assertGreater(sum(path.stat().st_size for path in payloads), 100 * 1024 * 1024)
 
 
+class SimulatedStorageReportContractTests(unittest.TestCase):
+    """The simulated phone's legacy storage report must be exactly as long as
+    the host reads it. A short report shifts every later field and the host
+    fails with "Short read ... wanted 10 byte(s), got 2" (seen in CI)."""
+
+    SIM = DEVICE_SETUP_DIR / "SimPort.pas"
+    HOST = DEVICE_SETUP_DIR / "MtkDaLegacy.pas"
+
+    @staticmethod
+    def _body(text, start_marker, end_marker):
+        start = text.index(start_marker)
+        end = text.index(end_marker, start)
+        return text[start:end]
+
+    @staticmethod
+    def _emitted_sections(body):
+        """Return [(declared_bytes, emitted_bytes)] for each commented section."""
+        import re
+
+        width_rules = [
+            (re.compile(r"\bEmitDwordBe\("), 4),
+            (re.compile(r"\bEmitQwordBe\("), 8),
+            (re.compile(r"\bEmitWordBe\("), 2),
+            (re.compile(r"\bEmit\("), 1),
+        ]
+        repeat = re.compile(r"\bEmitRepeat\(\s*\$00\s*,\s*(\d+)\s*\)")
+        loop = re.compile(r"\bfor\s+\w+\s*:=\s*0\s+to\s+(\d+)\s+do")
+
+        def statement_bytes(stmt):
+            total = 0
+            multiplier = 1
+            match = loop.search(stmt)
+            if match:
+                multiplier = int(match.group(1)) + 1
+            for rx in repeat.finditer(stmt):
+                total += int(rx.group(1))
+            rest = repeat.sub("", stmt)
+            for rx, size in width_rules:
+                total += len(rx.findall(rest)) * size
+            return total * multiplier
+
+        # Only a comment that states a length starts a section; the short
+        # inline comments such as "{ boot1 }" are just removed from the code.
+        comments = list(re.finditer(r"\{([^}]*)\}", body))
+        starts = [c for c in comments if re.search(r"\d+\s+bytes", c.group(1))]
+        sections = []
+        for index, start in enumerate(starts):
+            declared = int(re.search(r"(\d+)\s+bytes", start.group(1)).group(1))
+            end = starts[index + 1].start() if index + 1 < len(starts) else len(body)
+            code = re.sub(r"\{[^}]*\}", "", body[start.end():end])
+            emitted = sum(statement_bytes(part) for part in code.split(";"))
+            sections.append((declared, emitted))
+        return sections
+
+    def test_each_simulated_section_has_its_declared_length(self):
+        body = self._body(
+            self.SIM.read_text(encoding="utf-8"),
+            "procedure TSimPort.EmitLegacyStorageInfo;",
+            "procedure TSimPort.EnterDa;",
+        )
+        sections = self._emitted_sections(body)
+        self.assertEqual(
+            [declared for declared, _ in sections],
+            [28, 17, 9, 92, 28, 38, 10],
+            "the simulated storage report has an unexpected section list",
+        )
+        for declared, emitted in sections:
+            self.assertEqual(emitted, declared, f"simulated section emits {emitted} bytes, expected {declared}")
+
+    def test_simulated_sections_match_the_host_reader(self):
+        import re
+
+        host = self._body(
+            self.HOST.read_text(encoding="utf-8"),
+            "function TMtkDaLegacy.ParseLegacyInfo(ALastBlock: Boolean): Boolean;",
+            "{ ------------------------------------------------------------------ bring-up }",
+        )
+        # The one read whose length is not a literal is the device-code list,
+        # which the simulator avoids by reporting zero NAND IDs.
+        host_reads = [int(n) for n in re.findall(r"ReadBytesRaw\((\d+),", host)]
+        body = self._body(
+            self.SIM.read_text(encoding="utf-8"),
+            "procedure TSimPort.EmitLegacyStorageInfo;",
+            "procedure TSimPort.EnterDa;",
+        )
+        simulated = [emitted for _, emitted in self._emitted_sections(body)]
+        self.assertEqual(simulated, host_reads)
+        self.assertIn("IdCount := (Integer(Nand[15]) shl 8) or Integer(Nand[16]);", host)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

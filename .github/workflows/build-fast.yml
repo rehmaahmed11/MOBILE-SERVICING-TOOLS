@@ -51,11 +51,11 @@ jobs:
         working-directory: src/DeviceSetup
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Restore cached Lazarus
         id: lazcache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: C:\lazarus
           key: lazarus-4.4-${{ matrix.platform }}-v2
@@ -181,6 +181,7 @@ jobs:
             -ArgumentList '--selftest' -WorkingDirectory $installRoot -PassThru
           $null = $p.Handle
           $timedOut = -not $p.WaitForExit(120000)
+          Write-Output "DeviceSetup --selftest: exit code $($p.ExitCode), timed out: $timedOut"
           New-Item -ItemType Directory -Force selftest-run\selftest | Out-Null
           if (Test-Path "$installRoot\selftest") {
             Copy-Item -Recurse -Force "$installRoot\selftest\*" selftest-run\selftest
@@ -239,8 +240,25 @@ jobs:
           $dir = 'selftest-run\selftest'
           $log = "$dir\selftest.log"
           if (Test-Path $log) {
-            $text = (Get-Content $log) -join '%0A'
-            Write-Output "::notice title=selftest-${{ matrix.platform }}::$text"
+            $lines = @(Get-Content $log)
+            # The FAIL / EXCEPTION lines first: they are what needs fixing.
+            $fails = @($lines | Where-Object { $_ -match '^(FAIL|EXCEPTION)' })
+            $failText = if ($fails.Count) { ($fails -join '%0A') -replace '%', '%25' } else { 'none' }
+            if ($failText.Length -gt 3500) { $failText = $failText.Substring(0, 3500) }
+            Write-Output "::notice title=selftest-${{ matrix.platform }} failures ($($fails.Count))::$failText"
+            # GitHub keeps only the first 4096 characters of an annotation
+            # message, so the whole log is sent as numbered chunks.
+            $chunks = @()
+            $cur = ''
+            foreach ($l in $lines) {
+              $e = ($l -replace '%', '%25') + '%0A'
+              if (($cur.Length + $e.Length) -gt 3500) { $chunks += $cur; $cur = '' }
+              $cur += $e
+            }
+            if ($cur) { $chunks += $cur }
+            for ($i = 0; $i -lt $chunks.Count; $i++) {
+              Write-Output "::notice title=selftest-${{ matrix.platform }} log $($i + 1)/$($chunks.Count)::$($chunks[$i])"
+            }
           } else {
             Write-Output "::notice title=selftest-${{ matrix.platform }}::no selftest.log"
           }
@@ -271,7 +289,7 @@ jobs:
 
       - name: Upload self-test results and screenshots
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: DeviceSetup-selftest-${{ matrix.platform }}-${{ github.sha }}
           path: src/DeviceSetup/selftest-run/selftest/
@@ -279,7 +297,7 @@ jobs:
           retention-days: 7
 
       - name: Upload portable bundle and installer
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: DeviceSetup-${{ matrix.platform }}-${{ github.sha }}
           path: |
@@ -297,7 +315,7 @@ jobs:
       contents: write
     steps:
       - name: Download installers and portable bundles
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           pattern: DeviceSetup-Win*-${{ github.sha }}
           merge-multiple: true
