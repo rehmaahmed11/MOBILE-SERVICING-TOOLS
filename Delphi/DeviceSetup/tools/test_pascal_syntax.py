@@ -206,6 +206,84 @@ def split_top_level(text: str, sep: str):
     return parts
 
 
+def block_end(code: str, start: int) -> int:
+    """Index of the `end` that closes the block whose `begin`-less header ends
+    at ``start`` (used for `record` and `class` bodies), or -1."""
+    depth = 0
+    i = start
+    n = len(code)
+    while i < n:
+        m = re.match(r"\b(record|class|case)\b", code[i:], re.I)
+        if m:
+            # `class` only nests when it introduces another type, not in
+            # `class function` / `class var` / `TObject = class`
+            word = m.group(1).lower()
+            following = code[m.end():m.end() + 24].lstrip()
+            if word == "class" and re.match(r"\b(function|procedure|var|const|property)\b",
+                                            following, re.I):
+                i += m.end()
+                continue
+            depth += 1
+            i += m.end()
+            continue
+        if code.startswith("end", i) and (i == 0 or not code[i - 1].isalnum()):
+            if depth == 0:
+                return i
+            depth -= 1
+            i += 3
+            continue
+        i += 1
+    return -1
+
+
+def procedural_types(code: str) -> set:
+    """Type names declared as a procedural type."""
+    out = set()
+    for m in re.finditer(r"\b(T\w+)\s*=\s*(?:procedure|function)\b", code, re.I):
+        out.add(m.group(1).lower())
+    return out
+
+
+def class_members(code: str):
+    """Yield (class name, {property: declared type}, {method/field names})."""
+    for m in re.finditer(r"\b(T\w+)\s*=\s*class\b", code, re.I):
+        following = code[m.end():m.end() + 24].lstrip()
+        if re.match(r"\b(of|function|procedure|var|const)\b", following, re.I):
+            continue
+        end_at = block_end(code, m.end())
+        if end_at < 0:
+            continue
+        body = code[m.end():end_at]
+        props, others = {}, set()
+        for pm in re.finditer(r"\bproperty\s+(\w+)\s*:\s*([\w.]+)", body, re.I):
+            props[pm.group(1).lower()] = pm.group(2).lower()
+        for om in re.finditer(
+                r"\b(?:function|procedure|constructor|destructor)\s+(\w+)",
+                body, re.I):
+            others.add(om.group(1).lower())
+        for fm in re.finditer(r"(?:^|[;\n])\s*(F?\w+)\s*:\s*[\w.]+\s*;", body):
+            others.add(fm.group(1).lower())
+        yield m.group(1), props, others
+
+
+def method_bodies(code: str):
+    """Yield (class name, routine name, body text, body offset) for every
+    out-of-class routine implementation."""
+    heads = list(re.finditer(
+        r"\b(?:function|procedure|constructor|destructor)\s+(T\w+)\.(\w+)",
+        code, re.I))
+    for idx, m in enumerate(heads):
+        stop = heads[idx + 1].start() if idx + 1 < len(heads) else len(code)
+        tail = re.search(r"\b(?:initialization|finalization)\b|^end\.",
+                         code[m.end():stop], re.M | re.I)
+        if tail:
+            stop = m.end() + tail.start()
+        body_start = code.find("begin", m.end(), stop)
+        if body_start < 0:
+            continue
+        yield m.group(1), m.group(2), code[body_start:stop], body_start
+
+
 def tokenize_source(text: str):
     """Yield (kind, value, offset) over Pascal source.
 
@@ -1233,6 +1311,42 @@ class PascalStructureTests(unittest.TestCase):
                                 f"{const_name} sets {field} to {value}, which "
                                 f"does not fit {ftype} ({lo}..{hi}) - the value "
                                 f"is truncated")
+
+
+    def test_no_property_is_called_like_a_function(self):
+        """An unqualified `X(...)` inside a method binds to property X.
+
+        DeviceSession declares `property ChipLabel: string read GetChipLabel`
+        and its methods called MtkChips.ChipLabel unqualified, so the compiler
+        saw `ChipLabel` as a string and stopped at the `(`: `";" expected but
+        "(" found`. Qualify the call with its unit name. Procedural properties
+        are excluded - `OnChange(Self)` is a legitimate call.
+        """
+        for path in self.sources:
+            code = self.code(path)
+            procs = procedural_types(code)
+            classes = {}
+            for cname, props, others in class_members(code):
+                usable = {k for k, v in props.items()
+                          if v not in procs and k not in others}
+                if usable:
+                    classes[cname.lower()] = usable
+            if not classes:
+                continue
+            for cname, routine, body, offset in method_bodies(code):
+                props = classes.get(cname.lower())
+                if not props:
+                    continue
+                for prop in sorted(props):
+                    for m in re.finditer(r"(?<![.\w@])" + re.escape(prop) + r"\s*\(",
+                                         body, re.I):
+                        at = offset + m.start()
+                        self.fail(
+                            f"{path.name}:{line_of(code, at)}: "
+                            f"{cname}.{routine} calls '{prop}(...)' but the "
+                            f"class declares a property of that name - the "
+                            f"routine it means is shadowed; qualify it with "
+                            f"its unit name")
 
 
 

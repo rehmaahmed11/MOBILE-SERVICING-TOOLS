@@ -286,7 +286,7 @@ end;
 function TDeviceSession.GetChipLabel: string;
 begin
   if (FBrom <> nil) and FBrom.ChipKnown then
-    Result := ChipLabel(FBrom.Chip)
+    Result := MtkChips.ChipLabel(FBrom.Chip)
   else
     Result := '';
 end;
@@ -499,7 +499,7 @@ begin
       ChipMode := FBrom.Chip.DaMode;
     if ChipMode <> dmLegacy then
     begin
-      FLastError := 'This chip (' + ChipLabel(FBrom.Chip) + ') uses the ' +
+      FLastError := 'This chip (' + MtkChips.ChipLabel(FBrom.Chip) + ') uses the ' +
         DaModeLabel(ChipMode) + ' download agent protocol. Only the legacy ' +
         'DA protocol is implemented in this build; the xflash / XML command ' +
         'sets are not. The port stays locked and is released now.';
@@ -627,7 +627,7 @@ begin
     Exit;
   end;
 
-  DoLog('Chip: ' + IfThenStr(FBrom.ChipKnown, ChipLabel(FBrom.Chip),
+  DoLog('Chip: ' + IfThenStr(FBrom.ChipKnown, MtkChips.ChipLabel(FBrom.Chip),
     'unknown hwcode $' + IntToHex(FBrom.HwCode, 4)) +
     ', hwver $' + IntToHex(FBrom.HwVer, 4) +
     ', BROM ' + IntToStr(FBrom.BromVer) +
