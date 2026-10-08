@@ -354,6 +354,97 @@ def routine_scopes(code: str):
         yield m.start(), names, region[begin_at:], m.start() + begin_at
 
 
+def normalize_params(text: str):
+    """One entry per parameter: its declared type, lower-cased and collapsed.
+
+    `Sender: TObject; ADone, ATotal: Int64` becomes
+    ['tobject', 'int64', 'int64'].
+    """
+    out = []
+    for part in split_top_level(text, ";"):
+        part = part.strip()
+        if not part or ":" not in part:
+            continue
+        head, typ = part.split(":", 1)
+        typ = re.sub(r"\s+", " ", typ).strip().lower()
+        head = re.sub(r"\b(const|var|out)\b", " ", head, flags=re.I)
+        count = len([n for n in head.split(",") if n.strip()])
+        out.extend([typ] * max(count, 1))
+    return out
+
+
+def class_index(code: str) -> dict:
+    """{class name: {'props': {name: type}, 'fields': {name: type},
+                     'methods': {name: [param types]}}}"""
+    index = {}
+    for m in re.finditer(r"\b(T\w+)\s*=\s*class\b", code, re.I):
+        following = code[m.end():m.end() + 24].lstrip()
+        if re.match(r"\b(of|function|procedure|var|const)\b", following, re.I):
+            continue
+        end_at = block_end(code, m.end())
+        if end_at < 0:
+            continue
+        body = code[m.end():end_at]
+        entry = index.setdefault(m.group(1).lower(),
+                                 {"props": {}, "fields": {}, "methods": {}})
+        for pm in re.finditer(r"\bproperty\s+(\w+)\s*:\s*([\w.]+)", body, re.I):
+            entry["props"][pm.group(1).lower()] = pm.group(2).lower()
+        for mm in re.finditer(
+                r"\b(?:function|procedure|constructor|destructor)\s+(\w+)\s*\(",
+                body, re.I):
+            close_at = matching_paren(body, mm.end() - 1)
+            if close_at < 0:
+                continue
+            entry["methods"][mm.group(1).lower()] = \
+                normalize_params(body[mm.end():close_at - 1])
+        for mm in re.finditer(
+                r"\b(?:function|procedure|constructor|destructor)\s+(\w+)\s*;",
+                body, re.I):
+            entry["methods"].setdefault(mm.group(1).lower(), [])
+        # fields: two or more spaces of indentation, name(s) then a type
+        for fm in re.finditer(r"(?:^|[;\n])\s{2,}([A-Za-z_]\w*(?:\s*,\s*[A-Za-z_]\w*)*)\s*:\s*"
+                              r"([\w.]+)\s*;", body):
+            for nm in fm.group(1).split(","):
+                nm = nm.strip().lower()
+                if nm and nm not in entry["fields"]:
+                    entry["fields"][nm] = fm.group(2).lower()
+    return index
+
+
+def procedural_type_index(code: str) -> dict:
+    """{procedural type name: [param types]} for the types this unit declares."""
+    out = {}
+    for m in re.finditer(r"\b(T\w+)\s*=\s*(?:procedure|function)\s*\(", code, re.I):
+        close_at = matching_paren(code, m.end() - 1)
+        if close_at < 0:
+            continue
+        out[m.group(1).lower()] = normalize_params(code[m.end():close_at - 1])
+    return out
+
+
+def routine_regions(code: str):
+    """Yield (class name, header-to-begin text, body text, body offset)."""
+    heads = [m for m in re.finditer(
+        r"^(?:function|procedure|constructor|destructor)\s+(T\w+)\.(\w+)",
+        code, re.M | re.I)]
+    for idx, m in enumerate(heads):
+        stop = heads[idx + 1].start() if idx + 1 < len(heads) else len(code)
+        tail = re.search(r"^(?:initialization|finalization|end\.)",
+                         code[m.end():stop], re.M | re.I)
+        if tail:
+            stop = m.end() + tail.start()
+        region = code[m.start():stop]
+        # The body starts at the `begin` in column 0: a routine that declares
+        # nested routines has several indented `begin`s before it, and those
+        # belong to the header, not to the body.
+        bm = re.search(r"^begin\b", region, re.M)
+        if not bm:
+            continue
+        begin_at = bm.start()
+        yield m.group(1), m.group(2), region[:begin_at], \
+            region[begin_at:], m.start() + begin_at
+
+
 def tokenize_source(text: str):
     """Yield (kind, value, offset) over Pascal source.
 
@@ -1441,6 +1532,94 @@ class PascalStructureTests(unittest.TestCase):
                             f"the routine starting at line "
                             f"{line_of(code, offset)} and is also called there "
                             f"- the declaration shadows the RTL routine")
+
+
+    def test_event_handlers_match_the_event_type(self):
+        """`X.OnLog := Handler` only compiles if the parameters line up.
+
+        TJobEngine handed TAdbTool.OnLog (a TJobLogEvent, which carries a
+        Sender) the one-parameter ToolLog that AndroidJobs expects, and FPC
+        rejected the assignment. Only handlers whose event type is declared
+        somewhere in this project are checked - the LCL's own TNotifyEvent and
+        friends are not ours to validate.
+        """
+        proc_types, classes = {}, {}
+        for path in self.sources:
+            code = self.code(path)
+            proc_types.update(procedural_type_index(code))
+            for cname, entry in class_index(code).items():
+                merged = classes.setdefault(
+                    cname, {"props": {}, "fields": {}, "methods": {}})
+                for key in ("props", "fields", "methods"):
+                    for k, v in entry[key].items():
+                        merged[key].setdefault(k, v)
+        if not proc_types:
+            self.fail("no procedural types found - the extractor is broken")
+
+        for path in self.sources:
+            code = self.code(path)
+            for cname, routine, header, body, offset in routine_regions(code):
+                owner = classes.get(cname.lower())
+                if owner is None:
+                    continue
+                scope = dict(owner["fields"])
+                scope.update(owner["props"])
+                for lm in re.finditer(r"(?:^|[;\n])\s+([A-Za-z_]\w*)\s*:\s*(T\w+)\s*;",
+                                      header):
+                    scope.setdefault(lm.group(1).lower(), lm.group(2).lower())
+                for am in re.finditer(
+                        r"(?<![.\w])(\w+)\.(\w+)\s*:=\s*(\w+)\s*;", body):
+                    obj, prop, handler = am.group(1).lower(), \
+                        am.group(2).lower(), am.group(3)
+                    if handler == "nil":
+                        continue
+                    target = classes.get(scope.get(obj, ""))
+                    if target is None:
+                        continue
+                    ptype = target["props"].get(prop)
+                    if ptype not in proc_types:
+                        continue
+                    want = proc_types[ptype]
+                    got = owner["methods"].get(handler.lower())
+                    if got is None:
+                        continue
+                    if got != want:
+                        at = offset + am.start()
+                        self.fail(
+                            f"{path.name}:{line_of(code, at)}: "
+                            f"{cname}.{routine} assigns {handler} to "
+                            f"{prop}, whose type takes "
+                            f"({', '.join(want) or 'no parameters'}) but "
+                            f"{handler} takes ({', '.join(got) or 'none'})")
+
+
+    def test_no_nested_routine_is_used_as_an_event_handler(self):
+        """A routine nested in another routine has no Self, so it cannot be
+        assigned to an `of object` event.
+
+        TCaptureForm.RunJob declared EngineLog, EngineProgress and
+        EngineStateChanged as nested routines and then handed them to the job
+        engine; FPC reports `got "EngineLog(TObject;const AnsiString) is
+        nested"`. They are methods of the form now.
+        """
+        for path in self.sources:
+            code = self.code(path)
+            for cname, routine, header, body, offset in routine_regions(code):
+                nested = {n.lower() for n in re.findall(
+                    r"(?:^|[;\n])\s+(?:procedure|function)\s+(\w+)", header)}
+                if not nested:
+                    continue
+                for am in re.finditer(
+                        r"(?<![.\w])(\w+)\.(\w+)\s*:=\s*(\w+)\s*;", body):
+                    if am.group(3).lower() not in nested:
+                        continue
+                    at = offset + am.start()
+                    self.fail(
+                        f"{path.name}:{line_of(code, at)}: {cname}.{routine} "
+                        f"assigns its nested routine {am.group(3)} to "
+                        f"{am.group(1)}.{am.group(2)} - a nested routine has "
+                        f"no Self and cannot satisfy an `of object` event; "
+                        f"make it a method")
 
 
 

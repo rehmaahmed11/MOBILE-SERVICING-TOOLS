@@ -73,6 +73,15 @@ type
     procedure DoStatePaint(Sender: TObject);
     procedure DoFormCloseQuery(Sender: TObject; var CanClose: Boolean);
     procedure SetPercent(APercent: Integer);
+    { RunJob's log sink and the three engine events. These are methods and not
+      nested routines: an `of object` event carries a Self pointer, and a
+      routine nested inside another routine has none, so FPC refuses the
+      assignment ("... is nested"). }
+    procedure AddLine(const ALine: string);
+    procedure EngineLog(Sender: TObject; const AText: string);
+    procedure EngineProgress(Sender: TObject; APercent: Integer;
+      const AText: string);
+    procedure EngineStateChanged(Sender: TObject);
     function S(const AValue: Integer): Integer;
   public
     constructor CreateCapture(AOwner: TComponent);
@@ -328,53 +337,58 @@ begin
   end;
 end;
 
+procedure TCaptureForm.AddLine(const ALine: string);
+begin
+  if FLog.Lines.Count > FLogLimit then
+    FLog.Lines.Delete(0);
+  FLog.Lines.Add(StripLogCodes(ALine));
+  if Assigned(FForward) then
+    FForward(ALine);
+end;
+
+procedure TCaptureForm.EngineLog(Sender: TObject; const AText: string);
+begin
+  AddLine(AText);
+end;
+
+procedure TCaptureForm.EngineProgress(Sender: TObject; APercent: Integer;
+  const AText: string);
+var
+  Elapsed: Int64;
+begin
+  SetPercent(APercent);
+  if AText <> '' then
+    FStep.Caption := AText;
+  Elapsed := TicksSince(FStartedAt);
+  FStateText.Caption := Format('%s   %d.%d s',
+    [FStep.Caption, Elapsed div 1000, (Elapsed mod 1000) div 100]);
+  FStateDot.Invalidate;
+  Application.ProcessMessages;
+end;
+
+procedure TCaptureForm.EngineStateChanged(Sender: TObject);
+var
+  Eng: TJobEngine;
+  Text: string;
+begin
+  Eng := EngineOf(FEngine);
+  if Eng = nil then
+    Exit;
+  Text := JobStateName(Eng.State);
+  if Eng.DeviceLocked then
+    Text := Text + ' - port ' + Eng.Session.PortName + ' held exclusively';
+  FStateText.Caption := Text;
+  FStateDot.Invalidate;
+  FBtnCancel.Enabled := Eng.Busy;
+  Application.ProcessMessages;
+end;
+
 function TCaptureForm.RunJob(AEngine: TObject;
   const AParams: TJobParams): Boolean;
 var
   Eng: TJobEngine;
   Outcome: TJobOutcome;
   Elapsed: Int64;
-
-  procedure AddLine(const ALine: string);
-  begin
-    if FLog.Lines.Count > FLogLimit then
-      FLog.Lines.Delete(0);
-    FLog.Lines.Add(StripLogCodes(ALine));
-    if Assigned(FForward) then
-      FForward(ALine);
-  end;
-
-  procedure EngineLog(Sender: TObject; const AText: string);
-  begin
-    AddLine(AText);
-  end;
-
-  procedure EngineProgress(Sender: TObject; APercent: Integer;
-    const AText: string);
-  begin
-    SetPercent(APercent);
-    if AText <> '' then
-      FStep.Caption := AText;
-    Elapsed := TicksSince(FStartedAt);
-    FStateText.Caption := Format('%s   %d.%d s',
-      [FStep.Caption, Elapsed div 1000, (Elapsed mod 1000) div 100]);
-    FStateDot.Invalidate;
-    Application.ProcessMessages;
-  end;
-
-  procedure EngineStateChanged(Sender: TObject);
-  var
-    Text: string;
-  begin
-    Text := JobStateName(Eng.State);
-    if Eng.DeviceLocked then
-      Text := Text + ' - port ' + Eng.Session.PortName + ' held exclusively';
-    FStateText.Caption := Text;
-    FStateDot.Invalidate;
-    FBtnCancel.Enabled := Eng.Busy;
-    Application.ProcessMessages;
-  end;
-
 begin
   Result := False;
   Eng := EngineOf(AEngine);
