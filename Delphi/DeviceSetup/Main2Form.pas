@@ -54,7 +54,14 @@ uses
 {$ENDIF}
   SampleControls,
   ToolbarIcons,
-  UsbDetect;
+  UsbDetect,
+  { The class below keeps a job engine and a device notifier as fields and
+    declares handlers with device-layer parameter types, so these three must
+    be in the INTERFACE uses clause - an implementation uses clause is not
+    visible to the class declaration. }
+  DevTypes,
+  DevNotify,
+  JobEngine;
 
 type
   TMain2Form = class(TForm)
@@ -388,10 +395,7 @@ uses
   DaLoader,
   LogView,
   SettingsDialog,
-  DevTypes,
-  DevNotify,
   DeviceSession,
-  JobEngine,
   CaptureForm,
   AdbTool,
   UnimplementedJobs,

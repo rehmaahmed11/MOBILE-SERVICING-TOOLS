@@ -17,6 +17,8 @@ easy to make when writing a lot of Pascal by hand and expensive to find in CI:
     follow ``{$ENDIF}``, which resolves to a stray statement
   * a reference to a symbol of another project unit whose unit is missing from
     the uses clause (Pascal does not re-export)
+  * an interface-section reference whose unit is named only in the
+    implementation uses clause, which is not in scope that early
 
 All of it is text level on purpose: standard library only, any platform, well
 under a second.
@@ -372,9 +374,26 @@ def locally_declared(text: str) -> set:
     return names
 
 
-def resolved_uses(text: str) -> set:
-    """Unit names in every uses clause, after conditional resolution."""
-    code = code_view(resolve_conditionals(text))
+def interface_section(text: str) -> str:
+    """The text between the unit's `interface` and `implementation` keywords.
+
+    What a class declaration, a published field type or a routine signature in
+    this part can see is limited to the INTERFACE uses clause: an
+    implementation uses clause is not in scope yet.
+    """
+    start = re.search(r"^\s*interface\s*$", text, re.M)
+    end = re.search(r"^\s*implementation\s*$", text, re.M)
+    if start is None:
+        return ""
+    return text[start.end():end.start() if end else len(text)]
+
+
+def resolved_uses(text: str, section: str = None) -> set:
+    """Unit names in every uses clause, after conditional resolution.
+
+    With `section` given, only the uses clauses inside that text are read.
+    """
+    code = code_view(resolve_conditionals(text if section is None else section))
     tokens = [t for t in tokenize_source(code) if t[0] in ("word", "symbol")]
     units = set()
     i = 0
@@ -669,6 +688,70 @@ class PascalStructureTests(unittest.TestCase):
                     f"{path.name}:{line}: '{symbol}' comes from {unit}.pas, "
                     f"which is not in any uses clause of {path.name}. Pascal "
                     f"does not re-export units, so add it explicitly.")
+
+    def test_interface_references_are_in_the_interface_uses(self):
+        """A type used by the interface needs the INTERFACE uses clause.
+
+        Adding a field `FEngine: TJobEngine` to a form class while naming
+        `JobEngine` only in the implementation uses clause compiles to
+
+            Main2Form.pas(303,14) Error: Identifier not found "TJobEngine"
+
+        because the class declaration is resolved before the implementation
+        uses clause exists. The check above cannot see this: it collects the
+        uses clauses of both sections together, which is correct for the
+        implementation but too generous for the interface.
+        """
+        texts = {path: self.text(path) for path in self.sources}
+        owner = {}
+        for path, text in texts.items():
+            for name in exported_symbols(text):
+                owner.setdefault(name.lower(), set()).add(path.stem.lower())
+
+        for path in self.sources:
+            if path.suffix != ".pas":
+                continue
+            text = texts[path]
+            section = interface_section(text)
+            if not section.strip():
+                continue
+            code = code_view(resolve_conditionals(section))
+            used = resolved_uses(section, section)
+            me = path.stem.lower()
+            local = locally_declared(text) | {
+                n.lower() for n in exported_symbols(text)}
+            missing = {}
+            prev = ""
+            for kind, value, offset in tokenize_source(code):
+                if kind == "ws":
+                    continue
+                if kind == "symbol":
+                    prev = value
+                    continue
+                if kind != "word":
+                    continue
+                qualified = prev == "."
+                prev = ""
+                if qualified:
+                    continue
+                low = value.lower()
+                if low in PASCAL_KEYWORDS or low in local or len(low) < 3:
+                    continue
+                owners = owner.get(low)
+                if not owners:
+                    continue
+                outside = owners - {me}
+                if len(outside) != 1:
+                    continue
+                unit = next(iter(outside))
+                if unit not in used:
+                    missing.setdefault(unit, (value, line_of(code, offset)))
+            for unit, (symbol, line) in sorted(missing.items()):
+                self.fail(
+                    f"{path.name}: the interface uses '{symbol}' from "
+                    f"{unit}.pas, but {unit} is only in the implementation "
+                    f"uses clause (near interface line {line}). Move it to the "
+                    f"interface uses clause.")
 
     def test_no_declaration_section_after_begin(self):
         """`var`, `const`, `type` and `label` may not follow a routine's
