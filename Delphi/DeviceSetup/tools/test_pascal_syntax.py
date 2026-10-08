@@ -109,6 +109,103 @@ DEVICE_UNITS = (
 )
 
 
+# Widths of the integer types a record field may be declared with. Anything not
+# listed (string, Boolean, enums, other records) is skipped by the range check.
+INTEGER_TYPE_RANGES = {
+    "byte": (0, 0xFF),
+    "shortint": (-0x80, 0x7F),
+    "smallint": (-0x8000, 0x7FFF),
+    "word": (0, 0xFFFF),
+    "longint": (-0x80000000, 0x7FFFFFFF),
+    "integer": (-0x80000000, 0x7FFFFFFF),
+    "cardinal": (0, 0xFFFFFFFF),
+    "longword": (0, 0xFFFFFFFF),
+    "dword": (0, 0xFFFFFFFF),
+    "uint32": (0, 0xFFFFFFFF),
+    "single": None,
+    "double": None,
+    "int64": None,
+    "uint64": None,
+    "qword": None,
+    "nativeint": None,
+    "nativeuint": None,
+    "ptrint": None,
+    "ptruint": None,
+}
+
+
+def record_fields(code: str) -> dict:
+    """{record type name: {field name: declared type}} over the whole unit."""
+    out = {}
+    for m in re.finditer(r"\b(T\w+)\s*=\s*\bpacked\s+\brecord\b|\b(T\w+)\s*=\s*\brecord\b",
+                         code, re.I):
+        name = (m.group(1) or m.group(2)).lower()
+        body_start = m.end()
+        # find the matching `end;` at nesting depth 0
+        depth = 0
+        i = body_start
+        end_at = -1
+        while i < len(code):
+            w = re.match(r"\b(record|case)\b", code[i:], re.I)
+            if code.startswith("end", i) and (i == 0 or not code[i - 1].isalnum()):
+                if depth == 0:
+                    end_at = i
+                    break
+                depth -= 1
+                i += 3
+                continue
+            if w and w.group(1).lower() == "record":
+                depth += 1
+                i += len(w.group(0))
+                continue
+            i += 1
+        if end_at < 0:
+            continue
+        body = code[body_start:end_at]
+        fields = {}
+        for fm in re.finditer(r"(?:^|[;\n])\s*([A-Za-z_]\w*(?:\s*,\s*[A-Za-z_]\w*)*)\s*:\s*"
+                              r"([A-Za-z_]\w*)", body):
+            for part in fm.group(1).split(","):
+                fields[part.strip().lower()] = fm.group(2).lower()
+        if fields:
+            out[name] = fields
+    return out
+
+
+def typed_constant_blocks(code: str):
+    """Yield (constant name, record type name, inner text) for every typed
+    constant initialised with a parenthesised value."""
+    for m in re.finditer(
+            r"\b(\w+)\s*:\s*(?:array\s*\[[^\]]*\]\s*of\s+)?(T\w+)\s*=\s*\(",
+            code, re.I):
+        open_at = m.end() - 1
+        close_at = matching_paren(code, open_at)
+        if close_at < 0:
+            continue
+        yield m.group(1), m.group(2).lower(), code[open_at + 1:close_at - 1]
+
+
+def split_top_level(text: str, sep: str):
+    """Split on `sep` characters that are not inside brackets or quotes."""
+    parts, depth, start, i = [], 0, 0, 0
+    while i < len(text):
+        c = text[i]
+        if c in "([":
+            depth += 1
+        elif c in ")]":
+            depth -= 1
+        elif c == "'" :
+            i += 1
+            while i < len(text) and text[i] != "'":
+                i += 1
+        elif c == sep and depth == 0:
+            parts.append(text[start:i])
+            start = i + 1
+        i += 1
+    parts.append(text[start:])
+    return parts
+
+
 def tokenize_source(text: str):
     """Yield (kind, value, offset) over Pascal source.
 
@@ -1088,6 +1185,54 @@ class PascalStructureTests(unittest.TestCase):
                 self.fail(
                     f"{path.name}:{line_of(code, m.start())}: ',' immediately "
                     f"before '{closer}' - Pascal has no trailing separator")
+
+
+    def test_typed_constant_values_fit_their_field_type(self):
+        """A value too wide for its field is silently truncated by Delphi.
+
+        CMtkStatusCodes declared `Code: Word` while the table held the 32-bit
+        DA codes ($C0040001 'Unsupported operation' and friends). Delphi kept
+        the low half, FPC printed a few hundred "range check error while
+        evaluating constants" warnings, and StatusName's binary search lost
+        both the names and the ordering it needs. This reads the real field
+        types and checks every literal against them.
+        """
+        for path in self.sources:
+            code = self.code(path)
+            fields = record_fields(code)
+            for const_name, rec_name, inner in typed_constant_blocks(code):
+                rec = fields.get(rec_name)
+                if rec is None:
+                    continue
+                for element in split_top_level(inner, ","):
+                    el = element.strip()
+                    if not el.startswith("("):
+                        continue
+                    for assign in split_top_level(el.strip("()"), ";"):
+                        am = re.match(r"\s*([A-Za-z_]\w*)\s*:\s*(.+?)\s*$",
+                                      assign, re.S)
+                        if not am:
+                            continue
+                        field, value = am.group(1).lower(), am.group(2).strip()
+                        ftype = rec.get(field)
+                        if ftype not in INTEGER_TYPE_RANGES:
+                            continue
+                        bounds = INTEGER_TYPE_RANGES[ftype]
+                        if bounds is None:
+                            continue
+                        vm = re.fullmatch(r"([+-]?)(\$[0-9A-Fa-f]+|\d+)", value)
+                        if not vm:
+                            continue
+                        num = int(vm.group(2).replace("$", "0x"), 0)
+                        if vm.group(1) == "-":
+                            num = -num
+                        lo, hi = bounds
+                        if not lo <= num <= hi:
+                            self.fail(
+                                f"{path.name}:{line_of(code, code.find(element))}: "
+                                f"{const_name} sets {field} to {value}, which "
+                                f"does not fit {ftype} ({lo}..{hi}) - the value "
+                                f"is truncated")
 
 
 

@@ -24,8 +24,12 @@ uses
 {$ENDIF}
 
 type
+  { UInt32, not Word: the DA answers with 32-bit codes such as $C0040001
+    ('Unsupported operation'), and a Word field silently truncated every one
+    of them to its low half - which both lost the name and broke the sorted
+    order the binary search in StatusName depends on. }
   TMtkStatusCode = record
-    Code: Word;
+    Code: UInt32;
     Name: string;
   end;
 
@@ -747,20 +751,20 @@ const
   );
 
 { True when a status word means "the device accepted the command". }
-function StatusIsOk(AStatus: Word): Boolean;
+function StatusIsOk(AStatus: UInt32): Boolean;
 { 'DA_IMAGE_SIG_VERIFY_FAIL', or '' when the code is not in the table. }
-function StatusName(AStatus: Word): string;
+function StatusName(AStatus: UInt32): string;
 { What the log prints: 'OK', '0x2001 DA_IMAGE_SIG_VERIFY_FAIL'. }
-function StatusText(AStatus: Word): string;
+function StatusText(AStatus: UInt32): string;
 
 implementation
 
-function StatusIsOk(AStatus: Word): Boolean;
+function StatusIsOk(AStatus: UInt32): Boolean;
 begin
   Result := AStatus <= $00FF;
 end;
 
-function StatusName(AStatus: Word): string;
+function StatusName(AStatus: UInt32): string;
 var
   Lo, Hi, Mid: Integer;
 begin
@@ -779,7 +783,7 @@ begin
   end;
 end;
 
-function StatusText(AStatus: Word): string;
+function StatusText(AStatus: UInt32): string;
 begin
   if AStatus = 0 then
     Result := 'OK'

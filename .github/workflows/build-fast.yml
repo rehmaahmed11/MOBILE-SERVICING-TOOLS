@@ -124,8 +124,20 @@ jobs:
         run: |
           & C:\lazarus\lazbuild.exe --build-all --lazarusdir=C:\lazarus DeviceSetup.lpi *>&1 | Tee-Object -FilePath build.log
           if ($LASTEXITCODE -ne 0) {
-            # surface compiler errors as annotations
-            Select-String -Path build.log -Pattern 'Error|Fatal' | Select-Object -First 20 | ForEach-Object { Write-Output "::error::$($_.Line)" }
+            # Compiler diagnostics only, and all of them in ONE annotation.
+            # The old pattern was 'Error|Fatal', which also matched FPC
+            # warnings whose text contains the word "error" - one bad typed
+            # constant produced hundreds of "range check error while
+            # evaluating constants" lines and pushed the actual error past
+            # GitHub's 10-annotation-per-run limit, where it could not be
+            # read at all by an environment that cannot reach the job-log
+            # host. '\) (Error|Fatal):' only matches real diagnostics.
+            $diag = Select-String -Path build.log -Pattern '\) (Error|Fatal):' | ForEach-Object { $_.Line } | Select-Object -Unique
+            if (-not $diag) {
+              $diag = Select-String -Path build.log -Pattern 'Error|Fatal' | ForEach-Object { $_.Line } | Select-Object -Unique -First 20
+            }
+            $joined = ($diag | Select-Object -First 80) -join '%0A'
+            Write-Output "::error title=fpc-diagnostics ($($diag.Count) line(s))::$joined"
             exit 1
           }
           $exe = "lazbuild-out\${{ matrix.cpu_os }}\DeviceSetup.exe"

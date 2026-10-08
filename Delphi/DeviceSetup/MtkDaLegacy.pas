@@ -612,7 +612,7 @@ begin
   end;
   if DramInfo <> 0 then
   begin
-    FLastError := 'Stage-2 configuration failed: ' + StatusText(Word(DramInfo));
+    FLastError := 'Stage-2 configuration failed: ' + StatusText(DramInfo);
     Exit;
   end;
   DoLog('Stage-2 configuration accepted (DRAM already initialised).');
