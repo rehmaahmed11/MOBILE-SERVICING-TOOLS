@@ -78,7 +78,7 @@ type
     scStage2Packet, scFinishValue);
 
   { A single non-command byte we are waiting for. }
-  TSimAwait = (awNone, awWriteAck, awFormatAck, awReadFinalAck,
+  TSimAwait = (awNone, awWriteAck, awFormatAck, awReadPacketAck,
     awStage2FinalAck);
 
   TSimPort = class(TCommTransport)
@@ -967,10 +967,17 @@ begin
       end;
     awFormatAck:
       EmitFormatStep;
-    awReadFinalAck:
+    awReadPacketAck:
       begin
-        { The host acks the last packet; the read is over. }
-        FOnCollect := scNone;
+        { The host acks each packet it has read. Answer with the next packet
+          while there are some left; the ack after the last packet ends the
+          read. }
+        if (B = DA_ACK) and (FReadDone < FReadLength) then
+        begin
+          EmitReadPacket;
+          if FReadDone < FReadLength then
+            FAwait := awReadPacketAck;
+        end;
       end;
     awStage2FinalAck:
       begin
@@ -1066,6 +1073,12 @@ begin
     scDaSigLen:
       begin
         FDaSigLen := Integer(CollectDwordBe(0));
+        if FDemandSla then
+        begin
+          EmitStatus(S_BROM_SLA_REQUIRED);
+          FOnCollect := scNone;
+          Exit;
+        end;
         EmitStatus(S_BROM_OK);
         if (FDaSize > 0) and (FDaSize <= 32 * 1024 * 1024) then
           StartPayload(scDaPayload, FDaSize)
@@ -1176,8 +1189,8 @@ begin
         EmitAck;
         EmitReadPacket;
         FOnCollect := scNone;
-        if FReadDone >= FReadLength then
-          FAwait := awReadFinalAck;
+        { The host acks every packet, the last one included. }
+        FAwait := awReadPacketAck;
         Exit;
       end;
     scFormatHeader:
@@ -1287,13 +1300,9 @@ begin
         StartCollect(scWriteAddr, 4, True);
       end;
     CMD_SEND_DA:
-      if FDemandSla then
-      begin
-        EmitStatus(S_BROM_SLA_REQUIRED);
-        FOnCollect := scNone;
-      end
-      else
-        StartCollect(scDaAddr, 4, True);
+      { The address, size and signature length are echoed first; the SLA
+        demand comes back as the status after them, as on a real device. }
+      StartCollect(scDaAddr, 4, True);
     CMD_JUMP_DA:
       StartCollect(scJumpAddr, 4, False);
     CMD_JUMP_DA64:
@@ -1308,7 +1317,14 @@ begin
     CMD_SEND_CERT:
       StartCollect(scCertLen, 4, True);
     CMD_SLA:
-      EmitStatus(S_DA_SLA_REQUIRED);
+      begin
+        { Status, then a 16-byte challenge, then the closing status. The host
+          has no key for it, so it reports the demand and stops. }
+        EmitStatus(S_BROM_OK);
+        EmitDwordBe(16);
+        EmitRepeat($5C, 16);
+        EmitStatus(S_BROM_OK);
+      end;
     CMD_CACHE_CTRL:
       EmitStatus(S_BROM_OK);
   else
