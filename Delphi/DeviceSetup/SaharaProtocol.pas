@@ -617,7 +617,7 @@ end;
 
 function TSaharaProtocol.Handshake(AWaitMs: Integer): Boolean;
 var
-  Command, Length: UInt32;
+  Command, PacketLen: UInt32;
   Body: TBytesArray;
   I: Integer;
   SavedTimeout: Integer;
@@ -642,7 +642,7 @@ begin
   if AWaitMs > 0 then
     FTimeoutMs := AWaitMs;
   try
-    if not ReadPacket(Command, Length, Body) then
+    if not ReadPacket(Command, PacketLen, Body) then
     begin
       if FLastError = '' then
         FLastError := 'The device did not send a Sahara hello';
@@ -728,7 +728,7 @@ end;
 function TSaharaProtocol.ReadMemory(AAddress, ALength: UInt64;
   out AData: TBytesArray): Boolean;
 var
-  Command, Length: UInt32;
+  Command, PacketLen: UInt32;
   Body, Chunk, LogBody: TBytesArray;
   Req: TSaharaReadRequest;
   Status: TSaharaImageStatus;
@@ -753,7 +753,7 @@ begin
       FLastError := 'Cancelled';
       Exit;
     end;
-    if not ReadPacket(Command, Length, Body) then
+    if not ReadPacket(Command, PacketLen, Body) then
       Exit(False);
     case Command of
       SAHARA_MEMORY_DEBUG_64:
@@ -818,7 +818,7 @@ end;
 function TSaharaProtocol.SendImage(AImageId: UInt32; AStream: TStream;
   ASize: Int64): Boolean;
 var
-  Command, Length: UInt32;
+  Command, PacketLen: UInt32;
   Body, Chunk, LogBody: TBytesArray;
   Req: TSaharaReadRequest;
   Status: TSaharaImageStatus;
@@ -838,7 +838,7 @@ begin
       FLastError := 'Cancelled';
       Exit;
     end;
-    if not ReadPacket(Command, Length, Body) then
+    if not ReadPacket(Command, PacketLen, Body) then
       Exit(False);
     case Command of
       SAHARA_READ_DATA:

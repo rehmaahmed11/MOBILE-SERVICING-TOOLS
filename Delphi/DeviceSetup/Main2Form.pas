@@ -2316,8 +2316,22 @@ begin
   Result.ForceBrom := chkForceBrom.Checked;
   Result.ReadEmi := chkReadEmi.Checked;
   Result.ReadPhoneInfo := chkReadPhoneInfo.Checked;
-  TryParseHex64(edtAddress.Text, Result.Address);
-  TryParseHex64(edtReadAddress.Text, Result.Address);
+  { The Write/Format tab and the Read tab keep their own address box and both
+    survive between runs. TryParseHex64 clears its out parameter, so parsing an
+    empty box SECOND would wipe the address the first box supplied - pick the
+    box that belongs to this job family and fall back to the other one only
+    when it holds nothing. }
+  if AKind in [jkReadFlashInfo, jkReadPartitions, jkReadBin, jkReadRegion,
+    jkReadOtp] then
+  begin
+    if not TryParseHex64(edtReadAddress.Text, Result.Address) then
+      TryParseHex64(edtAddress.Text, Result.Address);
+  end
+  else
+  begin
+    if not TryParseHex64(edtAddress.Text, Result.Address) then
+      TryParseHex64(edtReadAddress.Text, Result.Address);
+  end;
   TryParseHex64(edtReadSize.Text, Result.Size);
   TryParseHex64(edtRpmbAddress.Text, Result.RpmbAddress);
   Result.TimeoutMs := CDefaultCaptureTimeoutMs;

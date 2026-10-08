@@ -284,6 +284,76 @@ def method_bodies(code: str):
         yield m.group(1), m.group(2), code[body_start:stop], body_start
 
 
+# System/SysUtils routines that a local variable or parameter can shadow. FPC
+# resolves the innermost declaration, so `Length(Body)` inside a routine that
+# declares `Length: UInt32` stops being a call and becomes a syntax error.
+SHADOWABLE_ROUTINES = {
+    "length", "pos", "copy", "delete", "insert", "setlength", "high", "low",
+    "sizeof", "abs", "ord", "chr", "succ", "pred", "inc", "dec", "move",
+    "fillchar", "swap", "odd", "sqr", "sqrt", "trunc", "round", "int", "frac",
+    "include", "exclude", "val", "str", "assigned", "break", "continue",
+    "exit", "halt", "paramcount", "paramstr", "random", "upcase", "concat",
+}
+
+
+def routine_scopes(code: str):
+    """Yield (routine offset, local names, body text, body offset).
+
+    A routine is a header at column 0 (`function`, `procedure`,
+    `constructor`, `destructor`). Its locals come from the parameter list and
+    from the `var` block at column 0 that follows the header; its body runs
+    from the first `begin` to the next column-0 routine header, `end.` or
+    `initialization`.
+    """
+    heads = [m for m in re.finditer(
+        r"^(?:function|procedure|constructor|destructor)\b", code, re.M | re.I)]
+    for idx, m in enumerate(heads):
+        stop = heads[idx + 1].start() if idx + 1 < len(heads) else len(code)
+        tail = re.search(r"^(?:initialization|finalization|end\.)",
+                         code[m.end():stop], re.M | re.I)
+        if tail:
+            stop = m.end() + tail.start()
+        region = code[m.start():stop]
+        names = set()
+        # parameter list(s) of the header
+        for pm in re.finditer(r"\(", region):
+            close_at = matching_paren(region, pm.start())
+            if close_at < 0:
+                continue
+            params = region[pm.start() + 1:close_at - 1]
+            if re.match(r"\s*$", params):
+                break
+            for part in split_top_level(params, ";"):
+                if ":" not in part:
+                    continue
+                for nm in part.split(":")[0].replace("const", " ") \
+                        .replace("var", " ").replace("out", " ").split(","):
+                    nm = nm.strip().lower()
+                    if re.fullmatch(r"[a-z_]\w*", nm):
+                        names.add(nm)
+            break
+        # `var` / `const` block at column 0
+        for vm in re.finditer(r"^(?:var|const)\s*$", region, re.M):
+            j = vm.end()
+            while j < len(region):
+                nl = region.find("\n", j)
+                line = region[j:nl if nl >= 0 else len(region)]
+                if nl < 0:
+                    break
+                if line.strip() == "" or line.startswith("  "):
+                    dm = re.match(r"\s*([A-Za-z_]\w*(?:\s*,\s*[A-Za-z_]\w*)*)\s*:", line)
+                    if dm:
+                        for nm in dm.group(1).split(","):
+                            names.add(nm.strip().lower())
+                    j = nl + 1
+                    continue
+                break
+        begin_at = region.find("begin")
+        if begin_at < 0:
+            continue
+        yield m.start(), names, region[begin_at:], m.start() + begin_at
+
+
 def tokenize_source(text: str):
     """Yield (kind, value, offset) over Pascal source.
 
@@ -1347,6 +1417,30 @@ class PascalStructureTests(unittest.TestCase):
                             f"class declares a property of that name - the "
                             f"routine it means is shadowed; qualify it with "
                             f"its unit name")
+
+
+    def test_no_local_shadows_a_routine_that_is_called(self):
+        """A local named like an RTL routine silently replaces it.
+
+        TSaharaProtocol.ReadHello declared `Length: UInt32` and then called
+        `Length(Body)` eight lines later; FPC saw a UInt32 followed by a
+        parenthesis and reported `"THEN" expected but "(" found`. Record
+        fields of the same name are fine - they are always qualified - so only
+        parameters and routine locals are checked.
+        """
+        for path in self.sources:
+            code = self.code(path)
+            for offset, names, body, body_offset in routine_scopes(code):
+                for name in sorted(names & SHADOWABLE_ROUTINES):
+                    m = re.search(r"(?<![.\w@])" + re.escape(name) + r"\s*\(",
+                                  body, re.I)
+                    if m:
+                        self.fail(
+                            f"{path.name}:{line_of(code, body_offset + m.start())}: "
+                            f"'{name}' is declared as a local or parameter of "
+                            f"the routine starting at line "
+                            f"{line_of(code, offset)} and is also called there "
+                            f"- the declaration shadows the RTL routine")
 
 
 
