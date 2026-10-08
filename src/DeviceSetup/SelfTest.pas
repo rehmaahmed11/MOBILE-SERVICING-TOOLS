@@ -38,6 +38,7 @@ uses
   AppInfo,
   DeviceCatalog,
   UsbDetect,
+  SimPort,
   MainForm,
   Main2Form;
 
