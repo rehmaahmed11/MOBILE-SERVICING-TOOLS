@@ -1083,12 +1083,16 @@ begin
           Exit;
         end;
         EmitStatus(S_BROM_OK);
+        { EnterDa arms the collector for the host's ACK. Exit here: the code
+          after this case clears the collector, which would undo that. }
         EnterDa;
+        Exit;
       end;
     scJump64Flag:
       begin
         EmitStatus(S_BROM_OK);
         EnterDa;
+        Exit;
       end;
     scAuthLen:
       begin
