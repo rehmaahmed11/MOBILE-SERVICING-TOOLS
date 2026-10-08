@@ -4,7 +4,7 @@ unit ToolbarIcons;
   {$MODE DELPHI}
 {$ENDIF}
 
-{ Shared artwork from UI SAMPLE/S1.png ... S10.png. Unlike the previous
+{ Shared artwork from data/ui-reference/S1.png ... S10.png. Unlike the previous
   vector approximations these toolbar cards, shadows and action glyphs are
   the actual reference pixels. SampleAssets links the BMPs into the EXE. }
 

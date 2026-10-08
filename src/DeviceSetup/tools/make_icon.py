@@ -2,7 +2,7 @@
 
 The .ico is committed, so this only needs to run again if the design changes.
 Needs Pillow:  pip install pillow
-Usage:         python tools/make_icon.py   (run from Delphi/DeviceSetup)
+Usage:         python tools/make_icon.py   (run from src/DeviceSetup)
 """
 import pathlib
 

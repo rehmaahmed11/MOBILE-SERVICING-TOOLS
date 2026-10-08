@@ -14,7 +14,7 @@ import zipfile
 TOOLS_DIR = Path(__file__).resolve().parent
 DEVICE_SETUP_DIR = TOOLS_DIR.parent
 REPO_ROOT = DEVICE_SETUP_DIR.parents[1]
-ASSET_ROOT = REPO_ROOT / "FULL APP STRUCTURE" / "MOBILO TOOLZ"
+ASSET_ROOT = REPO_ROOT / "data" / "support" / "MOBILO TOOLZ"
 DATA_ROOT = ASSET_ROOT / "Data"
 DA_ROOT = DATA_ROOT / "DA"
 
@@ -73,10 +73,11 @@ class RealDataIntegrationTests(unittest.TestCase):
         script = (DEVICE_SETUP_DIR / "DeviceSetup.iss").read_text(encoding="utf-8")
         normalized = " ".join(script.replace("\\", "/").split()).casefold()
         self.assertIn(
-            'source: "artifacts/package/*"; destdir: "{app}"; '
+            'source: "../../artifacts/package/*"; destdir: "{app}"; '
             'flags: ignoreversion recursesubdirs createallsubdirs',
             normalized,
         )
+        self.assertIn("outputdir=../../artifacts", normalized)
         self.assertIn(
             r'defaultdirname={localappdata}/programs/mobile servicing tools',
             normalized,
@@ -159,11 +160,18 @@ class RealDataIntegrationTests(unittest.TestCase):
         still reported as unusable.
         """
         loader = (DEVICE_SETUP_DIR / "DaLoader.pas").read_text(encoding="utf-8")
+        adb_tool = (DEVICE_SETUP_DIR / "AdbTool.pas").read_text(encoding="utf-8")
         main = (DEVICE_SETUP_DIR / "Main2Form.pas").read_text(encoding="utf-8")
         da_image = (DEVICE_SETUP_DIR / "DaImage.pas").read_text(encoding="utf-8")
         engine = (DEVICE_SETUP_DIR / "JobEngine.pas").read_text(encoding="utf-8")
-        self.assertIn("FULL APP STRUCTURE", loader)
-        self.assertIn("MOBILO TOOLZ", loader)
+        self.assertIn("'data' + PathDelim", loader)
+        self.assertIn("'support' + PathDelim", loader)
+        self.assertIn("'MOBILO TOOLZ'", loader)
+        self.assertNotIn("FULL APP STRUCTURE", loader)
+        self.assertIn("'data' + PathDelim", adb_tool)
+        self.assertIn("'support' + PathDelim", adb_tool)
+        self.assertIn("'MOBILO TOOLZ' + PathDelim", adb_tool)
+        self.assertNotIn("FULL APP STRUCTURE", adb_tool)
         self.assertIn("Candidate := FindDataRootFrom(ExeDir)", loader)
         self.assertIn("FindFileInsensitive(Root, 'FDL1')", loader)
         self.assertIn("FindFileInsensitive(Root, 'FDL2')", loader)

@@ -2,6 +2,15 @@
 
 A native **Delphi VCL** Windows application (also builds with free Lazarus / Free Pascal).
 
+## Repository layout
+
+- `data/` — supplied inputs and references: the support payload tree is in `data/support/MOBILO TOOLZ/`, and the reference screenshots are in `data/ui-reference/`.
+- `src/DeviceSetup/` — the application source, Delphi/Lazarus project files, tests, and build scripts. This is the main working/editing area.
+- `artifacts/` — generated portable bundles, installer files, and package staging output. Build outputs are ignored by Git; only the folder marker is tracked.
+- `docs/` and `.github/` — project documentation and CI/workflow configuration.
+
+The current Windows installer is built with Inno Setup and is a **setup `.exe`**, not an `.msi`; portable builds are `.zip` files. Both formats are written to `artifacts/` when built locally.
+
 ## Download
 
 - **Releases (easiest):** open the repository's **Releases** page and download the installer for your Windows architecture:
@@ -20,7 +29,7 @@ The default installer location is under the current user's Local AppData and is 
 
 ### MAIN 1 — first screen (`MainForm.pas` / `MainForm.dfm`)
 
-Reference client layout: `UI SAMPLE/S1.png`, **1023 × 575 at 96 DPI**. A fresh install opens the OPPO / CPH1909 selection shown in the sample; existing saved selections are preserved:
+Reference client layout: `data/ui-reference/S1.png`, **1023 × 575 at 96 DPI**. A fresh install opens the OPPO / CPH1909 selection shown in the sample; existing saved selections are preserved:
 
 - **Blue menu icon** (top-left): *Next*, *Save model list…*, *Reload models*, *Export models.csv…*, *Settings…*, *Exit*.
 - **Toolbar** (top-right, left to right): green **play** = Next, orange **download** = save the model list, green **document** = reload models, **gear** = Settings, **paper plane** = report a problem (opens the issue tracker), **f** = Facebook, **?** = help (version, build and shortcuts).
@@ -33,7 +42,7 @@ Reference client layout: `UI SAMPLE/S1.png`, **1023 × 575 at 96 DPI**. A fresh 
 
 ### MAIN 2 — opened by Next (`Main2Form.pas` / `Main2Form.dfm`)
 
-Reference client layout: `UI SAMPLE/S2.png` … `S10.png`, **1026 × 585 at 96 DPI**. Compact painted tab strips, frames and button faces avoid differences between themed/unthemed Windows and VCL/LCL client offsets:
+Reference client layout: `data/ui-reference/S2.png` … `S10.png`, **1026 × 585 at 96 DPI**. Compact painted tab strips, frames and button faces avoid differences between themed/unthemed Windows and VCL/LCL client offsets:
 
 - **Toolbar**: menu (left); on the right, left to right: **start** (runs the first job of the open tab), **save log**, **change device** (back to MAIN 1), **settings**, **report a problem**, **Facebook**, **help**.
 - **Presets** box.
@@ -124,19 +133,19 @@ The background scan only reads the device list (SetupAPI) and never sends anythi
 
 ## Integrated support data
 
-The installer and portable bundles carry the actual files from `FULL APP STRUCTURE/MOBILO TOOLZ` in their original directory layout. `DeviceSetup.exe` is installed at the chosen app root; the application finds `Data/DA` and `Data/FDL1` / `Data/FDL2` beside it. In a source checkout it can locate the same tree without copying the 130+ MiB data into the Delphi project.
+The installer and portable bundles carry the actual files from `data/support/MOBILO TOOLZ` in their original directory layout. `DeviceSetup.exe` is installed at the chosen app root; the application finds `Data/DA` and `Data/FDL1` / `Data/FDL2` beside it. In a source checkout it locates the same tree under `data/` without copying the 130+ MiB payloads into `src/DeviceSetup/`.
 
 - The data folder contains **39 DA/FDL payload files** (about **131 MiB**): brand-level `.da` packages, MediaTek `.bin` / `.crp` resources, preloader resources and the full-size Unisoc FDL1/FDL2 pair.
 - `Data/DA/models_map.ini` routes the supported brand/model aliases to existing files. A route is only a file-availability hint; it does not prove exact handset/chipset compatibility.
 - Both the installer and portable bundle preserve the supplied ADB, 7-Zip and LZ4 DLLs and the complete x86 / amd64 / arm64 `libusb` subfolders byte-for-byte. USB driver installers are included in the support tree but are not run automatically.
 - The former 133–280 byte demo DA/FDL files have been removed. Bundled `.da`, `.bin` and `.crp` files are kept byte-for-byte; opaque vendor payloads are not unpacked or rewritten as invented `da.bin` files.
 
-`FULL APP STRUCTURE/MOBILO TOOLZ/assets-manifest.json` records SHA-256 and byte size for every non-empty support file. `tools/package_app.py` verifies that inventory before assembling the portable bundle; `tools/build_installer.py` checks the assembled tree against the same inventory before invoking Inno Setup. CI silently installs the generated Setup EXE into a temporary folder, verifies all manifested files in place, then runs the app self-test from that installed folder. These hashes establish package identity/copy integrity only—not vendor authenticity, licensing, or compatibility. The app can display the matching data filename and size and can send a payload it recognises as a plain download agent, but the supplied brand `.da` packages are **encrypted vendor containers**: `DaImage.pas` detects that and refuses them with a reason instead of loading garbage into the phone. No driver is installed by the app.
+`data/support/MOBILO TOOLZ/assets-manifest.json` records SHA-256 and byte size for every non-empty support file. `tools/package_app.py` verifies that inventory before assembling the portable bundle; `tools/build_installer.py` checks the assembled tree against the same inventory before invoking Inno Setup. CI silently installs the generated Setup EXE into a temporary folder, verifies all manifested files in place, then runs the app self-test from that installed folder. These hashes establish package identity/copy integrity only—not vendor authenticity, licensing, or compatibility. The app can display the matching data filename and size and can send a payload it recognises as a plain download agent, but the supplied brand `.da` packages are **encrypted vendor containers**: `DaImage.pas` detects that and refuses them with a reason instead of loading garbage into the phone. No driver is installed by the app.
 
-To assemble both release formats after compiling the EXE, run from `Delphi/DeviceSetup` on Windows with Inno Setup 6 installed:
+To assemble both release formats after compiling the EXE, run from `src/DeviceSetup` on Windows with Inno Setup 6 installed:
 
 ```sh
-python tools/package_app.py --exe path/to/DeviceSetup.exe --output artifacts/package --archive artifacts/DeviceSetup-Win64.zip
+python tools/package_app.py --exe path/to/DeviceSetup.exe --output ../../artifacts/package --archive ../../artifacts/DeviceSetup-Win64.zip
 python tools/build_installer.py --iscc "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" --platform Win64
 ```
 
@@ -152,7 +161,7 @@ When `models.csv` is next to the EXE it **replaces** the built-in list. Delete t
 
 ## Delphi project
 
-Open [`Delphi/DeviceSetup/DeviceSetup.dproj`](Delphi/DeviceSetup/DeviceSetup.dproj) in RAD Studio. The project targets both **Win32** and **Win64** (`TargetedPlatforms=3`). The icon (`DeviceSetup.ico`), version info and DPI awareness are set in the project files. The version number is `CAppVersion` in `AppInfo.pas`.
+Open [`src/DeviceSetup/DeviceSetup.dproj`](src/DeviceSetup/DeviceSetup.dproj) in RAD Studio. The project targets both **Win32** and **Win64** (`TargetedPlatforms=3`). The icon (`DeviceSetup.ico`), version info and DPI awareness are set in the project files. The version number is `CAppVersion` in `AppInfo.pas`.
 
 Toolbar cards, all job glyphs and the OPPO logo use **the actual artwork from the supplied screenshots**, not vector approximations. The 42 small BMPs in `assets/sample-ui` are linked into `SampleAssets.res`, so the EXE still needs no external images. The committed resource is reproducible with `python tools/make_ui_resources.py`; CI checks it byte-for-byte. `tools/extract_sample_assets.py` is an optional maintainer tool (requires Pillow) for repeating the documented crops.
 
@@ -160,7 +169,7 @@ Buttons, group frames and compact tab strips are interactive controls in `Sample
 
 | Unit | What it does |
 | --- | --- |
-| `MainForm` / `Main2Form` | the two screens (`UI SAMPLE/S1.png` … `S10.png` are the layout references) |
+| `MainForm` / `Main2Form` | the two screens (`data/ui-reference/S1.png` … `S10.png` are the layout references) |
 | `DeviceCatalog` | built-in model list and `models.csv` loading/export |
 | `AppInfo` | version, settings file (`DeviceSetup.ini`), options and writable data folder |
 | `DaLoader` | real DA/FDL asset discovery, brand/model routing and opaque-payload inventory |
@@ -212,7 +221,7 @@ Buttons, group frames and compact tab strips are interactive controls in `Sample
 7. Produces both the portable ZIP and the setup EXE. The installer keeps `DeviceSetup.exe` at `{app}` and copies the complete `Data` and `libusb` trees below that root.
 8. Uploads both formats; on `main` or a `v*` tag, publishes the installers and portable ZIPs as the GitHub Release.
 
-To build locally with Lazarus: `python tools/dfm2lfm.py`, then `lazbuild DeviceSetup.lpi`. Use `tools/package_app.py` to create the verified `artifacts/package` tree and portable ZIP, then `tools/build_installer.py` (Inno Setup 6 required) to compile the installer.
+To build locally with Lazarus, work from `src/DeviceSetup`: run `python tools/dfm2lfm.py`, then `lazbuild DeviceSetup.lpi`. Use `tools/package_app.py` to create the verified bundle at `../../artifacts/package` and a portable ZIP under `../../artifacts/`, then `tools/build_installer.py` (Inno Setup 6 required) to create the setup EXE in the repository-level `artifacts/` folder.
 
 ### Optional: Delphi build
 

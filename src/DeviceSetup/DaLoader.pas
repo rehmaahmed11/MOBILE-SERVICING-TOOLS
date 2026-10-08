@@ -104,17 +104,10 @@ begin
       Exit;
     end;
 
-    { Development checkout: find the supplied product tree without copying
-      130+ MiB of payloads into Delphi/DeviceSetup/data. }
-    Candidate := IncludeTrailingPathDelimiter(Current) + 'FULL APP STRUCTURE' +
-      PathDelim + 'MOBILO TOOLZ' + PathDelim + 'Data' + PathDelim;
-    if IsDataRoot(Candidate) then
-    begin
-      Result := IncludeTrailingPathDelimiter(Candidate);
-      Exit;
-    end;
-    Candidate := IncludeTrailingPathDelimiter(Current) + 'MOBILO TOOLZ' +
-      PathDelim + 'Data' + PathDelim;
+    { Development checkout: keep the user-supplied support tree under the
+      repository's data folder instead of copying 130+ MiB into the source. }
+    Candidate := IncludeTrailingPathDelimiter(Current) + 'data' + PathDelim +
+      'support' + PathDelim + 'MOBILO TOOLZ' + PathDelim + 'Data' + PathDelim;
     if IsDataRoot(Candidate) then
     begin
       Result := IncludeTrailingPathDelimiter(Candidate);

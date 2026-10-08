@@ -1,0 +1,3 @@
+# Generated release/build output (portable bundles, setup EXEs, staging tree)
+/artifacts/*
+!/artifacts/.gitkeep

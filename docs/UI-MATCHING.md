@@ -82,7 +82,7 @@ with Windows version, theme and display DPI; the reference artwork and
 
 ## Reproducible artwork
 
-`Delphi/DeviceSetup/assets/sample-ui/manifest.json` records each asset's
+`src/DeviceSetup/assets/sample-ui/manifest.json` records each asset's
 source image and crop rectangle. Only small icons (28 × 28) and the OPPO
 wordmark (270 × 48) are embedded; there are no full-screen bitmap controls.
 All artwork is linked into the portable EXE by `SampleAssets.res`.
@@ -90,16 +90,16 @@ All artwork is linked into the portable EXE by `SampleAssets.res`.
 Normal builds require no Pillow or separate image files. To check resources:
 
 ```sh
-python Delphi/DeviceSetup/tools/make_ui_resources.py --check
-python Delphi/DeviceSetup/tools/test_ui_contract.py
+python src/DeviceSetup/tools/make_ui_resources.py --check
+python src/DeviceSetup/tools/test_ui_contract.py
 ```
 
 To repeat the original crops after deliberately changing the references:
 
 ```sh
 python -m pip install Pillow
-python Delphi/DeviceSetup/tools/extract_sample_assets.py
-python Delphi/DeviceSetup/tools/make_ui_resources.py
+python src/DeviceSetup/tools/extract_sample_assets.py
+python src/DeviceSetup/tools/make_ui_resources.py
 ```
 
 The small resource is committed intentionally so building in RAD Studio
@@ -120,7 +120,7 @@ also publishes those PNG bytes in numbered `ci-shot` check runs for review
 through the GitHub API. To reconstruct them without downloading artifacts:
 
 ```sh
-python Delphi/DeviceSetup/tools/read_ci_screenshots.py --sha <commit> --output <review-directory>
+python src/DeviceSetup/tools/read_ci_screenshots.py --sha <commit> --output <review-directory>
 ```
 
 Unlike the old GIF transport, this does not introduce
