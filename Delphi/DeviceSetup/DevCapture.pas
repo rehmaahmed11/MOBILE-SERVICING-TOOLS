@@ -322,18 +322,23 @@ begin
   if ATimeoutMs <= 0 then
     ATimeoutMs := CDefaultCaptureTimeoutMs;
 
-  NowTick := Tick64;
-  Deadline := NowTick + ATimeoutMs;
-  NextPoll := 0;
-  FNotifier.Enabled := True;
-
   { When the caller asked for the simulated device, use it right away. It
     exists so the pipeline can run with no hardware at all (self-test, CI,
     demo), and waiting out the whole timeout for a phone that is not there
     would only make those runs slow. A real job never sets AAllowSimulated, so
-    it still waits for hardware and fails honestly when none appears. }
+    it still waits for hardware and fails honestly when none appears.
+
+    This has to happen BEFORE the deadline is worked out: with the deadline
+    already set from the caller's timeout, the loop below polls for hardware
+    that is not there for the whole window - three minutes by default - before
+    it ever reaches the simulator. }
   if AAllowSimulated and Assigned(GSimFactory) then
     ATimeoutMs := 0;
+
+  NowTick := Tick64;
+  Deadline := NowTick + ATimeoutMs;
+  NextPoll := 0;
+  FNotifier.Enabled := True;
 
   while True do
   begin

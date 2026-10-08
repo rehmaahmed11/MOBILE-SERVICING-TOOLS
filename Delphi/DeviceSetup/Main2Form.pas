@@ -2334,6 +2334,10 @@ begin
   TryParseHex64(edtReadSize.Text, Result.Size);
   TryParseHex64(edtRpmbAddress.Text, Result.RpmbAddress);
   Result.TimeoutMs := CDefaultCaptureTimeoutMs;
+  { The unattended run must never sit for three minutes waiting for a phone
+    that is not there, so it gets a short window. }
+  if CmdSwitch('selftest') then
+    Result.TimeoutMs := 5000;
   { no AUTH file chosen: fall back to the one bundled with the DA payload }
   if (Result.Platform = dpMtk) and (Result.AuthFile = '') and
      chkAuthBrom.Checked then
@@ -2526,6 +2530,8 @@ begin
     Outcome.State = jsDone);
   Check('the job reported the storage size', Outcome.BytesMoved > 0);
   Check('the outcome is flagged as simulated', Outcome.Simulated);
+  Check('a simulated capture attaches at once instead of waiting for hardware',
+    Outcome.ElapsedMs < 10000);
   Check('the port is released as soon as the job ends',
     (not FEngine.DeviceLocked) and (not FEngine.Busy) and
     (FEngine.Session.Stage = ssClosed) and (not SimPortInUse));
