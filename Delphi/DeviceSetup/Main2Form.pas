@@ -1783,7 +1783,7 @@ end;
 procedure TMain2Form.ChkAuthBromClick(Sender: TObject);
 begin
   Log('[Connections] ' + chkAuthBrom.Caption + ' : ' +
-    LInfo(IfThen(chkAuthBrom.Checked, 'on', 'off')));
+    LInfo(IfThenStr(chkAuthBrom.Checked, 'on', 'off')));
   if chkAuthBrom.Checked then
   begin
     if Trim(edtAuth.Text) = '' then
@@ -1797,7 +1797,7 @@ end;
 procedure TMain2Form.ChkAuthPreloaderClick(Sender: TObject);
 begin
   Log('[Connections] ' + chkAuthPreloader.Caption + ' : ' +
-    LInfo(IfThen(chkAuthPreloader.Checked, 'on', 'off')));
+    LInfo(IfThenStr(chkAuthPreloader.Checked, 'on', 'off')));
   if chkAuthPreloader.Checked then
     StartJob(jkAuthPreloader);
 end;
@@ -1805,7 +1805,7 @@ end;
 procedure TMain2Form.ChkForceBromClick(Sender: TObject);
 begin
   Log('[Connections] ' + chkForceBrom.Caption + ' : ' +
-    LInfo(IfThen(chkForceBrom.Checked, 'on', 'off')));
+    LInfo(IfThenStr(chkForceBrom.Checked, 'on', 'off')));
   if chkForceBrom.Checked then
     StartJob(jkForceBrom)
   else
@@ -1816,7 +1816,7 @@ end;
 procedure TMain2Form.ChkReadEmiClick(Sender: TObject);
 begin
   Log('[Connections] ' + chkReadEmi.Caption + ' : ' +
-    LInfo(IfThen(chkReadEmi.Checked, 'on', 'off')));
+    LInfo(IfThenStr(chkReadEmi.Checked, 'on', 'off')));
   if chkReadEmi.Checked then
     StartJob(jkReadEmi);
 end;
@@ -1824,7 +1824,7 @@ end;
 procedure TMain2Form.ChkReadPhoneInfoClick(Sender: TObject);
 begin
   Log('[Connections] ' + chkReadPhoneInfo.Caption + ' : ' +
-    LInfo(IfThen(chkReadPhoneInfo.Checked, 'on', 'off')));
+    LInfo(IfThenStr(chkReadPhoneInfo.Checked, 'on', 'off')));
   if chkReadPhoneInfo.Checked then
     StartJob(jkReadPhoneInfo);
 end;

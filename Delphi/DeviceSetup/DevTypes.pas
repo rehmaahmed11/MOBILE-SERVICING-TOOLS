@@ -246,6 +246,12 @@ function SafeFileName(const S: string): string;
 function ImeiDigits(const AText: string): Integer;
 { Int64 max of two values, without pulling in System.Math. }
 function MaxInt64(const A, B: Int64): Int64;
+{ StrUtils' IfThen overloads cover Integer, Int64, QWord and floating point,
+  but the string one is an FPC extension that Delphi does not have - and every
+  call site in the device layer picks between two messages. This is the same
+  thing and compiles on both. }
+function IfThenStr(AValue: Boolean; const ATrue: string;
+  const AFalse: string = ''): string;
 
 implementation
 
@@ -424,6 +430,15 @@ begin
     Result := A
   else
     Result := B;
+end;
+
+function IfThenStr(AValue: Boolean; const ATrue: string;
+  const AFalse: string): string;
+begin
+  if AValue then
+    Result := ATrue
+  else
+    Result := AFalse;
 end;
 
 end.

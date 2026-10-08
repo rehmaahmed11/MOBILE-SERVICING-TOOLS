@@ -570,7 +570,7 @@ begin
   FStage := ssCapturing;
   DoLog('Waiting for a MediaTek phone in ' +
     ModesForPlatform(dpMtk) + ' mode' +
-    IfThen(FForceBrom, ' (BROM forced)', '') + '...');
+    IfThenStr(FForceBrom, ' (BROM forced)', '') + '...');
   DoLog(CaptureHint(dpMtk, FForceBrom));
 
   FGrab := FCapture.WaitForDevice(dpMtk, FCaptureTimeout, FSimulated);
@@ -627,7 +627,7 @@ begin
     Exit;
   end;
 
-  DoLog('Chip: ' + IfThen(FBrom.ChipKnown, ChipLabel(FBrom.Chip),
+  DoLog('Chip: ' + IfThenStr(FBrom.ChipKnown, ChipLabel(FBrom.Chip),
     'unknown hwcode $' + IntToHex(FBrom.HwCode, 4)) +
     ', hwver $' + IntToHex(FBrom.HwVer, 4) +
     ', BROM ' + IntToStr(FBrom.BromVer) +

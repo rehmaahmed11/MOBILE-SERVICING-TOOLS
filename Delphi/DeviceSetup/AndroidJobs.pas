@@ -550,7 +550,7 @@ begin
         L('  3. replace the bootloader warning bitmap, which needs a signed ' +
           'image for that exact model.');
         if AAdb <> nil then
-          L('fastboot present: ' + IfThen(AAdb.HasFastboot, 'yes', 'no'));
+          L('fastboot present: ' + IfThenStr(AAdb.HasFastboot, 'yes', 'no'));
         L('Nothing was sent to a phone: this job only explains the options.');
         Result := OutcomeOk('Explained - no device was touched');
       end;

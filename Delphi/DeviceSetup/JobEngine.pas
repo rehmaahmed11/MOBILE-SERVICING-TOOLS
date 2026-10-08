@@ -490,7 +490,7 @@ begin
   if Result.State = jsDone then
     DoLog('Finished in ' + IntToStr(Result.ElapsedMs div 1000) + '.' +
       IntToStr((Result.ElapsedMs mod 1000) div 100) + ' s' +
-      IfThen(Result.BytesMoved > 0, ', ' + IntToStr(Result.BytesMoved) +
+      IfThenStr(Result.BytesMoved > 0, ', ' + IntToStr(Result.BytesMoved) +
         ' bytes moved', '') + '.')
   else if Result.State = jsCancelled then
     DoLog('Cancelled. The device port has been released.')
@@ -638,7 +638,7 @@ begin
   if FSession.ChipLabel <> '' then
     DoLog('Chip             : ' + FSession.ChipLabel);
   DoLog('Port             : ' + FSession.PortName +
-    IfThen(FSession.Simulated, ' (simulated)', ''));
+    IfThenStr(FSession.Simulated, ' (simulated)', ''));
   Result := OutcomeOk('Flash information read',
     Int64(FSession.FlashInfo.FlashSize));
 end;
@@ -1288,7 +1288,7 @@ begin
   end;
   Result := OutcomeOk(IntToStr(Written) + ' partition(s) written, ' +
     FormatScatterSize(UInt64(Moved)) +
-    IfThen(Skipped > 0, ', ' + IntToStr(Skipped) + ' skipped', ''), Moved);
+    IfThenStr(Skipped > 0, ', ' + IntToStr(Skipped) + ' skipped', ''), Moved);
 end;
 
 function TJobEngine.JobWriteBin: TJobOutcome;
@@ -1538,7 +1538,7 @@ begin
     Exit;
   end;
   DoLog('--- phone information (boot ROM) ---');
-  DoLog('Chip      : ' + IfThen(FSession.Brom.ChipKnown,
+  DoLog('Chip      : ' + IfThenStr(FSession.Brom.ChipKnown,
     FSession.ChipLabel, 'unknown'));
   if FSession.Brom.GetHwCode(Code) then
     DoLog('HW code   : $' + IntToHex(Code and $FFFF, 4));
@@ -1633,7 +1633,7 @@ begin
   Result := OutcomeFail('IMEI_CODEC',
     'Reading the IMEI out of NVRAM needs the MediaTek NVRAM record codec for ' +
     'this exact chip, which is not public and is not implemented here. ' +
-    IfThen(Backed > 0, IntToStr(Backed) +
+    IfThenStr(Backed > 0, IntToStr(Backed) +
       ' NVRAM partition(s) were backed up so the IMEI can be read with a tool ' +
       'that has the codec.', 'No partition could be backed up.'));
   DoLog(Result.Message);
@@ -1692,7 +1692,7 @@ begin
     'Writing the IMEI needs the MediaTek NVRAM record codec and the checksum ' +
     'layout for this exact chip. They are not public and are not implemented ' +
     'here, so the app refuses to write rather than corrupt the NVRAM. ' +
-    IfThen(Backed > 0, IntToStr(Backed) +
+    IfThenStr(Backed > 0, IntToStr(Backed) +
       ' partition(s) were backed up first, so a repair with a tool that has ' +
       'the codec can be undone.', 'Nothing was written.'));
   DoLog(Result.Message);
@@ -1724,7 +1724,7 @@ begin
   end;
   if FSession.Brom <> nil then
   begin
-    DoLog('Chip reported by the phone : ' + IfThen(FSession.Brom.ChipKnown,
+    DoLog('Chip reported by the phone : ' + IfThenStr(FSession.Brom.ChipKnown,
       FSession.ChipLabel, 'unknown'));
     DoLog('HW code                    : $' + IntToHex(FSession.Brom.HwCode, 4));
     DoLog('Target config              : ' +

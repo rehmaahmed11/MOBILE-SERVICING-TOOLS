@@ -428,7 +428,7 @@ begin
       begin
         SetPercent(100);
         AddLine('OK  ' + Outcome.Message +
-          IfThen(Outcome.Simulated, '   [SIMULATED]', ''));
+          IfThenStr(Outcome.Simulated, '   [SIMULATED]', ''));
         if Outcome.BytesMoved > 0 then
           AddLine(Format('%d bytes moved in %d.%d s', [Outcome.BytesMoved,
             Elapsed div 1000, (Elapsed mod 1000) div 100]));

@@ -1406,7 +1406,7 @@ begin
       Lines.Add('  partition_name: ' + CParts[I].Name);
       Lines.Add('  file_name: ' + CParts[I].FileName);
       Lines.Add('  is_download: ' +
-        IfThen(CParts[I].FileName <> '', 'true', 'false'));
+        IfThenStr(CParts[I].FileName <> '', 'true', 'false'));
       Lines.Add('  type: ' + CParts[I].Kind);
       Lines.Add('  physical_start_addr: 0x' + IntToHex(Int64(CParts[I].Start), 1));
       Lines.Add('  partition_size: 0x' + IntToHex(Int64(CParts[I].Size), 1));

@@ -461,7 +461,7 @@ begin
       IntToStr(AResult.ElapsedMs) + ' ms')
   else
     DoLog('exit ' + IntToStr(AResult.ExitCode) +
-      IfThen(AResult.Error = '', '', ' - ' + AResult.Error));
+      IfThenStr(AResult.Error = '', '', ' - ' + AResult.Error));
   Result := True;
 end;
 
