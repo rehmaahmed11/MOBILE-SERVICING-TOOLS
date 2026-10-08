@@ -611,6 +611,12 @@ begin
   FBrom := TBromProtocol.Create(FTransport);
   FBrom.OnLog := BromLog;
   FBrom.TimeoutMs := CDefaultIoTimeoutMs;
+  { The simulated device answers in the same call that writes to it, so it can
+    never need the real five-second window. Keeping it short bounds the
+    unattended self-test: a protocol step the simulation does not answer costs
+    a second instead of five. }
+  if FSimulated then
+    FBrom.TimeoutMs := 1000;
   if not FBrom.Handshake then
   begin
     FLastError := 'Boot ROM handshake failed: ' + FBrom.LastError;

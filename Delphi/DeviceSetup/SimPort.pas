@@ -111,6 +111,9 @@ type
     FBromVer: Byte;
     FTargetConfig: UInt32;
     FDemandSla: Boolean;
+    { True while THIS instance holds the single-owner guard, so ClosePort and
+      Destroy only clear what they claimed. }
+    FClaimed: Boolean;
 
     FMem: TBytesArray;
     FFlash: TBytesArray;
@@ -279,7 +282,9 @@ begin
     Result := nil;
     Exit;
   end;
-  GSimInUse := True;
+  { OpenPort claims the guard, not this factory: claiming it here made the
+    port refuse its own owner with a sharing violation, and the failed open
+    left the guard set so every later job saw a device that was "in use". }
   Port := TSimPort.Create;
   Port.DemandSla := GSimDemandSla;
   Port.FullDaSequence := GSimFullDaSequence;
@@ -361,6 +366,7 @@ var
 begin
   inherited Create;
   FOpen := False;
+  FClaimed := False;
   FInLen := 0;
   FOutPos := 0;
   SetLength(FInBuf, 0);
@@ -447,7 +453,12 @@ end;
 function TSimPort.OpenPort(out AError: string): Boolean;
 begin
   AError := '';
-  if GSimInUse and (not FOpen) then
+  if FOpen then
+  begin
+    Result := True;   { this instance already owns it }
+    Exit;
+  end;
+  if GSimInUse then
   begin
     { Somebody else already owns it - the same answer Windows gives for a COM
       port held with dwShareMode = 0. }
@@ -456,15 +467,19 @@ begin
     Exit;
   end;
   GSimInUse := True;
+  FClaimed := True;
   FOpen := True;
   Result := True;
 end;
 
 procedure TSimPort.ClosePort;
 begin
-  if FOpen then
+  FOpen := False;
+  { Clears the guard even when the open failed half way, so a port that was
+    never usable cannot lock every later job out of the simulated device. }
+  if FClaimed then
   begin
-    FOpen := False;
+    FClaimed := False;
     GSimInUse := False;
   end;
 end;
