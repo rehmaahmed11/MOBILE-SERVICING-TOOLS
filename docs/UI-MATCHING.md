@@ -126,9 +126,16 @@ python Delphi/DeviceSetup/tools/read_ci_screenshots.py --sha <commit> --output <
 Unlike the old GIF transport, this does not introduce
 256-colour dithering or alter the appearance of fonts and backgrounds.
 
-**Scope:** the reference interface now catalogs the real supplied DA/FDL
-payloads and the portable package preserves the complete support tree. This
-only proves file presence and integrity against the checked-in hash inventory;
-it does not prove vendor authenticity or exact device compatibility. Real device
-communication is still unimplemented. Job buttons continue to validate and
-log `error(NOT_IMPLEMENTED)`; no phone read/write/format action is performed.
+**Scope:** the reference interface catalogs the real supplied DA/FDL payloads
+and the portable package preserves the complete support tree. That only proves
+file presence and integrity against the checked-in hash inventory; it does not
+prove vendor authenticity or exact device compatibility.
+
+Job buttons are wired to the job engine: each one opens the capture window,
+waits for the phone, takes its COM port with an exclusive handle, runs the
+operation and then releases the port (see the *Device jobs* section of the
+README for what is implemented per platform). The **screens and their geometry
+are unchanged by that work** — the capture window is a separate dialog built in
+code, and nothing in `Main2Form.dfm` moved, so every screenshot contract here
+still holds byte-for-byte. Operations whose vendor protocol is not public fail
+with an explicit reason instead of reporting success.

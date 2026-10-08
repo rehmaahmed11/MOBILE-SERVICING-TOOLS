@@ -61,6 +61,24 @@
     <DCCReference Include="UsbDetect.pas" />
     <DCCReference Include="SettingsDialog.pas" />
     <DCCReference Include="SelfTest.pas" />
+    <DCCReference Include="DevTypes.pas" />
+    <DCCReference Include="CommPort.pas" />
+    <DCCReference Include="DevNotify.pas" />
+    <DCCReference Include="DevCapture.pas" />
+    <DCCReference Include="MtkChips.pas" />
+    <DCCReference Include="MtkStatus.pas" />
+    <DCCReference Include="BromProtocol.pas" />
+    <DCCReference Include="DaImage.pas" />
+    <DCCReference Include="MtkDaLegacy.pas" />
+    <DCCReference Include="SimPort.pas" />
+    <DCCReference Include="ScatterFile.pas" />
+    <DCCReference Include="SaharaProtocol.pas" />
+    <DCCReference Include="AdbTool.pas" />
+    <DCCReference Include="DeviceSession.pas" />
+    <DCCReference Include="UnimplementedJobs.pas" />
+    <DCCReference Include="AndroidJobs.pas" />
+    <DCCReference Include="JobEngine.pas" />
+    <DCCReference Include="CaptureForm.pas" />
   </ItemGroup>
 
   <ProjectExtensions>

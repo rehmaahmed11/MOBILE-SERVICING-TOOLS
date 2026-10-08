@@ -70,18 +70,10 @@ begin
 end;
 
 function SelfTestRequested: Boolean;
-var
-  I: Integer;
-  S: string;
 begin
-  { accepts --selftest, -selftest and /selftest }
-  Result := False;
-  for I := 1 to ParamCount do
-  begin
-    S := LowerCase(ParamStr(I));
-    if (S = '--selftest') or (S = '-selftest') or (S = '/selftest') then
-      Result := True;
-  end;
+  { accepts --selftest, -selftest and /selftest; AppInfo.CmdSwitch is the one
+    place that parses the command line, so MAIN 2 sees the same answer. }
+  Result := CmdSwitch('selftest');
 end;
 
 procedure TSelfTestHandler.ButtonClicked(Sender: TObject);
@@ -288,6 +280,10 @@ var
       Out.Add('FAIL  ' + AName);
       AllOk := False;
     end;
+    { Written as it goes: a hang would otherwise leave no log at all, and the
+      CI step only reports "no selftest.log". The run is only a success when
+      the final line says SELFTEST OK, so a partial file cannot pass. }
+    Out.SaveToFile(OutDir + 'selftest.log');
   end;
 
 begin
@@ -413,7 +409,8 @@ begin
         Capture(Main2, 'main2-progress');
         Main2.Progress := 0;
 
-        Check('MAIN 2 self-test', Main2.SelfTest(Out));
+        Check('MAIN 2 self-test',
+          Main2.SelfTest(Out, OutDir + 'selftest.log'));
         ButtonProbe := TButtonInteractionProbe.Create(nil);
         try
           ButtonProbe.Parent := Main2;

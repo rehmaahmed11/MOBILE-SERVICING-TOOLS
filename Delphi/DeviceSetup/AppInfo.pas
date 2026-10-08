@@ -47,6 +47,13 @@ var
 function AppTitle: string;
 function AppVersionText: string;
 
+{ True when the command line carries -<AName>, --<AName> or /<AName>.
+  SysUtils.FindCmdLineSwitch is not used for this: the Delphi and FPC versions
+  disagree about how many leading dashes they strip, and FPC's leaves the
+  second dash of --selftest in place so the switch is never found. Everything
+  that has to know whether the app is running unattended goes through here. }
+function CmdSwitch(const AName: string): Boolean;
+
 function ExeDir: string;
 function DataDir: string;
 function LogsDir: string;
@@ -75,6 +82,22 @@ var
 function AppTitle: string;
 begin
   Result := CAppName + ' v' + CAppVersion;
+end;
+
+function CmdSwitch(const AName: string): Boolean;
+var
+  I: Integer;
+  S: string;
+begin
+  Result := False;
+  for I := 1 to ParamCount do
+  begin
+    S := LowerCase(ParamStr(I));
+    while (Length(S) > 0) and ((S[1] = '-') or (S[1] = '/')) do
+      Delete(S, 1, 1);
+    if S = LowerCase(AName) then
+      Exit(True);
+  end;
 end;
 
 function AppVersionText: string;
