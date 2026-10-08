@@ -73,6 +73,9 @@ type
       const AText: string);
     { adb / fastboot log sink: TAndroidLog has no Sender parameter. }
     procedure ToolLog(const AText: string);
+    { TAdbTool.OnLog is a TJobLogEvent, which does carry a Sender, so the tool
+      gets this adapter and AndroidJobs/UnimplementedJobs keep ToolLog. }
+    procedure AdbLog(Sender: TObject; const AText: string);
     procedure ToolProgress(APercent: Integer; const AText: string);
     function RunAndroidJob: TJobOutcome;
     function RunOfflineJob: TJobOutcome;
@@ -208,7 +211,7 @@ begin
   FSession.OnLog := SessionLog;
   FSession.OnProgress := SessionProgress;
   FAdb := TAdbTool.Create;
-  FAdb.OnLog := ToolLog;   { every adb/fastboot command line lands in the log }
+  FAdb.OnLog := AdbLog;   { every adb/fastboot command line lands in the log }
   FParams := EmptyJobParams;
   FState := jsIdle;
   FCancelled := False;
@@ -266,6 +269,11 @@ begin
 end;
 
 procedure TJobEngine.ToolLog(const AText: string);
+begin
+  DoLog(AText);
+end;
+
+procedure TJobEngine.AdbLog(Sender: TObject; const AText: string);
 begin
   DoLog(AText);
 end;
