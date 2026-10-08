@@ -653,6 +653,7 @@ var
   EntryLba, EntryCount, EntrySize, FirstUsable, LastUsable: UInt64;
   EntryBytes, I, P, NameAt: Integer;
   Name: string;
+  NameW: UnicodeString;
   Ch: Word;
   StartLba, EndLba: UInt64;
 begin
@@ -702,7 +703,8 @@ begin
     Exit;
   end;
   DoLog(Format('GPT: %d entries of %d bytes at LBA %d, usable LBA %d..%d',
-    [EntryCount, EntrySize, EntryLba, FirstUsable, LastUsable]));
+    [Int64(EntryCount), Int64(EntrySize), Int64(EntryLba),
+     Int64(FirstUsable), Int64(LastUsable)]));
 
   EntryBytes := Integer(EntryCount) * Integer(EntrySize);
   if not FSession.Da.ReadFlashBytes(EntryLba * CSector, UInt64(EntryBytes),
@@ -728,20 +730,25 @@ begin
     { an entry with no LBAs is an unused slot }
     if (StartLba = 0) and (EndLba = 0) then
       Continue;
-    Name := '';
+    { the entry name is UTF-16LE; collect it as such and convert once, because
+      appending a WideChar to an AnsiString is a type error under FPC }
+    NameW := '';
     NameAt := P + 56;
     while NameAt + 1 < P + 56 + 72 do
     begin
       Ch := Word(Entries[NameAt]) or (Word(Entries[NameAt + 1]) shl 8);
       if Ch = 0 then
         Break;
-      Name := Name + WideChar(Ch);
+      NameW := NameW + WideChar(Ch);
       Inc(NameAt, 2);
     end;
+    Name := string(NameW);
     if Name = '' then
       Name := '(unnamed)';
+    { Int64 casts: FPC passes a UInt64 to an open array as vtQWord, which
+      Format('%d') refuses, while Delphi passes it as vtInt64. }
     ALines.Add(Format('%-4d %-24s %-16d %-16d %s',
-      [I, Name, StartLba, EndLba,
+      [I, Name, Int64(StartLba), Int64(EndLba),
        FormatScatterSize((EndLba - StartLba + 1) * CSector)]));
   end;
   Result := ALines.Count > 1;

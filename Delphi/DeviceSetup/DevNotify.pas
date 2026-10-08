@@ -104,6 +104,12 @@ type
 
 function RegisterClassWin(var AClass: TWndClassW): ATOM; stdcall;
   external user32 name 'RegisterClassW';
+{ FPC declares GetClassInfoW with an LPWNDCLASSW parameter and Delphi with an
+  `out TWndClassW` one, so `Wc` compiles on one and `@Wc` on the other.
+  Declaring it here with a `var` record - which both compilers pass as a
+  pointer - makes the call site identical on either. }
+function GetClassInfoWin(Instance: HINST; ClassName: PWideChar;
+  var AClass: TWndClassW): BOOL; stdcall; external user32 name 'GetClassInfoW';
 function CreateWindowExWin(ExStyle: DWORD; ClassName, WindowName: PWideChar;
   Style: DWORD; X, Y, W, H: Integer; Parent: HWND; Menu: HMENU;
   Inst: HINST; Param: Pointer): HWND; stdcall; external user32 name
@@ -233,7 +239,7 @@ begin
     Exit(True);
 
   FillChar(Wc, SizeOf(Wc), 0);
-  if GetClassInfoW(HInstance, PWideChar(CClassName), Wc) = 0 then
+  if GetClassInfoWin(HInstance, PWideChar(CClassName), Wc) = 0 then
   begin
     FillChar(Wc, SizeOf(Wc), 0);
     Wc.lpfnWndProc := @NotifierWndProc;
