@@ -1005,7 +1005,10 @@ begin
           N := Integer(Count) * 2
         else
           N := Integer(Count) * 4;
-        StartCollect(scWriteValues, N, True);
+        { Not echoed: TBromProtocol.WriteValues sends the values and then
+          reads a single status word, so echoed value bytes would be read as
+          that status and desynchronise the rest of the session. }
+        StartCollect(scWriteValues, N, False);
         Exit;
       end;
     scWriteValues:
@@ -1194,9 +1197,14 @@ end;
 
 procedure TSimPort.HandleBromCommand(B: Byte);
 begin
-  { Every BROM command is echoed back. }
-  Emit(B);
   FPendingCmd := B;
+  { Every BROM command is echoed back - except the two the host reads a single
+    answer byte for. TBromProtocol.GetBlVer and GetBromVer write the command
+    and then read exactly one byte, so an echoed command byte would be taken
+    as the answer and the real answer would stay in the buffer, out of step
+    with everything that follows. }
+  if (B <> CMD_GET_BL_VER) and (B <> CMD_GET_VERSION) then
+    Emit(B);
   case B of
     CMD_GET_HW_CODE:
       EmitDwordBe((UInt32(FHwCode) shl 16) or UInt32(FHwVer));
