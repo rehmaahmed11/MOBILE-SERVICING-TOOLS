@@ -265,7 +265,7 @@ var
 procedure SimTraceAdd(const S: string);
 begin
   if (GSimTrace <> nil) and (GSimTrace.Count < 1500) then
-    GSimTrace.Add(S);
+    GSimTrace.Add('SIMTRACE ' + S);
 end;
 
 function SimPortInUse: Boolean;
