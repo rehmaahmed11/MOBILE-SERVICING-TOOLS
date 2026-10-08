@@ -302,6 +302,10 @@ type
     FUsbTimer: TTimer;
     FMeasure: TBitmap;
     FSessionLog: TStringList;
+    { Set while --selftest runs: the log the checks write to, and the file it
+      is flushed to after every line, so a hang still shows where it stopped. }
+    FSelfTestTrace: TStrings;
+    FSelfTestTraceFile: string;
     FManualFormat: Boolean;
     FAiExceptBootloader: Boolean;
     FDataAssetPath: string;
@@ -358,12 +362,14 @@ type
     procedure Log(const AText: string);
     { Used by the CI self-test: runs the checks that need no dialogs and
       adds PASS/FAIL lines to AOut. }
-    function SelfTest(AOut: TStrings): Boolean;
+    function SelfTest(AOut: TStrings;
+      const AProgressFile: string = ''): Boolean;
     procedure ShowDemoLog;
     { Runs the whole capture -> lock -> operate -> release pipeline against
       the simulated device and adds PASS/FAIL lines to AOut. Used by
       --selftest, so CI exercises the device layer without hardware. }
-    function SelfTestDevicePipeline(AOut: TStrings): Boolean;
+    function SelfTestDevicePipeline(AOut: TStrings;
+      const AProgressFile: string = ''): Boolean;
     property Progress: Integer read FProgress write SetProgress;
   end;
 
@@ -405,6 +411,9 @@ const
   CFacebookUrl = 'https://www.facebook.com/';
   CIssuesUrl = 'https://github.com/rehmaahmed11/MOBILE-SERVICING-TOOLS/issues';
   CMaxLogLines = 5000;
+  { Cap on how much of the engine's own log the self-test writes into its
+    progress file, so a chatty job cannot grow it without limit. }
+  CSelfTestTraceCap = 600;
   CSection = 'Main2';
 
   CFilterAll = '|All files (*.*)|*.*';
@@ -447,6 +456,16 @@ begin
 end;
 
 { ---------------------------------------------------------------- helpers }
+
+{ The CI self-test is killed after 120 s and the log is only written at the
+  end, so a hang leaves nothing behind to diagnose. Every check flushes what
+  it has, which turns "no selftest.log" into the exact check that stopped. }
+procedure SaveSelfTestProgress(AOut: TStrings; const AFile: string);
+begin
+  if (AFile = '') or (AOut = nil) or not (AOut is TStringList) then
+    Exit;
+  TStringList(AOut).SaveToFile(AFile);
+end;
 
 function TryParseHex64(const S: string; out AValue: UInt64): Boolean;
 var
@@ -607,6 +626,8 @@ begin
   UpdateFormatRadios;
 
   FSessionLog := TStringList.Create;
+  FSelfTestTrace := nil;
+  FSelfTestTraceFile := '';
   FMeasure := TBitmap.Create;
   SetupLogFont;
   lstLog.Items.Clear;
@@ -1146,6 +1167,12 @@ begin
   Stamp := FormatDateTime('hh:nn:ss', Now);
   if FSessionLog <> nil then
     FSessionLog.Add(Stamp + '  ' + StripLogCodes(AText));
+  if FSelfTestTrace <> nil then
+  begin
+    if FSelfTestTrace.Count < CSelfTestTraceCap then
+      FSelfTestTrace.Add('        | ' + Stamp + ' ' + StripLogCodes(AText));
+    SaveSelfTestProgress(FSelfTestTrace, FSelfTestTraceFile);
+  end;
   if GOptions.ShowTimeInLog and (AText <> '') then
     AddLogLine(LMuted('[' + Stamp + '] ') + AText)
   else
@@ -2468,10 +2495,10 @@ end;
 
 { ---------------------------------------------------------------- self-test }
 
-function TMain2Form.SelfTestDevicePipeline(AOut: TStrings): Boolean;
+function TMain2Form.SelfTestDevicePipeline(AOut: TStrings;
+  const AProgressFile: string): Boolean;
 var
   AllOk: Boolean;
-  Dumped: Integer;
   TempDir, ReadBack, RegionFile, RpmbFile: string;
   Params: TJobParams;
   Outcome: TJobOutcome;
@@ -2487,43 +2514,43 @@ var
       AOut.Add('FAIL  ' + AName);
       AllOk := False;
     end;
+    SaveSelfTestProgress(AOut, AProgressFile);
   end;
 
   function RunJob(AKind: TJobKind): TJobOutcome;
   const
     { The engine's own log names the protocol step that stopped, and the CI
-      annotation is the only place anyone can read it - but the annotation has
-      a size limit, so each failing job contributes its last few lines and the
-      whole run has a budget. }
+      annotation is the only place anyone can read it. A job that succeeds
+      leaves no trace behind, so the log stays readable and inside the
+      annotation's size limit; a job that fails or never returns keeps the
+      last few lines it produced. }
     CMaxLinesPerJob = 24;
-    CDumpBudget = 160;
   var
-    Before, First, I: Integer;
+    TraceStart, I: Integer;
   begin
     Params.Kind := AKind;
-    Before := FSessionLog.Count;
+    TraceStart := AOut.Count;
+    AOut.Add('RUN   ' + JobName(AKind));
+    SaveSelfTestProgress(AOut, AProgressFile);
     Result := FEngine.RunJob(Params);
-    if Result.State <> jsDone then
+    if Result.State = jsDone then
     begin
-      AOut.Add('      ' + JobName(AKind) + ' -> [' + Result.Code + '] ' +
-        Result.Message);
-      if Dumped < CDumpBudget then
-      begin
-        First := Before;
-        if FSessionLog.Count - First > CMaxLinesPerJob then
-          First := FSessionLog.Count - CMaxLinesPerJob;
-        for I := First to FSessionLog.Count - 1 do
-        begin
-          AOut.Add('        | ' + FSessionLog[I]);
-          Inc(Dumped);
-        end;
-      end;
+      for I := AOut.Count - 1 downto TraceStart do
+        AOut.Delete(I);
+    end
+    else
+    begin
+      AOut[TraceStart] := '      ' + JobName(AKind) + ' -> [' + Result.Code +
+        '] ' + Result.Message;
+      while AOut.Count - TraceStart > CMaxLinesPerJob + 1 do
+        AOut.Delete(TraceStart + 1);   { oldest trace line first }
     end;
+    SaveSelfTestProgress(AOut, AProgressFile);
   end;
+
 
 begin
   AllOk := True;
-  Dumped := 0;
   EnableSimulatedDevice;
   { Run the simulated phone through the full legacy bring-up - storage report,
     stage-2 configuration, stage-2 upload - so CI covers that path too. }
@@ -2698,11 +2725,12 @@ begin
 end;
 
 
-function TMain2Form.SelfTest(AOut: TStrings): Boolean;
+function TMain2Form.SelfTest(AOut: TStrings;
+  const AProgressFile: string): Boolean;
 var
   AllOk: Boolean;
   V: UInt64;
-  Before: Integer;
+  Before, I: Integer;
   Imei: Integer;
   DataRes: TDaLoadResult;
   Fdl1, Fdl2: string;
@@ -2716,10 +2744,16 @@ var
       AOut.Add('FAIL  ' + AName);
       AllOk := False;
     end;
+    SaveSelfTestProgress(AOut, AProgressFile);
   end;
 
 begin
   AllOk := True;
+  { Every line the engine logs from here on is written straight into the
+    self-test log and flushed, so a job that never returns still shows the
+    last protocol step it reached. }
+  FSelfTestTrace := AOut;
+  FSelfTestTraceFile := AProgressFile;
   Check('hex: "00000000  00100000" = $100000',
     TryParseHex64('00000000  00100000', V) and (V = $100000));
   Check('hex: "1 00000000" = $100000000',
@@ -2818,11 +2852,22 @@ begin
   CheckUsb(True);
   Check('USB scan ran', True);
 
+  { The clicks above are only checked for "did it log something", so their
+    protocol trace is noise by now. Drop it and leave the budget to the
+    pipeline, which asserts on every single step. }
+  for I := AOut.Count - 1 downto 0 do
+    if Copy(AOut[I], 1, 10) = '        | ' then
+      AOut.Delete(I);
+
   { The device layer: capture -> exclusive lock -> operate -> release, against
     the simulated phone, so CI covers it without hardware. }
-  if not SelfTestDevicePipeline(AOut) then
+  if not SelfTestDevicePipeline(AOut, AProgressFile) then
     AllOk := False;
 
+  { The run continues with the button probe, the demo log and the DPI
+    captures; none of that belongs in the trace. }
+  FSelfTestTrace := nil;
+  FSelfTestTraceFile := '';
   Result := AllOk;
 end;
 

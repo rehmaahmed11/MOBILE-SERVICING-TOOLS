@@ -280,6 +280,10 @@ var
       Out.Add('FAIL  ' + AName);
       AllOk := False;
     end;
+    { Written as it goes: a hang would otherwise leave no log at all, and the
+      CI step only reports "no selftest.log". The run is only a success when
+      the final line says SELFTEST OK, so a partial file cannot pass. }
+    Out.SaveToFile(OutDir + 'selftest.log');
   end;
 
 begin
@@ -405,7 +409,8 @@ begin
         Capture(Main2, 'main2-progress');
         Main2.Progress := 0;
 
-        Check('MAIN 2 self-test', Main2.SelfTest(Out));
+        Check('MAIN 2 self-test',
+          Main2.SelfTest(Out, OutDir + 'selftest.log'));
         ButtonProbe := TButtonInteractionProbe.Create(nil);
         try
           ButtonProbe.Parent := Main2;
