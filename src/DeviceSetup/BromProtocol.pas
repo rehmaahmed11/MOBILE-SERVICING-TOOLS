@@ -1078,7 +1078,11 @@ begin
 
   if Status = S_BROM_SLA_REQUIRED then
   begin
-    if SlaRequired then
+    { SlaRequired returns True only when the device reports that SLA is
+      already satisfied. Every other outcome leaves FLastError set and must
+      stop the upload here: the download agent is never sent to a device
+      that is still waiting for authentication. }
+    if not SlaRequired then
       Exit;
     Status := 0;
   end;
