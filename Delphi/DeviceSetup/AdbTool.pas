@@ -177,14 +177,6 @@ begin
   end;
 end;
 
-{ Milliseconds since ATick, coping with the 49-day GetTickCount64 wrap. }
-function TicksSince(ATick: Int64): Int64;
-begin
-  Result := Int64(GetTickCount64) - ATick;
-  if Result < 0 then
-    Result := 0;
-end;
-
 function EmptyCmdResult: TCmdResult;
 begin
   Result.Ran := False;
@@ -396,7 +388,7 @@ begin
   CloseHandle(WritePipe);
   WritePipe := 0;
 
-  T0 := GetTickCount64;
+  T0 := Tick64;
   Exited := False;
   Drained := False;
   AResult.Output := '';
@@ -560,7 +552,7 @@ var
   T0: Int64;
 begin
   Result := False;
-  T0 := GetTickCount64;
+  T0 := Tick64;
   while True do
   begin
     Application.ProcessMessages;

@@ -18,8 +18,9 @@ interface
 
 uses
 {$IFDEF FPC}
-  SysUtils;
+  Windows, SysUtils;
 {$ELSE}
+  Winapi.Windows,
   System.SysUtils;
 {$ENDIF}
 
@@ -252,6 +253,14 @@ function MaxInt64(const A, B: Int64): Int64;
   thing and compiles on both. }
 function IfThenStr(AValue: Boolean; const ATrue: string;
   const AFalse: string = ''): string;
+{ Milliseconds on a 64-bit clock, and the elapsed time since one of its
+  readings. GetTickCount64 is not exported by every Windows/SysUtils unit the
+  project builds against, GetTickCount is, so these two wrap it - the only
+  cost is that a job would have to run for 49.7 days to see the wrap, and
+  TicksSince copes even then. Every timer in the device layer goes through
+  here so the clock stays Int64 and Format('%d', ...) keeps working. }
+function Tick64: Int64;
+function TicksSince(ATick: Int64): Int64;
 
 implementation
 
@@ -439,6 +448,22 @@ begin
     Result := ATrue
   else
     Result := AFalse;
+end;
+
+function Tick64: Int64;
+begin
+  Result := Int64(GetTickCount) and $FFFFFFFF;
+end;
+
+function TicksSince(ATick: Int64): Int64;
+var
+  NowTick: Int64;
+begin
+  NowTick := Tick64;
+  if NowTick >= ATick then
+    Result := NowTick - ATick
+  else
+    Result := (Int64($100000000) - ATick) + NowTick;
 end;
 
 end.

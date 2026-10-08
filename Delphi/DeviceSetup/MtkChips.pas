@@ -147,7 +147,7 @@ const
     (HwCode: $8512; DaCode: $8512; Name: 'MT8512'; Description: ''; Watchdog: $10007000; Uart: $11002000; DaMode: dmXFlash; Has64Bit: False; MiscLock: $00000000; MeidAddr: $00104638; SocIdAddr: $00104648; CqDmaBase: $10214000; BromPayloadAddr: $00100A00; DaPayloadAddr: $00111000),
     (HwCode: $8518; DaCode: $8518; Name: 'MT8518 VoiceAssistant'; Description: ''; Watchdog: $10007000; Uart: $11002000; DaMode: dmXFlash; Has64Bit: False; MiscLock: $00000000; MeidAddr: $00000000; SocIdAddr: $00000000; CqDmaBase: $00000000; BromPayloadAddr: $00100A00; DaPayloadAddr: $00201000),
     (HwCode: $8590; DaCode: $8590; Name: 'MT8590/MT7683/MT8521/MT7623'; Description: ''; Watchdog: $10007000; Uart: $11002000; DaMode: dmLegacy; Has64Bit: False; MiscLock: $00000000; MeidAddr: $001031D8; SocIdAddr: $00000000; CqDmaBase: $00000000; BromPayloadAddr: $00100A00; DaPayloadAddr: $00201000),
-    (HwCode: $8695; DaCode: $8695; Name: 'MT8695'; Description: ''; Watchdog: $10007000; Uart: $11002000; DaMode: dmXFlash; Has64Bit: False; MiscLock: $00000000; MeidAddr: $001032B8; SocIdAddr: $00000000; CqDmaBase: $00000000; BromPayloadAddr: $00100A00; DaPayloadAddr: $00201000),
+    (HwCode: $8695; DaCode: $8695; Name: 'MT8695'; Description: ''; Watchdog: $10007000; Uart: $11002000; DaMode: dmXFlash; Has64Bit: False; MiscLock: $00000000; MeidAddr: $001032B8; SocIdAddr: $00000000; CqDmaBase: $00000000; BromPayloadAddr: $00100A00; DaPayloadAddr: $00201000)
   );
 
   { Fallback used for an hwcode that is not in the table. }

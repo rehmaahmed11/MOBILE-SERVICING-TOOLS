@@ -440,7 +440,7 @@ begin
   FCancelled := False;
   ResetCancel;
   Inc(FJobCount);
-  T0 := GetTickCount64;
+  T0 := Tick64;
 
   SetState(jsPreparing);
   DoProgress(0, JobName(FParams.Kind));
@@ -477,7 +477,7 @@ begin
 
   if FCancelled and (Result.State = jsDone) then
     Result := OutcomeCancelled;
-  Result.ElapsedMs := Int64(GetTickCount64) - T0;
+  Result.ElapsedMs := TicksSince(T0);
   if Result.BytesMoved = 0 then
     Result.BytesMoved := FSession.BytesMoved;
   if Result.Simulated or FSession.Simulated then

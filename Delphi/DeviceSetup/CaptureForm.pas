@@ -355,7 +355,7 @@ var
     SetPercent(APercent);
     if AText <> '' then
       FStep.Caption := AText;
-    Elapsed := GetTickCount64 - FStartedAt;
+    Elapsed := TicksSince(FStartedAt);
     FStateText.Caption := Format('%s   %d.%d s',
       [FStep.Caption, Elapsed div 1000, (Elapsed mod 1000) div 100]);
     FStateDot.Invalidate;
@@ -388,7 +388,7 @@ begin
   end;
   FEngine := Eng;
   FFinished := False;
-  FStartedAt := GetTickCount64;
+  FStartedAt := Tick64;
   FLog.Lines.Clear;
 
   Caption := JobName(AParams.Kind) + ' - device capture';
@@ -422,7 +422,7 @@ begin
 
   Outcome := Eng.RunJob(AParams);
 
-  Elapsed := GetTickCount64 - FStartedAt;
+  Elapsed := TicksSince(FStartedAt);
   case Outcome.State of
     jsDone:
       begin

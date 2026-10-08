@@ -134,12 +134,6 @@ begin
   Result := GSimFactory;
 end;
 
-{ GetTickCount64 is not declared by every Windows unit we build against. }
-function Tick64: Int64;
-begin
-  Result := Int64(GetTickCount) and $FFFFFFFF;
-end;
-
 function EmptyGrabbedPort: TGrabbedPort;
 begin
   Result.Found := False;

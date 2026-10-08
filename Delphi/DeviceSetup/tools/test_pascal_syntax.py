@@ -1073,6 +1073,23 @@ class PascalStructureTests(unittest.TestCase):
                         f"`if not {m.group(1)}(...)`")
 
 
+    def test_no_comma_before_a_closing_bracket(self):
+        """`,` immediately before `)` or `]` is a syntax error in Pascal.
+
+        Delphi tolerates it in a typed-constant array and FPC does not - it
+        reports `")" expected but "," found` on the LAST element, which for a
+        generated 711-entry status table is easy to miss. Both generated
+        tables shipped with one.
+        """
+        for path in self.sources:
+            code = self.code(path)
+            for m in re.finditer(r",\s*[)\]]", code):
+                closer = code[m.end() - 1]
+                self.fail(
+                    f"{path.name}:{line_of(code, m.start())}: ',' immediately "
+                    f"before '{closer}' - Pascal has no trailing separator")
+
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

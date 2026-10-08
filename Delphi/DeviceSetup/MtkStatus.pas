@@ -743,7 +743,7 @@ const
     (Code: $C0070002; Name: 'DA not found'),
     (Code: $C0070003; Name: 'DA section not found'),
     (Code: $C0070004; Name: 'DA hash mismatch'),
-    (Code: $C0070005; Name: 'DA exceed max num'),
+    (Code: $C0070005; Name: 'DA exceed max num')
   );
 
 { True when a status word means "the device accepted the command". }
