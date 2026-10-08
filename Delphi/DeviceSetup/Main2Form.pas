@@ -2471,6 +2471,7 @@ end;
 function TMain2Form.SelfTestDevicePipeline(AOut: TStrings): Boolean;
 var
   AllOk: Boolean;
+  Dumped: Integer;
   TempDir, ReadBack, RegionFile, RpmbFile: string;
   Params: TJobParams;
   Outcome: TJobOutcome;
@@ -2489,16 +2490,40 @@ var
   end;
 
   function RunJob(AKind: TJobKind): TJobOutcome;
+  const
+    { The engine's own log names the protocol step that stopped, and the CI
+      annotation is the only place anyone can read it - but the annotation has
+      a size limit, so each failing job contributes its last few lines and the
+      whole run has a budget. }
+    CMaxLinesPerJob = 24;
+    CDumpBudget = 160;
+  var
+    Before, First, I: Integer;
   begin
     Params.Kind := AKind;
+    Before := FSessionLog.Count;
     Result := FEngine.RunJob(Params);
     if Result.State <> jsDone then
+    begin
       AOut.Add('      ' + JobName(AKind) + ' -> [' + Result.Code + '] ' +
         Result.Message);
+      if Dumped < CDumpBudget then
+      begin
+        First := Before;
+        if FSessionLog.Count - First > CMaxLinesPerJob then
+          First := FSessionLog.Count - CMaxLinesPerJob;
+        for I := First to FSessionLog.Count - 1 do
+        begin
+          AOut.Add('        | ' + FSessionLog[I]);
+          Inc(Dumped);
+        end;
+      end;
+    end;
   end;
 
 begin
   AllOk := True;
+  Dumped := 0;
   EnableSimulatedDevice;
   { Run the simulated phone through the full legacy bring-up - storage report,
     stage-2 configuration, stage-2 upload - so CI covers that path too. }
