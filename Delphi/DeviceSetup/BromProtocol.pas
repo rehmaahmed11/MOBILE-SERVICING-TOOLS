@@ -513,13 +513,21 @@ end;
 { ----------------------------------------------------------------- handshake }
 
 function TBromProtocol.Handshake(ARetries: Integer): Boolean;
+const
+  { How many wrong answers one attempt tolerates before it gives up on it. }
+  CMaxWrongAnswers = 8;
 var
-  Attempt, I: Integer;
+  Attempt, I, Wrong: Integer;
   Sent: Byte;
   Answer: Byte;
 begin
   Result := False;
   FLastError := '';
+  { The BootROM window is one-shot and this object handshakes once: callers
+    (DeviceSession, then Connect) may both ask for it, and redoing it against a
+    device that has already left BROM never succeeds. }
+  if FHandshook then
+    Exit(True);
   if FTransport = nil then
   begin
     FLastError := 'No transport attached';
@@ -541,6 +549,7 @@ begin
       Exit;
     end;
     I := 0;
+    Wrong := 0;
     while I <= High(BROM_HANDSHAKE) do
     begin
       Sent := BROM_HANDSHAKE[I];
@@ -558,9 +567,22 @@ begin
         Break;
       end;
       if Answer = Byte(not Sent) then
-        Inc(I)
+      begin
+        Inc(I);
+        Wrong := 0;
+      end
       else
+      begin
+        { Restart the sequence - but only a bounded number of times. A device
+          that answers every byte with the wrong one (a port that echoes, a
+          phone that is already past BROM, a simulation that replies to a
+          command instead of a handshake byte) would otherwise spin here
+          forever, because restarting never costs a timeout. }
         I := 0;
+        Inc(Wrong);
+        if Wrong >= CMaxWrongAnswers then
+          Break;
+      end;
     end;
     if I > High(BROM_HANDSHAKE) then
     begin
