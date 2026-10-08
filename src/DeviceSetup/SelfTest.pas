@@ -38,7 +38,6 @@ uses
   AppInfo,
   DeviceCatalog,
   UsbDetect,
-  SimPort,
   MainForm,
   Main2Form;
 
@@ -476,12 +475,6 @@ begin
         Out.Add('EXCEPTION ' + E.ClassName + ': ' + E.Message);
         AllOk := False;
       end;
-    end;
-    { TEMP-TRACE }
-    if GSimTrace <> nil then
-    begin
-      Out.Add('--- sim trace (' + IntToStr(GSimTrace.Count) + ' lines)');
-      Out.AddStrings(GSimTrace);
     end;
     if AllOk then
       Out.Add('SELFTEST OK')

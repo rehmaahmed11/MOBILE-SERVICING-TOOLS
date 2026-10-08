@@ -241,14 +241,6 @@ jobs:
           $log = "$dir\selftest.log"
           if (Test-Path $log) {
             $lines = @(Get-Content $log)
-            # GitHub keeps at most 10 annotations per step, so the diagnostic
-            # trace of the simulated device goes first, as one annotation.
-            $trace = @($lines | Where-Object { $_.StartsWith('SIMTRACE') })
-            if ($trace.Count) {
-              $traceText = (@($trace | Select-Object -First 200 | ForEach-Object { $_ -replace '%', '%25' })) -join '%0A'
-              if ($traceText.Length -gt 3500) { $traceText = $traceText.Substring(0, 3500) }
-              Write-Output "::notice title=selftest-${{ matrix.platform }} sim-trace ($($trace.Count) lines)::$traceText"
-            }
             # The FAIL / EXCEPTION lines first: they are what needs fixing.
             $fails = @($lines | Where-Object { $_ -match '^(FAIL|EXCEPTION)' })
             $failText = if ($fails.Count) { (@($fails | ForEach-Object { $_ -replace '%', '%25' })) -join '%0A' } else { 'none' }

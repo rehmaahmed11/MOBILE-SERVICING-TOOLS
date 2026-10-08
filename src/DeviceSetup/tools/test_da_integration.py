@@ -296,5 +296,102 @@ class SimulatedStorageReportContractTests(unittest.TestCase):
         self.assertIn("IdCount := (Integer(Nand[15]) shl 8) or Integer(Nand[16]);", host)
 
 
+class SimulatedDaProtocolFlowTests(unittest.TestCase):
+    """Regression tests for the simulated phone's byte-level flow. Each one
+    pins a bug the self-test found in CI:
+
+    - a collector or payload armed in a case branch was cleared by the
+      trailing reset after the case (the jump, the stage-2 packets), so the
+      host's next bytes were read as commands and NACKed;
+    - the host's stage-2 configuration array was sized for 14 bytes but
+      written with 18, so the writes ran past the end of the array;
+    - the host's ACK before the configuration had to be consumed first;
+    - a device demanding SLA must answer the SEND_DA arguments, then SLA.
+    """
+
+    SIM = DEVICE_SETUP_DIR / "SimPort.pas"
+    HOST = DEVICE_SETUP_DIR / "MtkDaLegacy.pas"
+    BROM = DEVICE_SETUP_DIR / "BromProtocol.pas"
+
+    @staticmethod
+    def _routine(text, header):
+        start = text.index(header)
+        end = text.index("\nend;\n", start) + len("\nend;\n")
+        return text[start:end]
+
+    @staticmethod
+    def _lines_after(body, pattern, window):
+        """For each line matching pattern, the stripped lines that follow it."""
+        import re
+
+        lines = body.splitlines()
+        found = []
+        for i, line in enumerate(lines):
+            if re.search(pattern, line):
+                nxt = [l.strip() for l in lines[i + 1 : i + 1 + window] if l.strip()]
+                found.append((line.strip(), nxt))
+        return found
+
+    def test_collector_restarts_exit_before_the_trailing_reset(self):
+        body = self._routine(self.SIM.read_text(encoding="utf-8"),
+                             "procedure TSimPort.CollectDone;")
+        restarts = self._lines_after(body, r"StartCollect\(", 4)
+        self.assertGreater(len(restarts), 5)
+        for line, nxt in restarts:
+            self.assertTrue(any(l.startswith("Exit;") for l in nxt),
+                            f"StartCollect is not followed by Exit: {line}")
+
+    def test_payload_restarts_exit_before_the_trailing_reset(self):
+        body = self._routine(self.SIM.read_text(encoding="utf-8"),
+                             "procedure TSimPort.PayloadDone;")
+        starts = self._lines_after(body, r"StartPayload\(", 3)
+        self.assertGreaterEqual(len(starts), 1)
+        for line, nxt in starts:
+            self.assertTrue(any(l.startswith("Exit;") for l in nxt),
+                            f"StartPayload is not followed by Exit: {line}")
+
+    def test_entering_the_da_exits_after_arming_the_ack_collector(self):
+        sim = self.SIM.read_text(encoding="utf-8")
+        enter = self._routine(sim, "procedure TSimPort.EnterDa;")
+        self.assertIn("StartCollect(scDumpAck, 1, False);", enter)
+        self.assertTrue(enter.rstrip().endswith("end;"))
+        self.assertEqual(enter.rstrip().split("\n")[-3].strip(), "StartCollect(scDumpAck, 1, False);")
+        body = self._routine(sim, "procedure TSimPort.CollectDone;")
+        self.assertIn("scDumpAck:", body)
+        self.assertIn("StartCollect(scStage2Config, 18 + Stage2ExtraSize(Stage2ExtraKind(FHwCode)),", body)
+        # The jump paths call EnterDa and must leave the case before the reset.
+        for line, nxt in self._lines_after(body, r"^\s*EnterDa;", 1):
+            self.assertEqual(nxt, ["Exit;"], f"EnterDa is not followed by Exit: {line}")
+
+    def test_stage2_configuration_is_sized_for_its_18_fixed_bytes(self):
+        host = self.HOST.read_text(encoding="utf-8")
+        sim = self.SIM.read_text(encoding="utf-8")
+        self.assertIn("SetLength(Result, 18 + Stage2ExtraSize(Kind));", host)
+        self.assertIn("StartCollect(scStage2Config, 18 + Stage2ExtraSize(Stage2ExtraKind(FHwCode)),", sim)
+
+    def test_host_sends_the_ack_before_the_configuration(self):
+        host = self._routine(self.HOST.read_text(encoding="utf-8"),
+                             "function TMtkDaLegacy.Connect")
+        self.assertLess(host.index("WriteAck"), host.index("Stage2ConfigBytes"))
+
+    def test_sla_demand_is_answered_after_the_send_da_arguments(self):
+        sim = self.SIM.read_text(encoding="utf-8")
+        host = self.HOST.read_text(encoding="utf-8")
+        brom = self.BROM.read_text(encoding="utf-8")
+        self.assertIn("      StartCollect(scDaAddr, 4, True);", sim)
+        self.assertIn("EmitStatus(S_BROM_SLA_REQUIRED);", sim)
+        sla = sim[sim.index("    CMD_SLA:"):sim.index("    CMD_CACHE_CTRL:")]
+        self.assertIn("EmitDwordBe(16);", sla)
+        self.assertIn("if not SlaRequired then", brom)
+        self.assertNotIn("    if SlaRequired then\n      Exit;", brom)
+
+    def test_read_packets_are_answered_one_ack_at_a_time(self):
+        sim = self.SIM.read_text(encoding="utf-8")
+        self.assertIn("FAwait := awReadPacketAck;", sim)
+        block = sim[sim.index("    awReadPacketAck:"):sim.index("    awStage2FinalAck:")]
+        self.assertIn("EmitReadPacket;", block)
+        self.assertIn("FAwait := awReadPacketAck;", block)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
