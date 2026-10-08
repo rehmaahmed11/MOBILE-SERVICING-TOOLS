@@ -74,7 +74,7 @@ type
     scWriteHeader, scWriteData,
     scReadHeader,
     scFormatHeader,
-    scStage2Config, scStage2Addr, scStage2Size, scStage2PacketSize,
+    scDumpAck, scStage2Config, scStage2Addr, scStage2Size, scStage2PacketSize,
     scStage2Packet, scFinishValue);
 
   { A single non-command byte we are waiting for. }
@@ -758,9 +758,11 @@ begin
     Emit(DA_ACK);
     Emit(DA_ACK);
     Emit(DA_ACK);
-    { The host now writes the stage-2 configuration; collect the fixed part. }
-    StartCollect(scStage2Config, 14 + Stage2ExtraSize(Stage2ExtraKind(FHwCode)),
-      False);
+    { The host acks the three bytes (one byte, collected and ignored), and only
+      then writes the stage-2 configuration. Collecting the configuration
+      straight away would take that ACK as the first configuration byte and
+      leave the last bytes to be read as commands, answered with NACKs. }
+    StartCollect(scDumpAck, 1, False);
   end;
 end;
 
@@ -960,8 +962,11 @@ begin
       end;
     awStage2FinalAck:
       begin
-        { Stage 2 is in and running: now the DA reports the flash behind it. }
+        { Stage 2 is in and running: the DA acks the host's start request and
+          then reports the flash behind it. The host reads that ACK before the
+          second storage report, so it must come first. }
         FOnCollect := scNone;
+        EmitAck;
         if FFullDa then
           EmitLegacyStorageInfo;
       end;
@@ -977,6 +982,12 @@ var
   Sum: Word;
 begin
   case FOnCollect of
+    scDumpAck:
+      begin
+        StartCollect(scStage2Config, 14 + Stage2ExtraSize(Stage2ExtraKind(FHwCode)),
+          False);
+        Exit;
+      end;
     scReadAddr:
       begin
         FBromAddr := CollectDwordBe(0);
