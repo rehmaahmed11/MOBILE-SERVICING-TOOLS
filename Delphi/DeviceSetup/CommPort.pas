@@ -436,7 +436,12 @@ begin
   if WaitRes = WAIT_OBJECT_0 then
   begin
     ADone := 0;
-    Result := GetOverlappedResult(FHandle, POverlapped(@Ov), ADone, False);
+    { BOOL is LongBool under FPC, so test it instead of assigning it to the
+      Boolean Result: the two are convertible but only one way is portable. }
+    if GetOverlappedResult(FHandle, POverlapped(@Ov), ADone, False) then
+      Result := True
+    else
+      Result := False;
     if not Result then
       FLastError := LastWinErrorText;
   end

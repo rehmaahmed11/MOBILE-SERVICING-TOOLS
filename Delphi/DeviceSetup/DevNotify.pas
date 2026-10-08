@@ -239,7 +239,8 @@ begin
     Exit(True);
 
   FillChar(Wc, SizeOf(Wc), 0);
-  if GetClassInfoWin(HInstance, PWideChar(CClassName), Wc) = 0 then
+  { FPC maps BOOL to LongBool, which cannot be compared with an integer. }
+  if not GetClassInfoWin(HInstance, PWideChar(CClassName), Wc) then
   begin
     FillChar(Wc, SizeOf(Wc), 0);
     Wc.lpfnWndProc := @NotifierWndProc;

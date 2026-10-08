@@ -341,7 +341,7 @@ var
   Buffer: array[0..4095] of AnsiChar;
   Chunk: AnsiString;
   BytesRead, BytesAvail, ExitCode: DWORD;
-  Started, Exited, Drained: Boolean;
+  Exited, Drained: Boolean;
   T0, TNow: Int64;
   CmdLine: string;
 begin
@@ -381,9 +381,10 @@ begin
   FillChar(ProcessInfo, SizeOf(ProcessInfo), 0);
   CmdLine := '"' + AExe + '" ' + AArgs;
   DoLog('$ ' + CmdLine);
-  Started := CreateProcess(nil, PChar(CmdLine), nil, nil, True,
-    CREATE_NO_WINDOW, nil, PChar(ExtractFilePath(AExe)), Startup, ProcessInfo);
-  if not Started then
+  { `not <BOOL>` instead of assigning it to a Boolean: FPC maps BOOL to
+    LongBool, which is a boolean type and cannot be compared with an integer. }
+  if not CreateProcess(nil, PChar(CmdLine), nil, nil, True, CREATE_NO_WINDOW,
+    nil, PChar(ExtractFilePath(AExe)), Startup, ProcessInfo) then
   begin
     AResult.Error := 'Cannot start ' + ExtractFileName(AExe) +
       ' (Windows error ' + IntToStr(GetLastError) + ')';

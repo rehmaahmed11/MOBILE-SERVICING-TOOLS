@@ -1260,8 +1260,6 @@ begin
       DoLog(Format('Writing %-16s %10s to 0x%s (partition %d)',
         [Entry.Name, FormatScatterSize(UInt64(Stream.Size)),
          IntToHex(Entry.StartAddr, 8), Part]));
-          DoProgress(Integer((Moved * 100) div MaxInt64(Total, 1)),
-        'Writing ' + Entry.Name);
       if not FSession.Da.WriteFlash(Entry.StartAddr, UInt64(Stream.Size),
         Stream, 0, Part) then
       begin
@@ -1272,6 +1270,9 @@ begin
       end;
       Inc(Moved, Stream.Size);
       Inc(Written);
+      DoProgress(Integer((Moved * 100) div MaxInt64(Total, 1)),
+        'Written ' + IntToStr(Written) + '/' + IntToStr(Length(List)) +
+        ' - ' + Entry.Name);
     finally
       Stream.Free;
     end;
