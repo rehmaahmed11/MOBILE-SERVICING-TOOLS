@@ -166,6 +166,21 @@ function EscapeCommFunctionWin(hFile: THandle; Func: DWORD): BOOL; stdcall;
 function ClearCommErrorWin(hFile: THandle; Errors: PDWORD;
   Stat: Pointer): BOOL; stdcall; external kernel32 name 'ClearCommError';
 
+{ FPC declares ReadFile with a `var` buffer and GetOverlappedResult with a
+  `var TOverlapped`, Delphi with a `const` buffer and a POverlapped, so neither
+  spelling of those two calls compiles on both. Declaring them here with an
+  untyped const buffer and a plain Pointer does: untyped const parameters are
+  passed by reference under both compilers, so the ABI is unchanged. }
+function ReadFileWin(hFile: THandle; const ABuffer; ACount: DWORD;
+  out ADone: DWORD; AOverlapped: Pointer): BOOL; stdcall;
+  external kernel32 name 'ReadFile';
+function WriteFileWin(hFile: THandle; const ABuffer; ACount: DWORD;
+  out ADone: DWORD; AOverlapped: Pointer): BOOL; stdcall;
+  external kernel32 name 'WriteFile';
+function GetOverlappedResultWin(hFile: THandle; AOverlapped: Pointer;
+  out ADone: DWORD; AWait: BOOL): BOOL; stdcall;
+  external kernel32 name 'GetOverlappedResult';
+
 const
   SETRTS = 3;
   CLRRTS = 4;
@@ -420,9 +435,9 @@ begin
   ResetEvent(FEvent);
 
   if AWrite then
-    Ok := WriteFile(FHandle, ABuffer, DWORD(ACount), ADone, @Ov)
+    Ok := WriteFileWin(FHandle, ABuffer, DWORD(ACount), ADone, @Ov)
   else
-    Ok := ReadFile(FHandle, ABuffer, DWORD(ACount), ADone, @Ov);
+    Ok := ReadFileWin(FHandle, ABuffer, DWORD(ACount), ADone, @Ov);
 
   if Ok then
     Exit(True);
@@ -438,7 +453,7 @@ begin
     ADone := 0;
     { BOOL is LongBool under FPC, so test it instead of assigning it to the
       Boolean Result: the two are convertible but only one way is portable. }
-    if GetOverlappedResult(FHandle, POverlapped(@Ov), ADone, False) then
+    if GetOverlappedResultWin(FHandle, @Ov, ADone, False) then
       Result := True
     else
       Result := False;
@@ -452,7 +467,7 @@ begin
     CancelIo(FHandle);
     WaitForSingleObject(FEvent, 500);
     ADone := 0;
-    GetOverlappedResult(FHandle, POverlapped(@Ov), ADone, False);
+    GetOverlappedResultWin(FHandle, @Ov, ADone, False);
     if WaitRes = WAIT_TIMEOUT then
       FLastError := 'Timeout after ' + IntToStr(ATimeoutMs) + ' ms'
     else

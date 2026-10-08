@@ -55,6 +55,51 @@ RTL_UNITS = {
     "lclintf", "lresources", "lazfileutils",
 }
 
+# Win32 calls that answer with a BOOL. Under FPC BOOL is LongBool, a real
+# boolean type, so `= 0` / `<> 1` on their result is a hard compile error
+# ("Incompatible types: got LongBool expected LongInt") even though Delphi
+# accepts it. `if not <call>` works on both compilers and is the only form the
+# checker allows.
+BOOL_RESULT_APIS = {
+    "createprocess", "readfile", "writefile", "createpipe", "peeknamedpipe",
+    "sethandleinformation", "getexitcodeprocess", "terminateprocess",
+    "deviceiocontrol", "setcommstate", "getcommstate", "clearcommerror",
+    "setupcomm", "setcommmask", "waitcommevent", "escapecommfunction",
+    "purgecomm", "getcommmodemstatus", "buildcommdcb", "createdirectory",
+    "createdirectoryw", "deletefile", "deletefilew", "removedirectory",
+    "movefile", "movefileex", "copyfile", "copyfileex", "lockfile",
+    "unlockfile", "lockfileex", "unlockfileex", "flushfilebuffers",
+    "setfilepointerex", "setendoffile", "getfilesizeex", "setfiletime",
+    "getfiletime", "getvolumeinformation", "getvolumeinformationw",
+    "getdiskfreeespaceex",
+    "registerdevicenotificationw", "unregisterdevicenotification",
+    "destroywindow", "postmessagew", "sendmessagetimeoutw",
+    "setwindowlongptrw", "setwindowlongw", "getclassinfow", "cancelio",
+    "setevent", "resetevent",
+    "duplicatehandle", "getoverlappedresult", "setnamedpipehandlestate",
+    "callnamedpipe", "attachconsole", "freeconsole", "allocconsole",
+    "setconsolectrlhandler", "generateconsolectrlevent",
+    "getfileattributesexw", "writefilegather", "readfilescatter",
+}
+
+
+def matching_paren(code: str, open_index: int) -> int:
+    """Index just past the ')' that closes the '(' at ``open_index``, or -1."""
+    depth = 0
+    i = open_index
+    n = len(code)
+    while i < n:
+        c = code[i]
+        if c == "(":
+            depth += 1
+        elif c == ")":
+            depth -= 1
+            if depth == 0:
+                return i + 1
+        i += 1
+    return -1
+
+
 DEVICE_UNITS = (
     "DevTypes", "CommPort", "DevNotify", "DevCapture", "BromProtocol",
     "MtkChips", "MtkStatus", "DaImage", "MtkDaLegacy", "SimPort",
@@ -987,6 +1032,46 @@ class PascalStructureTests(unittest.TestCase):
                 if name_found.lower().endswith(("create", "destroy")):
                     continue
                 self.fail(f"{path.name}: {name_found} has an empty body")
+
+    def test_bool_api_results_are_not_compared_with_integers(self):
+        """FPC's BOOL is LongBool: `= 0` on it does not compile.
+
+        Delphi quietly converts, so `if GetClassInfoW(...) = 0 then` is a
+        familiar idiom that CI only catches after a full Lazarus install.
+        Test the call instead: `if not GetClassInfoW(...) then`.
+        """
+        names = set(BOOL_RESULT_APIS)
+        for path in self.sources:
+            code = self.code(path)
+            # Also pick up the *Win externals these units declare themselves:
+            # their parameter lists contain ';' and span lines, so scan the
+            # parentheses instead of matching a one-line signature.
+            for m in re.finditer(r"\bfunction\s+(\w+(?:\.\w+)?)\s*\(",
+                                 code, re.I):
+                close_at = matching_paren(code, m.end() - 1)
+                if close_at < 0:
+                    continue
+                rest = code[close_at:close_at + 40].lstrip()
+                if re.match(r":\s*(?:WINBOOL|BOOL)\b", rest, re.I):
+                    names.add(m.group(1).split(".")[-1].lower())
+        pattern = re.compile(
+            r"\b(" + "|".join(sorted(names, key=len, reverse=True)) + r")\s*\(",
+            re.I)
+        for path in self.sources:
+            code = self.code(path)
+            for m in pattern.finditer(code):
+                open_at = m.end() - 1
+                close_at = matching_paren(code, open_at)
+                if close_at < 0:
+                    continue
+                rest = code[close_at:close_at + 12].lstrip()
+                if re.match(r"(?:<>|<=|>=|=|<|>)\s*[0-9$]", rest):
+                    self.fail(
+                        f"{path.name}:{line_of(code, m.start())}: "
+                        f"{m.group(1)}(...) returns BOOL/LongBool and is "
+                        f"compared with a number - FPC rejects this; use "
+                        f"`if not {m.group(1)}(...)`")
+
 
 
 if __name__ == "__main__":
