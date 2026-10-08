@@ -147,9 +147,21 @@ class RealDataIntegrationTests(unittest.TestCase):
                     self.assertTrue((DA_ROOT / file_name).is_file(),
                                     f"{section} route {route} points to missing {file_name}")
 
-    def test_application_catalogs_opaque_payloads_without_claiming_device_io(self):
+    def test_application_catalogs_opaque_payloads_and_reports_them_honestly(self):
+        """The bundled payloads are catalogued byte-for-byte, and the app says
+        out loud that an encrypted vendor container cannot be used as a
+        download agent instead of quietly pretending it flashed something.
+
+        Device communication is now implemented (JobEngine / DeviceSession /
+        BromProtocol / MtkDaLegacy), so the old "error(NOT_IMPLEMENTED)"
+        placeholder is gone on purpose. What must survive is the honesty: the
+        demo log still labels itself as simulated, and an opaque payload is
+        still reported as unusable.
+        """
         loader = (DEVICE_SETUP_DIR / "DaLoader.pas").read_text(encoding="utf-8")
         main = (DEVICE_SETUP_DIR / "Main2Form.pas").read_text(encoding="utf-8")
+        da_image = (DEVICE_SETUP_DIR / "DaImage.pas").read_text(encoding="utf-8")
+        engine = (DEVICE_SETUP_DIR / "JobEngine.pas").read_text(encoding="utf-8")
         self.assertIn("FULL APP STRUCTURE", loader)
         self.assertIn("MOBILO TOOLZ", loader)
         self.assertIn("Candidate := FindDataRootFrom(ExeDir)", loader)
@@ -160,8 +172,16 @@ class RealDataIntegrationTests(unittest.TestCase):
         self.assertIn("GetBundledDataAssetCount", loader)
         self.assertIn("RefreshAgentSelection", main)
         self.assertIn("ResolveAndExtractDa", main)
-        self.assertIn("error(NOT_IMPLEMENTED)", main)
         self.assertIn("no phone was queried", main)
+        # the placeholder is gone: every action button now starts a real job
+        self.assertNotIn("error(NOT_IMPLEMENTED)", main)
+        self.assertIn("StartJob(jkWriteFirmware)", main)
+        self.assertIn("StartJob(jkReadFlashInfo)", main)
+        # an encrypted vendor container is still refused, with a reason
+        self.assertIn("Encrypted", da_image)
+        self.assertIn("encrypted vendor container", engine)
+        # and nothing is ever reported as done that was not done
+        self.assertIn("OutcomeFail", engine)
 
     def test_payload_inventory_has_the_expected_scale(self):
         manifest = (ASSET_ROOT / "assets-manifest.json").read_text(encoding="utf-8")

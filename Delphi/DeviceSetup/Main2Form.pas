@@ -15,9 +15,20 @@ unit Main2Form;
       Connections group and the Flash / Read / Format / IMEI / Locks /
       Service / RPMB pages.
     - the platform selector lives on the service-mode tab.
-  Device communication (flashing, reading, ...) is NOT implemented: the
-  action buttons check their inputs and write to the log. USB detection only
-  reads the Windows device list. }
+  Device communication is wired up: every action button hands a job to
+  TJobEngine (JobEngine.pas), which opens the capture window, waits for the
+  phone, takes its COM port with an EXCLUSIVE handle, runs the operation and
+  only then releases the port. USB detection reads the Windows device list and
+  is woken immediately by WM_DEVICECHANGE.
+
+  What is implemented for real: the MediaTek boot ROM and legacy download
+  agent (read / write / format any region, flash from a scatter file, RPMB
+  backup, AUTH, EMI), Qualcomm Sahara, and the Android jobs through adb and
+  fastboot. Platforms and operations whose vendor protocol is not public
+  (Unisoc Diag/SPD, Samsung Loke/Odin, Qualcomm firehose, RPMB key writing,
+  network unlock codes, the NVRAM IMEI codec) run the same lifecycle and then
+  say exactly what is missing - they never report a success they did not
+  achieve. See UnimplementedJobs.pas. }
 
 interface
 
@@ -269,6 +280,11 @@ type
     procedure btnRpmbFormatClick(Sender: TObject);
     procedure ImeiEditChange(Sender: TObject);
     procedure FormatRadioClick(Sender: TObject);
+    procedure ChkAuthBromClick(Sender: TObject);
+    procedure ChkAuthPreloaderClick(Sender: TObject);
+    procedure ChkForceBromClick(Sender: TObject);
+    procedure ChkReadEmiClick(Sender: TObject);
+    procedure ChkReadPhoneInfoClick(Sender: TObject);
   private
     FBrand: string;
     FModelCode: string;
@@ -283,13 +299,31 @@ type
     FAiExceptBootloader: Boolean;
     FDataAssetPath: string;
     FDataAssetInfo: string;
+    { the device layer: one engine per form, so a job keeps its state }
+    FEngine: TJobEngine;
+    FNotifier: TDeviceNotifier;
+    FSimulated: Boolean;
     procedure AssignGlyph(AButton: TSampleButton; const AKind: TActionGlyph);
     procedure RefreshAgentSelection;
     procedure SetupLogFont;
     procedure AddLogLine(const ALine: string);
     procedure LogSettings;
-    procedure LogNotImplemented(const AOperation: string);
     procedure LogError(const AText: string);
+    { ---- device jobs ------------------------------------------------- }
+    procedure EngineLog(Sender: TObject; const AText: string);
+    procedure EngineProgress(Sender: TObject; APercent: Integer;
+      const AText: string);
+    procedure EngineStateChanged(Sender: TObject);
+    procedure ForwardCaptureLine(const ALine: string);
+    procedure KeepAlive;
+    function CollectJobParams(AKind: TJobKind): TJobParams;
+    procedure StartJob(AKind: TJobKind);
+    procedure RunJobInline(const AParams: TJobParams);
+    procedure LogOutcome(const AOutcome: TJobOutcome);
+    procedure SetUiBusy(const ABusy: Boolean);
+    procedure DeviceChanged(Sender: TObject; AKind: TDevChangeKind;
+      const ADescription: string);
+    procedure EnableSimulatedDevice;
     procedure UpdateImeiDigits;
     procedure UpdateFileRows(const APlatform: Integer);
     function SelectedLogText(const AOnlySelected: Boolean): string;
@@ -319,6 +353,10 @@ type
       adds PASS/FAIL lines to AOut. }
     function SelfTest(AOut: TStrings): Boolean;
     procedure ShowDemoLog;
+    { Runs the whole capture -> lock -> operate -> release pipeline against
+      the simulated device and adds PASS/FAIL lines to AOut. Used by
+      --selftest, so CI exercises the device layer without hardware. }
+    function SelfTestDevicePipeline(AOut: TStrings): Boolean;
     property Progress: Integer read FProgress write SetProgress;
   end;
 
@@ -339,16 +377,25 @@ implementation
 
 uses
 {$IFDEF FPC}
-  ShellApi, Clipbrd, IniFiles,
+  ShellApi, Clipbrd, IniFiles, StrUtils,
 {$ELSE}
   Winapi.ShellAPI,
   Vcl.Clipbrd,
   System.IniFiles,
+  System.StrUtils,
 {$ENDIF}
   AppInfo,
   DaLoader,
   LogView,
-  SettingsDialog;
+  SettingsDialog,
+  DevTypes,
+  DevNotify,
+  DeviceSession,
+  JobEngine,
+  CaptureForm,
+  AdbTool,
+  UnimplementedJobs,
+  SimPort;
 
 const
   CFacebookUrl = 'https://www.facebook.com/';
@@ -536,6 +583,14 @@ begin
   edtImei1.OnChange := ImeiEditChange;
   edtImei2.OnChange := ImeiEditChange;
 
+  { Connections group. Assigned in code, so the reference layout in the .dfm
+    stays byte-identical. }
+  chkAuthBrom.OnClick := ChkAuthBromClick;
+  chkAuthPreloader.OnClick := ChkAuthPreloaderClick;
+  chkForceBrom.OnClick := ChkForceBromClick;
+  chkReadEmi.OnClick := ChkReadEmiClick;
+  chkReadPhoneInfo.OnClick := ChkReadPhoneInfoClick;
+
   { The two pairs of format radios are managed here, so they cannot get in
     each other's way (Windows treats radio buttons of one parent as one
     group). }
@@ -565,7 +620,41 @@ begin
   FUsbTimer.Enabled := False;
   FUsbTimer.Interval := 1000;
   FUsbTimer.OnTimer := UsbTimerTick;
+
+  { The job engine: every action button goes through it. }
+  FEngine := TJobEngine.Create;
+  FEngine.OnLog := EngineLog;
+  FEngine.OnProgress := EngineProgress;
+  FEngine.OnStateChanged := EngineStateChanged;
+  TPump.Handler := KeepAlive;
+  FSimulated := False;
+  { --selftest runs the device layer against the simulated phone; --simulate
+    does the same for a manual demo. Neither is available to a normal user,
+    and every result is then flagged SIMULATED. }
+  if FindCmdLineSwitch('selftest', True) or
+     FindCmdLineSwitch('simulate', True) then
+    EnableSimulatedDevice;
+
+  { Windows tells us the moment a phone is plugged in, so the capture window
+    does not have to poll for it. }
+  FNotifier := TDeviceNotifier.Create;
+  FNotifier.OnChange := DeviceChanged;
+  if not FNotifier.Start(Handle) then
+    Log(LWarn('Device notifications could not be registered; falling back to ' +
+      'polling every second.'));
+
   UpdateDeviceState;
+end;
+
+procedure TMain2Form.EnableSimulatedDevice;
+begin
+  if FSimulated then
+    Exit;
+  InstallSimulatedDevice(CreateSimTransport);
+  InstallSyntheticDaFactory(BuildSyntheticDa);
+  FEngine.AllowSimulated := True;
+  FEngine.Backend := bkSimulated;
+  FSimulated := True;
 end;
 
 procedure TMain2Form.FormShow(Sender: TObject);
@@ -599,10 +688,21 @@ procedure TMain2Form.FormDestroy(Sender: TObject);
 begin
   if FUsbTimer <> nil then
     FUsbTimer.Enabled := False;
+  if FEngine <> nil then
+  begin
+    FEngine.Cancel;
+    { releases the port if a job is somehow still holding it }
+    FEngine.Session.Close;
+  end;
+  if FNotifier <> nil then
+    FNotifier.Stop;
   SaveState;
   AutoSaveSessionLog;
+  FNotifier.Free;
+  FEngine.Free;
   FSessionLog.Free;
   FMeasure.Free;
+  TPump.Handler := nil;
 end;
 
 function TMain2Form.PlatformName: string;
@@ -664,7 +764,7 @@ begin
         lblServiceModeValue.Caption := 'META';
         lblMetaInfo.Caption := 'MediaTek service profile: META. Select this tab to ' +
           'change the platform.' + sLineBreak +
-          'Device communication is not part of this build.';
+          'Boot ROM and legacy download agent are implemented.';
         ReplaceComboItems(cbDownloadAgent, ['MTK_AllInOne_DA.bin']);
         chkAuthBrom.Caption := 'Advanced Authorization [BROM]';
         chkAuthPreloader.Caption := 'Advanced Authorization [Preloader]';
@@ -677,7 +777,7 @@ begin
         tsMeta.Caption := 'DIAG';
         lblServiceModeValue.Caption := 'DIAG';
         lblMetaInfo.Caption := 'Unisoc / Spreadtrum service profile: DIAG.' +
-          sLineBreak + 'This build does not communicate with a phone.';
+          sLineBreak + 'Capture and port lock work; the Diag protocol does not.';
         ReplaceComboItems(cbDownloadAgent, ['Unisoc FDL1 / FDL2 (firmware supplied)']);
         chkAuthBrom.Caption := 'Secure-boot authorization [BootROM]';
         chkAuthPreloader.Caption := 'Load signed FDL1 / FDL2';
@@ -690,7 +790,7 @@ begin
         tsMeta.Caption := 'DIAG';
         lblServiceModeValue.Caption := 'DIAG';
         lblMetaInfo.Caption := 'Qualcomm service profile: DIAG (EDL programming).' +
-          sLineBreak + 'This build does not communicate with a phone.';
+          sLineBreak + 'Sahara is implemented; firehose is not.';
         ReplaceComboItems(cbDownloadAgent, ['Qualcomm programmer (user supplied)']);
         chkAuthBrom.Caption := 'Programmer authorization';
         chkAuthPreloader.Caption := 'Load signed programmer';
@@ -704,7 +804,7 @@ begin
         lblServiceModeValue.Caption := 'DOWNLOAD';
         lblMetaInfo.Caption := 'Samsung download-mode profile. BL / AP / CP / CSC / ' +
           'USER file rows appear in the Files box.' + sLineBreak +
-          'This build does not communicate with a phone.';
+          'Capture and port lock work; the Loke protocol does not.';
         ReplaceComboItems(cbDownloadAgent, ['Samsung download-mode package']);
         chkAuthBrom.Caption := 'Download-mode authorization';
         chkAuthPreloader.Caption := 'Use signed firmware package';
@@ -1067,13 +1167,6 @@ begin
   Log('Storage : ' + LInfo(cbStorage.Text));
 end;
 
-procedure TMain2Form.LogNotImplemented(const AOperation: string);
-begin
-  Log(AOperation + '... ' + LErr('error(NOT_IMPLEMENTED)'));
-  Log(LMuted('Device communication is not part of this build.'));
-  Log('');
-end;
-
 procedure TMain2Form.lstLogDrawItem(Control: TWinControl; Index: Integer;
   ARect: TRect; State: TOwnerDrawState);
 begin
@@ -1290,6 +1383,8 @@ var
   I, J: Integer;
   Known: Boolean;
 begin
+  if (not AInitial) and (FEngine <> nil) and FEngine.Busy then
+    Exit;   { a job owns the port; the list must not change under it }
   NewDevices := ScanServiceDevices;
   Sig := DevicesSignature(NewDevices);
   if (not AInitial) and (Sig = FDeviceSig) then
@@ -1325,7 +1420,17 @@ procedure TMain2Form.UpdateDeviceState;
 var
   Text: string;
 begin
-  if not GOptions.DetectUsb then
+  if (FEngine <> nil) and FEngine.DeviceLocked then
+  begin
+    { the honest state while a job runs: this app owns the port }
+    Text := 'LOCKED ' + FEngine.Session.PortName + '  -  ' +
+      JobStateName(FEngine.State);
+    if FEngine.Session.Simulated then
+      Text := Text + '  [SIMULATED]';
+  end
+  else if (FEngine <> nil) and FEngine.Busy then
+    Text := JobStateName(FEngine.State) + ' ...'
+  else if not GOptions.DetectUsb then
     Text := 'USB detection is off'
   else if Length(FDevices) = 0 then
     Text := ''
@@ -1381,6 +1486,12 @@ var
   FileName: string;
   Lines: TStringList;
 begin
+  if (FEngine <> nil) and FEngine.Busy then
+  begin
+    LogError('A job is running and it holds the device port. Wait for it to ' +
+      'finish or cancel it first.');
+    Exit;
+  end;
   if not AskSaveFile('Save log', 'log_' + SafeFileName(FModelName) + '.txt',
     FileName) then
     Exit;
@@ -1400,12 +1511,24 @@ end;
 
 procedure TMain2Form.pbChangeDeviceClick(Sender: TObject);
 begin
+  if (FEngine <> nil) and FEngine.Busy then
+  begin
+    LogError('A job is running and it holds the device port. Wait for it to ' +
+      'finish or cancel it first.');
+    Exit;
+  end;
   { Back to MAIN 1 to pick another model. }
   ModalResult := mrCancel;
 end;
 
 procedure TMain2Form.pbSettingsClick(Sender: TObject);
 begin
+  if (FEngine <> nil) and FEngine.Busy then
+  begin
+    LogError('A job is running and it holds the device port. Wait for it to ' +
+      'finish or cancel it first.');
+    Exit;
+  end;
   if ShowSettingsDialog(Self) then
   begin
     ApplyOptions;
@@ -1653,6 +1776,55 @@ begin
   UpdateImeiDigits;
 end;
 
+procedure TMain2Form.ChkAuthBromClick(Sender: TObject);
+begin
+  Log('[Connections] ' + chkAuthBrom.Caption + ' : ' +
+    LInfo(IfThen(chkAuthBrom.Checked, 'on', 'off')));
+  if chkAuthBrom.Checked then
+  begin
+    if Trim(edtAuth.Text) = '' then
+      Log(LWarn('No AUTH file is selected. Without it the boot ROM ' +
+        'authorization has nothing to send - choose the .auth in the Files ' +
+        'box.'));
+    StartJob(jkAuthBrom);
+  end;
+end;
+
+procedure TMain2Form.ChkAuthPreloaderClick(Sender: TObject);
+begin
+  Log('[Connections] ' + chkAuthPreloader.Caption + ' : ' +
+    LInfo(IfThen(chkAuthPreloader.Checked, 'on', 'off')));
+  if chkAuthPreloader.Checked then
+    StartJob(jkAuthPreloader);
+end;
+
+procedure TMain2Form.ChkForceBromClick(Sender: TObject);
+begin
+  Log('[Connections] ' + chkForceBrom.Caption + ' : ' +
+    LInfo(IfThen(chkForceBrom.Checked, 'on', 'off')));
+  if chkForceBrom.Checked then
+    StartJob(jkForceBrom)
+  else
+    Log(LMuted('The capture window will accept any MediaTek service mode ' +
+      'again (BROM, PRELOADER, DA, META).'));
+end;
+
+procedure TMain2Form.ChkReadEmiClick(Sender: TObject);
+begin
+  Log('[Connections] ' + chkReadEmi.Caption + ' : ' +
+    LInfo(IfThen(chkReadEmi.Checked, 'on', 'off')));
+  if chkReadEmi.Checked then
+    StartJob(jkReadEmi);
+end;
+
+procedure TMain2Form.ChkReadPhoneInfoClick(Sender: TObject);
+begin
+  Log('[Connections] ' + chkReadPhoneInfo.Caption + ' : ' +
+    LInfo(IfThen(chkReadPhoneInfo.Checked, 'on', 'off')));
+  if chkReadPhoneInfo.Checked then
+    StartJob(jkReadPhoneInfo);
+end;
+
 procedure TMain2Form.btnFormatClick(Sender: TObject);
 begin
   Log('[Format] ' + LInfo(btnFormat.Caption));
@@ -1667,35 +1839,35 @@ begin
   if chkCreateDefaultFs.Checked then
     Log('Create Default FS : ' + LInfo('yes'));
   LogSettings;
-  LogNotImplemented('Format');
+  StartJob(jkFormat);
 end;
 
 procedure TMain2Form.btnWipeDataClick(Sender: TObject);
 begin
   Log('[Wipe Data]');
   LogSettings;
-  LogNotImplemented('Wipe Data');
+  StartJob(jkWipeData);
 end;
 
 procedure TMain2Form.btnWipePartitionsClick(Sender: TObject);
 begin
   Log('[Wipe Partitions]');
   LogSettings;
-  LogNotImplemented('Wipe Partitions');
+  StartJob(jkWipePartitions);
 end;
 
 procedure TMain2Form.btnEraseFrpClick(Sender: TObject);
 begin
   Log('[Erase FRP]');
   LogSettings;
-  LogNotImplemented('Erase FRP');
+  StartJob(jkEraseFrp);
 end;
 
 procedure TMain2Form.btnEraseFrpAndWipeClick(Sender: TObject);
 begin
   Log('[Erase FRP and Wipe]');
   LogSettings;
-  LogNotImplemented('Erase FRP and Wipe');
+  StartJob(jkEraseFrpAndWipe);
 end;
 
 procedure TMain2Form.btnRepairClick(Sender: TObject);
@@ -1718,14 +1890,14 @@ begin
     Log('IMEI2 : ' + LInfo(edtImei2.Text) + '  check digit : ' +
       LInfo(lblImei2Digits.Caption));
   LogSettings;
-  LogNotImplemented('Repair');
+  StartJob(jkRepairImei);
 end;
 
 procedure TMain2Form.btnReadImeiClick(Sender: TObject);
 begin
   Log('[Read IMEI]');
   LogSettings;
-  LogNotImplemented('Read IMEI');
+  StartJob(jkReadImei);
 end;
 
 procedure TMain2Form.lblAdvancedSettingsClick(Sender: TObject);
@@ -1741,84 +1913,84 @@ begin
   Log('[Unlock Bootloader]');
   Log(LWarn('Unlocking the bootloader usually erases user data.'));
   LogSettings;
-  LogNotImplemented('Unlock Bootloader');
+  StartJob(jkUnlockBootloader);
 end;
 
 procedure TMain2Form.btnRelockBootloaderClick(Sender: TObject);
 begin
   Log('[Relock Bootloader]');
   LogSettings;
-  LogNotImplemented('Relock Bootloader');
+  StartJob(jkRelockBootloader);
 end;
 
 procedure TMain2Form.btnUnlockNetworkClick(Sender: TObject);
 begin
   Log('[Unlock Network]');
   LogSettings;
-  LogNotImplemented('Unlock Network');
+  StartJob(jkUnlockNetwork);
 end;
 
 procedure TMain2Form.btnReadCodesClick(Sender: TObject);
 begin
   Log('[Read Codes]');
   LogSettings;
-  LogNotImplemented('Read Codes');
+  StartJob(jkReadCodes);
 end;
 
 procedure TMain2Form.btnResetPasswordClick(Sender: TObject);
 begin
   Log('[Reset Password] ' + LWarn('[SAFE WIPE]'));
   LogSettings;
-  LogNotImplemented('Reset Password');
+  StartJob(jkResetPassword);
 end;
 
 procedure TMain2Form.btnResetAccountClick(Sender: TObject);
 begin
   Log('[Reset Account]');
   LogSettings;
-  LogNotImplemented('Reset Account');
+  StartJob(jkResetAccount);
 end;
 
 procedure TMain2Form.btnRebootRecoveryClick(Sender: TObject);
 begin
   Log('[Reboot to Recovery]');
   LogSettings;
-  LogNotImplemented('Reboot to Recovery');
+  StartJob(jkRebootRecovery);
 end;
 
 procedure TMain2Form.btnDisableOtaClick(Sender: TObject);
 begin
   Log('[Disable OTA Updates]');
   LogSettings;
-  LogNotImplemented('Disable OTA Updates');
+  StartJob(jkDisableOta);
 end;
 
 procedure TMain2Form.btnResetDmVerityClick(Sender: TObject);
 begin
   Log('[Reset Dm-Verity Error]');
   LogSettings;
-  LogNotImplemented('Reset Dm-Verity Error');
+  StartJob(jkResetDmVerity);
 end;
 
 procedure TMain2Form.btnDisableOrangeStateClick(Sender: TObject);
 begin
   Log('[Disable Orange State]');
   LogSettings;
-  LogNotImplemented('Disable Orange State');
+  StartJob(jkDisableOrangeState);
 end;
 
 procedure TMain2Form.btnSwitchSlotClick(Sender: TObject);
 begin
   Log('[Switch Slot]');
   LogSettings;
-  LogNotImplemented('Switch Slot');
+  StartJob(jkSwitchSlot);
 end;
 
 procedure TMain2Form.btnFixDlImageClick(Sender: TObject);
 begin
   Log('[Fix DL Image Fail]');
   LogSettings;
-  LogNotImplemented('Fix DL Image Fail');
+  StartJob(jkFixDlImageFail);
 end;
 
 procedure TMain2Form.btnRpmbBackupClick(Sender: TObject);
@@ -1827,7 +1999,7 @@ begin
   Log('RPMB target : ' + LInfo(cbStorage.Text));
   Log('Platform service mode : ' + LInfo(tsMeta.Caption));
   LogSettings;
-  LogNotImplemented('RPMB - Backup');
+  StartJob(jkRpmbBackup);
 end;
 
 procedure TMain2Form.btnRpmbWriteClick(Sender: TObject);
@@ -1843,7 +2015,7 @@ begin
   Log('Address : ' + LInfo('0x' + edtRpmbAddress.Text));
   Log('RPMB target : ' + LInfo(cbStorage.Text));
   LogSettings;
-  LogNotImplemented('RPMB - Write');
+  StartJob(jkRpmbWrite);
 end;
 
 procedure TMain2Form.btnRpmbFormatClick(Sender: TObject);
@@ -1851,7 +2023,7 @@ begin
   Log('[RPMB] Format RPMB');
   Log('RPMB target : ' + LInfo(cbStorage.Text));
   LogSettings;
-  LogNotImplemented('RPMB - Format');
+  StartJob(jkRpmbFormat);
 end;
 
 { ---------------------------------------------------------------- Flash tab }
@@ -1897,7 +2069,7 @@ begin
     if Parts[I].Visible and (Trim(Parts[I].Text) <> '') then
       Log(CNames[I] + ' file : ' + LInfo(Parts[I].Text));
   LogSettings;
-  LogNotImplemented('Write Firmware');
+  StartJob(jkWriteFirmware);
 end;
 
 procedure TMain2Form.btnRestoreBackupClick(Sender: TObject);
@@ -1922,7 +2094,7 @@ begin
     Dialog.Free;
   end;
   LogSettings;
-  LogNotImplemented('Restore from backup');
+  StartJob(jkRestoreBackup);
 end;
 
 procedure TMain2Form.btnWriteBinClick(Sender: TObject);
@@ -1941,7 +2113,7 @@ begin
   Log('Address : ' + LInfo('0x' + Hex64(StartAddr)) + '  Length : ' +
     LInfo('0x' + Hex64(UInt64(FileSizeOf(edtBin.Text)))));
   LogSettings;
-  LogNotImplemented('Write BIN');
+  StartJob(jkWriteBin);
 end;
 
 procedure TMain2Form.btnWriteOfpClick(Sender: TObject);
@@ -1951,7 +2123,7 @@ begin
     Exit;
   Log('OFP file : ' + LInfo(edtOfp.Text));
   LogSettings;
-  LogNotImplemented('Write OFP');
+  StartJob(jkWriteOfp);
 end;
 
 { ---------------------------------------------------------------- Read tab }
@@ -1960,7 +2132,7 @@ procedure TMain2Form.btnReadInfoClick(Sender: TObject);
 begin
   Log('[Read Flash Info]');
   LogSettings;
-  LogNotImplemented('Read Flash Info');
+  StartJob(jkReadFlashInfo);
 end;
 
 procedure TMain2Form.btnReadPartitionsClick(Sender: TObject);
@@ -1973,7 +2145,7 @@ begin
     Log('Scatter file : ' + LInfo(edtScat.Text));
   end;
   LogSettings;
-  LogNotImplemented('Read Partitions');
+  StartJob(jkReadPartitions);
 end;
 
 procedure TMain2Form.btnReadBinClick(Sender: TObject);
@@ -2004,7 +2176,7 @@ begin
     LInfo('0x' + Hex64(Size)));
   Log('Save to : ' + LInfo(FileName));
   LogSettings;
-  LogNotImplemented('Read BIN');
+  StartJob(jkReadBin);
 end;
 
 procedure TMain2Form.btnReadRegionClick(Sender: TObject);
@@ -2024,17 +2196,459 @@ begin
   Log('Region : ' + LInfo(Region));
   Log('Save to : ' + LInfo(FileName));
   LogSettings;
-  LogNotImplemented('Read Region');
+  StartJob(jkReadRegion);
 end;
 
 procedure TMain2Form.btnReadOtpClick(Sender: TObject);
 begin
   Log('[Read OTP]');
   LogSettings;
-  LogNotImplemented('Read OTP');
+  StartJob(jkReadOtp);
+end;
+
+{ ------------------------------------------------------------ device jobs }
+
+procedure TMain2Form.KeepAlive;
+begin
+  { The engine runs on this thread; without pumping the window would freeze
+    for the whole capture and the whole transfer. }
+  Application.ProcessMessages;
+end;
+
+procedure TMain2Form.EngineLog(Sender: TObject; const AText: string);
+begin
+  Log(AText);
+end;
+
+procedure TMain2Form.EngineProgress(Sender: TObject; APercent: Integer;
+  const AText: string);
+begin
+  if APercent >= 0 then
+    Progress := APercent;
+  if AText <> '' then
+  begin
+    lblDeviceState.Caption := AText;
+    lblDeviceState.Visible := True;
+    pbDeviceState.Hint := AText;
+  end;
+end;
+
+procedure TMain2Form.EngineStateChanged(Sender: TObject);
+begin
+  UpdateDeviceState;
+  if FEngine.Busy then
+    pbDeviceState.Hint := 'Job running - the device port is held exclusively'
+  else
+    Progress := 0;
+end;
+
+procedure TMain2Form.ForwardCaptureLine(const ALine: string);
+begin
+  Log(ALine);
+end;
+
+procedure TMain2Form.DeviceChanged(Sender: TObject; AKind: TDevChangeKind;
+  const ADescription: string);
+begin
+  if FEngine.Busy then
+  begin
+    { A job owns the port. Windows notifications are logged but the USB list
+      is not rescanned, so nothing can take the device away mid-operation. }
+    if AKind <> dcNodesChanged then
+      Log(LMuted('[USB] ' + ADescription + ' (ignored while a job holds the ' +
+        'device)'));
+    Exit;
+  end;
+  if AKind = dcArrival then
+    Log('[USB] ' + LInfo(ADescription));
+  if (AKind = dcArrival) or (AKind = dcRemoval) then
+    CheckUsb(False);
+end;
+
+function TMain2Form.CollectJobParams(AKind: TJobKind): TJobParams;
+var
+  DataRes: TDaLoadResult;
+begin
+  Result := EmptyJobParams;
+  Result.Kind := AKind;
+  case cbPlatform.ItemIndex of
+    CPlatformMtk: Result.Platform := dpMtk;
+    CPlatformUnisoc: Result.Platform := dpUnisoc;
+    CPlatformQualcomm: Result.Platform := dpQualcomm;
+    CPlatformSamsung: Result.Platform := dpSamsung;
+  else
+    Result.Platform := dpGeneric;
+  end;
+  Result.Brand := FBrand;
+  Result.ModelCode := FModelCode;
+  Result.ModelName := FModelName;
+  Result.ServiceMode := tsMeta.Caption;
+  Result.FlashMode := cbFlashMode.Text;
+  Result.Storage := cbStorage.Text;
+  Result.UsbSpeed := cbUsbSpeed.Text;
+  Result.Battery := cbBattery.Text;
+  { FDataAssetPath is what RefreshAgentSelection resolved for this
+    brand/model. On Unisoc it holds "FDL1;FDL2", which is not a download
+    agent, so it is only passed through for MediaTek. }
+  if (Result.Platform = dpMtk) and (Pos(';', FDataAssetPath) = 0) then
+    Result.DownloadAgent := FDataAssetPath;
+  Result.ScatFile := Trim(edtScat.Text);
+  Result.AuthFile := Trim(edtAuth.Text);
+  Result.BinFile := Trim(edtBin.Text);
+  Result.OfpFile := Trim(edtOfp.Text);
+  Result.BlFile := Trim(edtBl.Text);
+  Result.ApFile := Trim(edtAp.Text);
+  Result.CpFile := Trim(edtCp.Text);
+  Result.CscFile := Trim(edtCsc.Text);
+  Result.UserFile := Trim(edtUser.Text);
+  Result.Imei1 := Trim(edtImei1.Text);
+  Result.Imei2 := Trim(edtImei2.Text);
+  Result.AdvancedWrite := chkAdvancedWrite.Checked;
+  Result.ManualFormat := rbManualFormat.Checked;
+  Result.ExceptBootloader := rbFormatAiExceptBootloader.Checked;
+  Result.CreateDefaultFs := chkCreateDefaultFs.Checked;
+  Result.AuthBrom := chkAuthBrom.Checked;
+  Result.AuthPreloader := chkAuthPreloader.Checked;
+  Result.ForceBrom := chkForceBrom.Checked;
+  Result.ReadEmi := chkReadEmi.Checked;
+  Result.ReadPhoneInfo := chkReadPhoneInfo.Checked;
+  TryParseHex64(edtAddress.Text, Result.Address);
+  TryParseHex64(edtReadAddress.Text, Result.Address);
+  TryParseHex64(edtReadSize.Text, Result.Size);
+  TryParseHex64(edtRpmbAddress.Text, Result.RpmbAddress);
+  Result.TimeoutMs := CDefaultCaptureTimeoutMs;
+  { no AUTH file chosen: fall back to the one bundled with the DA payload }
+  if (Result.Platform = dpMtk) and (Result.AuthFile = '') and
+     chkAuthBrom.Checked then
+  begin
+    DataRes := ResolveAndExtractDa(FBrand, FModelCode, FModelName);
+    if DataRes.Found and DataRes.HasAuth then
+      Result.AuthFile := DataRes.ExtractedAuthBin;
+  end;
+end;
+
+procedure TMain2Form.SetUiBusy(const ABusy: Boolean);
+var
+  I: Integer;
+  C: TControl;
+  M: TMenuItem;
+begin
+  { Every input is switched off while a job holds the phone, so nothing can
+    change the target, the files or the platform mid-write. The page control
+    itself stays usable so the technician can still read the log. }
+  for I := 0 to ComponentCount - 1 do
+  begin
+    if not (Components[I] is TControl) then
+      Continue;
+    C := TControl(Components[I]);
+    if (C = lstLog) or (C = pbProgress) or (C = pbDeviceState) or
+       (C = lblDeviceState) then
+      Continue;
+    if (C is TNotebook) or (C is TTabControl) then
+      Continue;
+    if (C is TSampleButton) or (C is TButton) or (C is TBitBtn) or
+       (C is TSpeedButton) or (C is TCheckBox) or (C is TRadioButton) or
+       (C is TComboBox) or (C is TEdit) or (C is TListBox) then
+      C.Enabled := not ABusy;
+  end;
+  { the popup menus too: "Exit" must not terminate the app mid-write }
+  for I := 0 to pmMain.Items.Count - 1 do
+    pmMain.Items[I].Enabled := not ABusy;
+  for I := 0 to pmLog.Items.Count - 1 do
+    pmLog.Items[I].Enabled := not ABusy;
+  for I := 0 to ComponentCount - 1 do
+    if Components[I] is TMenuItem then
+    begin
+      M := TMenuItem(Components[I]);
+      if M <> miLogClear then
+        M.Enabled := not ABusy;
+    end;
+
+  if ABusy then
+    pbDeviceState.Invalidate;
+end;
+
+procedure TMain2Form.LogOutcome(const AOutcome: TJobOutcome);
+var
+  Text: string;
+begin
+  case AOutcome.State of
+    jsDone:
+      begin
+        Text := AOutcome.Message;
+        if Text = '' then
+          Text := 'done';
+        Log(LOk(Text));
+      end;
+    jsCancelled:
+      Log(LWarn('CANCELLED  ' + AOutcome.Message));
+  else
+    Log(LErr('FAILED [' + AOutcome.Code + ']  ' + AOutcome.Message));
+  end;
+  if AOutcome.Simulated then
+    Log(LWarn('[SIMULATED] No phone was involved. This result came from the ' +
+      'built-in simulated device and says nothing about real hardware.'));
+  Log('');
+end;
+
+procedure TMain2Form.RunJobInline(const AParams: TJobParams);
+var
+  Outcome: TJobOutcome;
+begin
+  SetUiBusy(True);
+  try
+    Outcome := FEngine.RunJob(AParams);
+  finally
+    SetUiBusy(False);
+  end;
+  LogOutcome(Outcome);
+end;
+
+procedure TMain2Form.StartJob(AKind: TJobKind);
+var
+  Params: TJobParams;
+  Form: TCaptureForm;
+begin
+  if FEngine.Busy then
+  begin
+    LogError('A job is already running and it holds the device port. Wait ' +
+      'for it to finish or cancel it first.');
+    Exit;
+  end;
+  Params := CollectJobParams(AKind);
+  if CaptureNeedOf(AKind) = coNormalMode then
+  begin
+    { No capture window: these jobs talk to a booted phone through adb. }
+    RunJobInline(Params);
+    Exit;
+  end;
+  if not JobWantsCaptureWindow(AKind) then
+  begin
+    RunJobInline(Params);
+    Exit;
+  end;
+  if FindCmdLineSwitch('selftest', True) then
+  begin
+    { The CI self-test has no window to pump; run the same pipeline inline. }
+    RunJobInline(Params);
+    Exit;
+  end;
+  { The capture window blocks until the job has released the device again. }
+  Form := TCaptureForm.CreateCapture(Self);
+  try
+    Form.ForwardLine := ForwardCaptureLine;
+    Form.RunJob(FEngine, Params);
+  finally
+    Form.Free;
+  end;
+  Progress := 0;
+  UpdateDeviceState;
 end;
 
 { ---------------------------------------------------------------- self-test }
+
+function TMain2Form.SelfTestDevicePipeline(AOut: TStrings): Boolean;
+var
+  AllOk: Boolean;
+  TempDir, ReadBack, RegionFile, RpmbFile: string;
+  Params: TJobParams;
+  Outcome: TJobOutcome;
+  Lines: TStringList;
+  DataRes: TDaLoadResult;
+
+  procedure Check(const AName: string; const AOk: Boolean);
+  begin
+    if AOk then
+      AOut.Add('PASS  ' + AName)
+    else
+    begin
+      AOut.Add('FAIL  ' + AName);
+      AllOk := False;
+    end;
+  end;
+
+  function RunJob(AKind: TJobKind): TJobOutcome;
+  begin
+    Params.Kind := AKind;
+    Result := FEngine.RunJob(Params);
+    if Result.State <> jsDone then
+      AOut.Add('      ' + JobName(AKind) + ' -> [' + Result.Code + '] ' +
+        Result.Message);
+  end;
+
+begin
+  AllOk := True;
+  EnableSimulatedDevice;
+  { Run the simulated phone through the full legacy bring-up - storage report,
+    stage-2 configuration, stage-2 upload - so CI covers that path too. }
+  GSimFullDaSequence := True;
+  GSimDemandSla := False;
+  Check('the simulated device layer is installed',
+    FSimulated and FEngine.AllowSimulated and (FEngine.Backend = bkSimulated));
+
+  cbPlatform.ItemIndex := CPlatformMtk;
+  ApplyPlatformSettings;
+
+  Params := EmptyJobParams;
+  Params.Platform := dpMtk;
+  Params.Brand := 'Simulated';
+  Params.ModelCode := 'SIM6765';
+  Params.ModelName := 'Simulated MediaTek phone';
+  Params.ServiceMode := tsMeta.Caption;
+  Params.TimeoutMs := 3000;
+
+  TempDir := IncludeTrailingPathDelimiter(LogsDir) + 'pipeline';
+  ForceDirectories(TempDir);
+  ReadBack := TempDir + 'read-back.bin';
+  RegionFile := TempDir + 'region-boot1.bin';
+  RpmbFile := TempDir + 'rpmb.bin';
+
+  { 1. the capture -> lock -> handshake -> DA -> release cycle }
+  Outcome := RunJob(jkReadFlashInfo);
+  Check('BROM handshake, DA bring-up and flash-info read on a captured port',
+    Outcome.State = jsDone);
+  Check('the job reported the storage size', Outcome.BytesMoved > 0);
+  Check('the outcome is flagged as simulated', Outcome.Simulated);
+  Check('the port is released as soon as the job ends',
+    (not FEngine.DeviceLocked) and (not FEngine.Busy) and
+    (FEngine.Session.Stage = ssClosed) and (not SimPortInUse));
+
+  { 2. read a region of the flash and check the bytes came back }
+  Params.Address := $100000;
+  Params.Size := $10000;
+  Params.OutFile := ReadBack;
+  Outcome := RunJob(jkReadBin);
+  Check('Read BIN wrote the requested region to a file',
+    (Outcome.State = jsDone) and FileExists(ReadBack) and
+    (FileSizeOf(ReadBack) = Int64($10000)));
+
+  { 3. the same bytes, read back a second time, must match }
+  Lines := TStringList.Create;
+  try
+    if FileExists(ReadBack) then
+      Lines.LoadFromFile(ReadBack);
+    Check('the region that was read is not empty', Lines.Text <> '');
+  finally
+    Lines.Free;
+  end;
+
+  { 4. boot partition, by region }
+  Params.Storage := 'EMMC(BOOT_1)';
+  Params.OutFile := RegionFile;
+  Outcome := RunJob(jkReadRegion);
+  Check('Read Region used the boot1 hardware partition',
+    Outcome.State = jsDone);
+
+  { 5. RPMB is key protected, so the backup may fail - but honestly }
+  Params.OutFile := RpmbFile;
+  Params.Size := $4000;
+  Params.RpmbAddress := 0;
+  Outcome := RunJob(jkRpmbBackup);
+  Check('Backup RPMB either reads the partition or says why it cannot',
+    (Outcome.State = jsDone) or (Outcome.Code <> ''));
+
+  { 6. erase, then the wipe jobs }
+  Params.Size := $10000;
+  Params.Address := $100000;
+  Outcome := RunJob(jkFormat);
+  Check('Format erased a manual range of the user area',
+    Outcome.State = jsDone);
+
+  { 7. a write needs a scatter file; without one it must refuse, not guess }
+  Params.ScatFile := '';
+  Outcome := RunJob(jkWriteFirmware);
+  Check('Write Firmware without a scatter file refuses instead of guessing',
+    (Outcome.State = jsFailed) and (Outcome.Code = 'NO_SCATTER'));
+
+  { 8. the write itself, against a scatter file built for the simulation }
+  if BuildSimScatter(TempDir, Params.ScatFile) then
+  begin
+    Outcome := RunJob(jkWriteFirmware);
+    Check('Write Firmware wrote every partition of the simulated scatter',
+      Outcome.State = jsDone);
+    Check('the write moved bytes', Outcome.BytesMoved > 0);
+    Outcome := RunJob(jkReadPartitions);
+    Check('Read Partitions listed the scatter table', Outcome.State = jsDone);
+  end
+  else
+    Check('the simulated scatter file could be written', False);
+
+  { 9. the session object is back to "closed" after every job }
+  Outcome := RunJob(jkReadFlashInfo);
+  Check('a second job on the same engine re-captures and releases cleanly',
+    (Outcome.State = jsDone) and (not FEngine.DeviceLocked) and
+    (FEngine.Session.Stage = ssClosed) and (not SimPortInUse));
+
+  { 10. a platform without a public protocol must fail honestly }
+  Params.ScatFile := '';
+  Params.Platform := dpSamsung;
+  Params.Kind := jkWriteFirmware;
+  Outcome := FEngine.RunJob(Params);
+  Check('Samsung flashing reports the missing Loke protocol instead of a fake OK',
+    (Outcome.State = jsFailed) and (Outcome.Code <> 'OK') and
+    (Pos('Loke', Outcome.Message) > 0));
+  Check('the Samsung attempt released the port', not FEngine.DeviceLocked);
+
+  Params.Platform := dpUnisoc;
+  Params.Kind := jkWriteFirmware;
+  Outcome := FEngine.RunJob(Params);
+  Check('Unisoc flashing reports the missing Diag protocol',
+    (Outcome.State = jsFailed) and (Pos('Unisoc', Outcome.Message) > 0));
+
+  Params.Platform := dpQualcomm;
+  Params.Kind := jkWriteFirmware;
+  Outcome := FEngine.RunJob(Params);
+  Check('Qualcomm flashing reports that firehose is not implemented',
+    (Outcome.State = jsFailed) and (Pos('firehose', Outcome.Message) > 0));
+
+  { 11. RPMB write and format are refused, never faked }
+  Params.Platform := dpMtk;
+  Params.Kind := jkRpmbWrite;
+  Outcome := FEngine.RunJob(Params);
+  Check('Write RPMB refuses without the device key',
+    (Outcome.State = jsFailed) and (Outcome.Code = 'RPMB_KEY'));
+  Params.Kind := jkRpmbFormat;
+  Outcome := FEngine.RunJob(Params);
+  Check('Format RPMB reports that RPMB cannot be erased',
+    (Outcome.State = jsFailed) and (Outcome.Code = 'RPMB_RO'));
+
+  { 12. an offline job touches nothing }
+  Params.Kind := jkForceBrom;
+  Outcome := FEngine.RunJob(Params);
+  Check('Force BROM is an offline job that never opens a port',
+    (Outcome.State = jsDone) and (not FEngine.DeviceLocked));
+
+  { 13. the bundled vendor payload is recognised as opaque, not silently used }
+  DataRes := ResolveAndExtractDa('Oppo', 'CPH1909', 'OPPO A5s');
+  if DataRes.Found then
+  begin
+    Params.Kind := jkDownloadAgent;
+    Params.DownloadAgent := DataRes.AgentFile;
+    Outcome := FEngine.RunJob(Params);
+    Check('an encrypted vendor DA payload is rejected with a reason',
+      Outcome.State = jsFailed);
+    Params.DownloadAgent := '';
+  end;
+
+  { 14. a board that demands secure-link authentication must be refused with a
+        reason, never half-flashed }
+  GSimDemandSla := True;
+  Params.Kind := jkReadFlashInfo;
+  Outcome := FEngine.RunJob(Params);
+  Check('a device demanding SLA is reported instead of being driven anyway',
+    Outcome.State = jsFailed);
+  GSimDemandSla := False;
+  GSimFullDaSequence := False;
+
+  { 15. the simulated device is single-owner, exactly like a real COM port }
+  Check('no simulated port is left behind', not SimPortInUse);
+  ResetSimPortGuard;
+
+  Check('the device layer ran ' + IntToStr(FEngine.JobsRun) + ' job(s)',
+    FEngine.JobsRun >= 12);
+  Result := AllOk;
+end;
+
 
 function TMain2Form.SelfTest(AOut: TStrings): Boolean;
 var
@@ -2155,6 +2769,12 @@ begin
 
   CheckUsb(True);
   Check('USB scan ran', True);
+
+  { The device layer: capture -> exclusive lock -> operate -> release, against
+    the simulated phone, so CI covers it without hardware. }
+  if not SelfTestDevicePipeline(AOut) then
+    AllOk := False;
+
   Result := AllOk;
 end;
 

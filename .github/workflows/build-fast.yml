@@ -90,6 +90,14 @@ jobs:
           "ISCC_PATH=$isccPath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           Write-Output "Using Inno Setup compiler: $isccPath"
 
+      - name: Check Pascal source structure
+        # Runs before anything is installed or compiled: a unit that does not
+        # balance its begin/end, leaves a comment open, or calls a routine it
+        # never declares would otherwise only show up as a Lazarus error at
+        # the end of a several-minute Windows build.
+        shell: pwsh
+        run: python tools/test_pascal_syntax.py
+
       - name: Generate .lfm forms from .dfm
         shell: pwsh
         run: python tools/dfm2lfm.py

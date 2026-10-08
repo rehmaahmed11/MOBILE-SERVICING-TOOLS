@@ -19,7 +19,26 @@ uses
   LogView,
   UsbDetect,
   SettingsDialog,
-  SelfTest;
+  SelfTest,
+  { device layer: capture, exclusive port lock, protocols, job engine }
+  DevTypes,
+  CommPort,
+  DevNotify,
+  DevCapture,
+  MtkChips,
+  MtkStatus,
+  BromProtocol,
+  DaImage,
+  MtkDaLegacy,
+  SimPort,
+  ScatterFile,
+  SaharaProtocol,
+  AdbTool,
+  DeviceSession,
+  UnimplementedJobs,
+  AndroidJobs,
+  JobEngine,
+  CaptureForm;
 
 {$R *.res}
 
