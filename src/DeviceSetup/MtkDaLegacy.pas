@@ -472,9 +472,12 @@ var
 begin
   { bromver, blver, nor chip (BE16), nor chip select, nand acccon (BE32),
     bmt flag, bmt part size (BE32), force charge, reset keys, ext clock,
-    msdc boot channel - then the chip-specific extra block. }
+    msdc boot channel - 18 bytes in all, then the chip-specific extra block.
+    The fixed part is 18 bytes (the reference set_stage2_config writes the
+    same fields in the same order); the array must be sized for it, or the
+    writes below run past the end of the array. }
   Kind := Stage2ExtraKind(FBrom.HwCode);
-  SetLength(Result, 14 + Stage2ExtraSize(Kind));
+  SetLength(Result, 18 + Stage2ExtraSize(Kind));
   for I := 0 to High(Result) do
     Result[I] := 0;
   P := 0;

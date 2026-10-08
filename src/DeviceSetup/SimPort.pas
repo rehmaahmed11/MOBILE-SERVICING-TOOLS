@@ -74,11 +74,11 @@ type
     scWriteHeader, scWriteData,
     scReadHeader,
     scFormatHeader,
-    scStage2Config, scStage2Addr, scStage2Size, scStage2PacketSize,
+    scDumpAck, scStage2Config, scStage2Addr, scStage2Size, scStage2PacketSize,
     scStage2Packet, scFinishValue);
 
   { A single non-command byte we are waiting for. }
-  TSimAwait = (awNone, awWriteAck, awFormatAck, awReadFinalAck,
+  TSimAwait = (awNone, awWriteAck, awFormatAck, awReadPacketAck,
     awStage2FinalAck);
 
   TSimPort = class(TCommTransport)
@@ -682,13 +682,14 @@ procedure TSimPort.EmitLegacyStorageInfo;
 var
   I: Integer;
 begin
-  { NOR info, 28 bytes. }
+  { NOR info, 28 bytes: ret (4), chip select (2), flash id (2), flash size
+    (4), four device-code shorts (8), OTP status (4), OTP size (4). The host
+    reads exactly these lengths, so every byte here must be present. }
   EmitDwordBe($00000000);
   EmitRepeat($00, 2);
   EmitWordBe($0000);
   EmitDwordBe($00000000);
-  EmitWordBe($0000);
-  EmitDwordBe($00000000);
+  EmitRepeat($00, 8);
   EmitDwordBe($00000000);
   EmitDwordBe($00000000);
 
@@ -698,6 +699,14 @@ begin
   EmitWordBe($0000);
   EmitQwordBe(0);
   EmitWordBe($0000);
+  { NAND info part 2, 9 bytes: page size, spare size, pages per block,
+    I/O interface, address cycles, BMT flag. The host always reads it. }
+  EmitWordBe($0000);
+  EmitWordBe($0000);
+  EmitWordBe($0000);
+  Emit($00);
+  Emit($00);
+  Emit($00);
 
   { eMMC info, 92 bytes. A non-zero user-area size is what makes the DA report
     eMMC storage. }
@@ -749,9 +758,11 @@ begin
     Emit(DA_ACK);
     Emit(DA_ACK);
     Emit(DA_ACK);
-    { The host now writes the stage-2 configuration; collect the fixed part. }
-    StartCollect(scStage2Config, 14 + Stage2ExtraSize(Stage2ExtraKind(FHwCode)),
-      False);
+    { The host acks the three bytes (one byte, collected and ignored), and only
+      then writes the stage-2 configuration. Collecting the configuration
+      straight away would take that ACK as the first configuration byte and
+      leave the last bytes to be read as commands, answered with NACKs. }
+    StartCollect(scDumpAck, 1, False);
   end;
 end;
 
@@ -896,13 +907,15 @@ begin
         Inc(FStage2Done, FPayloadPos);
         EmitAck;
         if FStage2Done < FStage2Size then
-          StartPayload(scStage2Packet, FStage2Packet)
-        else
         begin
-          FOnCollect := scNone;
-          { The host acks once more; only then does the DA report the flash. }
-          FAwait := awStage2FinalAck;
+          { Exit: the code after this case clears the payload state, which
+            would undo the start of the next packet. }
+          StartPayload(scStage2Packet, FStage2Packet);
+          Exit;
         end;
+        FOnCollect := scNone;
+        { The host acks once more; only then does the DA report the flash. }
+        FAwait := awStage2FinalAck;
       end;
   else
     { nothing }
@@ -944,15 +957,25 @@ begin
       end;
     awFormatAck:
       EmitFormatStep;
-    awReadFinalAck:
+    awReadPacketAck:
       begin
-        { The host acks the last packet; the read is over. }
-        FOnCollect := scNone;
+        { The host acks each packet it has read. Answer with the next packet
+          while there are some left; the ack after the last packet ends the
+          read. }
+        if (B = DA_ACK) and (FReadDone < FReadLength) then
+        begin
+          EmitReadPacket;
+          if FReadDone < FReadLength then
+            FAwait := awReadPacketAck;
+        end;
       end;
     awStage2FinalAck:
       begin
-        { Stage 2 is in and running: now the DA reports the flash behind it. }
+        { Stage 2 is in and running: the DA acks the host's start request and
+          then reports the flash behind it. The host reads that ACK before the
+          second storage report, so it must come first. }
         FOnCollect := scNone;
+        EmitAck;
         if FFullDa then
           EmitLegacyStorageInfo;
       end;
@@ -968,6 +991,12 @@ var
   Sum: Word;
 begin
   case FOnCollect of
+    scDumpAck:
+      begin
+        StartCollect(scStage2Config, 18 + Stage2ExtraSize(Stage2ExtraKind(FHwCode)),
+          False);
+        Exit;
+      end;
     scReadAddr:
       begin
         FBromAddr := CollectDwordBe(0);
@@ -1034,6 +1063,12 @@ begin
     scDaSigLen:
       begin
         FDaSigLen := Integer(CollectDwordBe(0));
+        if FDemandSla then
+        begin
+          EmitStatus(S_BROM_SLA_REQUIRED);
+          FOnCollect := scNone;
+          Exit;
+        end;
         EmitStatus(S_BROM_OK);
         if (FDaSize > 0) and (FDaSize <= 32 * 1024 * 1024) then
           StartPayload(scDaPayload, FDaSize)
@@ -1053,12 +1088,16 @@ begin
           Exit;
         end;
         EmitStatus(S_BROM_OK);
+        { EnterDa arms the collector for the host's ACK. Exit here: the code
+          after this case clears the collector, which would undo that. }
         EnterDa;
+        Exit;
       end;
     scJump64Flag:
       begin
         EmitStatus(S_BROM_OK);
         EnterDa;
+        Exit;
       end;
     scAuthLen:
       begin
@@ -1140,8 +1179,8 @@ begin
         EmitAck;
         EmitReadPacket;
         FOnCollect := scNone;
-        if FReadDone >= FReadLength then
-          FAwait := awReadFinalAck;
+        { The host acks every packet, the last one included. }
+        FAwait := awReadPacketAck;
         Exit;
       end;
     scFormatHeader:
@@ -1155,9 +1194,9 @@ begin
       end;
     scStage2Config:
       begin
-        { bromver, blver, nor chip, chip select, nand acccon, bmt flag,
-          bmt part size, force charge, reset keys, ext clock, msdc boot ch
-          and the chip-specific extra block. Answer with the DRAM info. }
+        { 18 fixed bytes (bromver, blver, nor chip, chip select, nand acccon,
+          bmt flag, bmt part size, force charge, reset keys, ext clock, msdc
+          boot ch) and the chip-specific extra block. Answer with the DRAM info. }
         EmitDwordBe($00000000);
         StartCollect(scStage2Addr, 4, False);
         Exit;
@@ -1251,13 +1290,9 @@ begin
         StartCollect(scWriteAddr, 4, True);
       end;
     CMD_SEND_DA:
-      if FDemandSla then
-      begin
-        EmitStatus(S_BROM_SLA_REQUIRED);
-        FOnCollect := scNone;
-      end
-      else
-        StartCollect(scDaAddr, 4, True);
+      { The address, size and signature length are echoed first; the SLA
+        demand comes back as the status after them, as on a real device. }
+      StartCollect(scDaAddr, 4, True);
     CMD_JUMP_DA:
       StartCollect(scJumpAddr, 4, False);
     CMD_JUMP_DA64:
@@ -1272,7 +1307,14 @@ begin
     CMD_SEND_CERT:
       StartCollect(scCertLen, 4, True);
     CMD_SLA:
-      EmitStatus(S_DA_SLA_REQUIRED);
+      begin
+        { Status, then a 16-byte challenge, then the closing status. The host
+          has no key for it, so it reports the demand and stops. }
+        EmitStatus(S_BROM_OK);
+        EmitDwordBe(16);
+        EmitRepeat($5C, 16);
+        EmitStatus(S_BROM_OK);
+      end;
     CMD_CACHE_CTRL:
       EmitStatus(S_BROM_OK);
   else
