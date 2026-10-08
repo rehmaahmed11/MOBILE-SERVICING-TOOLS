@@ -3,7 +3,7 @@
 
 The native executable is built separately by Lazarus or Delphi. This script
 verifies the tracked support payloads against their SHA-256 inventory, then
-copies the complete ``FULL APP STRUCTURE/MOBILO TOOLZ`` tree next to the EXE.
+copies the complete ``data/support/MOBILO TOOLZ`` tree next to the EXE.
 It uses only Python's standard library.
 """
 from __future__ import annotations
@@ -17,7 +17,7 @@ import sys
 import zipfile
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-ASSET_ROOT = REPO_ROOT / "FULL APP STRUCTURE" / "MOBILO TOOLZ"
+ASSET_ROOT = REPO_ROOT / "data" / "support" / "MOBILO TOOLZ"
 MANIFEST_PATH = ASSET_ROOT / "assets-manifest.json"
 MANIFEST_SCHEMA = 1
 

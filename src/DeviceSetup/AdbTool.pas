@@ -119,23 +119,31 @@ const
   { exit code reported when a command had to be killed }
   CKilledExitCode = 124;
 
-{ Reference application folder shipped with this repository. The tools sit in
-  "FULL APP STRUCTURE\MOBILO TOOLZ" relative to the repository root, which is
-  two or three levels above the Delphi project when the EXE runs from a source
-  checkout, and next to the EXE in an installed layout. }
+{ Installed bundles keep tools next to the EXE. In a source checkout, the
+  user-supplied support tree lives under data/support/MOBILO TOOLZ; search
+  parent directories so this also works when launched from a compiler output. }
 function CandidateDirs: TStringList;
 var
-  Exe: string;
+  Exe, Current, ParentPath: string;
+  I: Integer;
 begin
   Result := TStringList.Create;
-  Exe := ExtractFilePath(Application.ExeName);
+  Exe := IncludeTrailingPathDelimiter(ExtractFilePath(Application.ExeName));
   Result.Add(Exe);
   Result.Add(Exe + 'tools' + PathDelim);
   Result.Add(Exe + 'platform-tools' + PathDelim);
-  Result.Add(Exe + '..' + PathDelim + '..' + PathDelim +
-    'FULL APP STRUCTURE' + PathDelim + 'MOBILO TOOLZ' + PathDelim);
-  Result.Add(Exe + '..' + PathDelim + '..' + PathDelim + '..' + PathDelim +
-    'FULL APP STRUCTURE' + PathDelim + 'MOBILO TOOLZ' + PathDelim);
+
+  Current := ExpandFileName(Exe);
+  for I := 0 to 12 do
+  begin
+    Result.Add(IncludeTrailingPathDelimiter(Current) + 'data' + PathDelim +
+      'support' + PathDelim + 'MOBILO TOOLZ' + PathDelim);
+    ParentPath := ExtractFilePath(ExcludeTrailingPathDelimiter(Current));
+    if ParentPath = '' then
+      Break;
+    Current := ParentPath;
+  end;
+
   Result.Add('C:\platform-tools' + PathDelim);
   Result.Add(GetEnvironmentVariable('LOCALAPPDATA') + PathDelim +
     'Android' + PathDelim + 'Sdk' + PathDelim + 'platform-tools' + PathDelim);
@@ -311,7 +319,7 @@ begin
   Result := '';
   if not HasAdb then
     Result := 'adb.exe was not found next to the application, in ' +
-      '"FULL APP STRUCTURE\MOBILO TOOLZ", in %LOCALAPPDATA%\Android\Sdk\' +
+      '"data\support\MOBILO TOOLZ", in %LOCALAPPDATA%\Android\Sdk\' +
       'platform-tools or on PATH. Install the Android platform-tools and ' +
       'start again.';
   if AWantFastboot and (not HasFastboot) then

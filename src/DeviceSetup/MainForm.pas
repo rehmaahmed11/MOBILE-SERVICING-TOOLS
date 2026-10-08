@@ -5,7 +5,7 @@ unit MainForm;
 {$ENDIF}
 
 
-{ MAIN 1 - first screen (UI SAMPLE/S1.png).
+{ MAIN 1 - first screen (data/ui-reference/S1.png).
   Layout:
     - blue menu icon top-left
     - right-hand toolbar: start (green play), save list (orange download),
@@ -166,7 +166,7 @@ begin
   AModelIndex := Integer(Value mod CRefFactor);
 end;
 
-{ Wordmark colour used for the free area on the right (UI SAMPLE/S1.png
+{ Wordmark colour used for the free area on the right (data/ui-reference/S1.png
   shows the manufacturer logo there). }
 function BrandColor(const ABrand: string): TColor;
 begin
@@ -703,7 +703,7 @@ begin
   PaintIcon(pbHelp.Canvas, pbHelp.ClientRect, DrawHelpIcon);
 end;
 
-{ Manufacturer wordmark in the free area on the right (UI SAMPLE/S1.png). }
+{ Manufacturer wordmark in the free area on the right (data/ui-reference/S1.png). }
 procedure TMainForm.pbLogoPaint(Sender: TObject);
 var
   C: TCanvas;

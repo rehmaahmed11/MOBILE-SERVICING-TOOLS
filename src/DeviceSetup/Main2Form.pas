@@ -5,7 +5,7 @@ unit Main2Form;
 {$ENDIF}
 
 
-{ MAIN 2 - the job screen (UI SAMPLE/S2.png ... S10.png).
+{ MAIN 2 - the job screen (data/ui-reference/S2.png ... S10.png).
   Layout:
     - toolbar: menu (left); start, save log, change device, settings,
       report, Facebook and help (right)

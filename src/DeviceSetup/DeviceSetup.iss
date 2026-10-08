@@ -26,7 +26,7 @@ PrivilegesRequired=lowest
 ArchitecturesAllowed=x64
 ArchitecturesInstallIn64BitMode=x64
 #endif
-OutputDir=artifacts
+OutputDir=..\..\artifacts
 OutputBaseFilename=DeviceSetup-Setup-{#InstallerPlatform}
 SetupIconFile=DeviceSetup.ico
 UninstallDisplayName={#AppName}
@@ -44,7 +44,7 @@ Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription:
 [Files]
 ; Install the verified bundle as-is at {app}: EXE and DLLs at the root,
 ; support payloads in Data, and the supplied architecture-specific libusb tree.
-Source: "artifacts\package\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\..\artifacts\package\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{autoprograms}\{#AppName}"; Filename: "{app}\DeviceSetup.exe"; WorkingDir: "{app}"

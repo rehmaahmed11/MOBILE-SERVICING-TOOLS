@@ -48,7 +48,7 @@ jobs:
             installer: "Lazarus%20Windows%2032%20bits/Lazarus%204.4/lazarus-4.4-fpc-3.2.2-win32.exe"
     defaults:
       run:
-        working-directory: Delphi/DeviceSetup
+        working-directory: src/DeviceSetup
     steps:
       - name: Check out source
         uses: actions/checkout@v4
@@ -142,17 +142,17 @@ jobs:
           }
           $exe = "lazbuild-out\${{ matrix.cpu_os }}\DeviceSetup.exe"
           if (-not (Test-Path $exe)) { Write-Error "EXE not produced: $exe"; exit 1 }
-          New-Item -ItemType Directory -Force artifacts | Out-Null
-          Copy-Item $exe "artifacts\DeviceSetup-${{ matrix.platform }}.exe"
-          Get-Item "artifacts\*.exe" | Format-Table Name, Length
+          New-Item -ItemType Directory -Force ..\..\artifacts | Out-Null
+          Copy-Item $exe "..\..\artifacts\DeviceSetup-${{ matrix.platform }}.exe"
+          Get-Item "..\..\artifacts\*.exe" | Format-Table Name, Length
 
       - name: Assemble portable bundle with verified support data
         shell: pwsh
         run: |
           python tools/package_app.py `
-            --exe "artifacts/DeviceSetup-${{ matrix.platform }}.exe" `
-            --output "artifacts/package" `
-            --archive "artifacts/DeviceSetup-${{ matrix.platform }}.zip"
+            --exe "../../artifacts/DeviceSetup-${{ matrix.platform }}.exe" `
+            --output "../../artifacts/package" `
+            --archive "../../artifacts/DeviceSetup-${{ matrix.platform }}.zip"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Build Inno Setup installer
@@ -160,13 +160,13 @@ jobs:
         run: |
           python tools/build_installer.py --iscc "$env:ISCC_PATH" --platform "${{ matrix.platform }}"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          Get-Item "artifacts\DeviceSetup-Setup-${{ matrix.platform }}.exe" | Format-Table Name, Length
+          Get-Item "..\..\artifacts\DeviceSetup-Setup-${{ matrix.platform }}.exe" | Format-Table Name, Length
 
       - name: Self-test installed layout, real data and UI
         shell: pwsh
         run: |
           $installRoot = Join-Path $env:RUNNER_TEMP "device-setup-install-${{ matrix.platform }}"
-          $installer = "artifacts\DeviceSetup-Setup-${{ matrix.platform }}.exe"
+          $installer = "..\..\artifacts\DeviceSetup-Setup-${{ matrix.platform }}.exe"
           New-Item -ItemType Directory -Force $installRoot | Out-Null
           $dirArg = '/DIR="' + $installRoot + '"'
           $setup = Start-Process -FilePath $installer `
@@ -274,7 +274,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: DeviceSetup-selftest-${{ matrix.platform }}-${{ github.sha }}
-          path: Delphi/DeviceSetup/selftest-run/selftest/
+          path: src/DeviceSetup/selftest-run/selftest/
           if-no-files-found: ignore
           retention-days: 7
 
@@ -283,8 +283,8 @@ jobs:
         with:
           name: DeviceSetup-${{ matrix.platform }}-${{ github.sha }}
           path: |
-            Delphi/DeviceSetup/artifacts/DeviceSetup-${{ matrix.platform }}.zip
-            Delphi/DeviceSetup/artifacts/DeviceSetup-Setup-${{ matrix.platform }}.exe
+            artifacts/DeviceSetup-${{ matrix.platform }}.zip
+            artifacts/DeviceSetup-Setup-${{ matrix.platform }}.exe
           if-no-files-found: error
           retention-days: 30
 

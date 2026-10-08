@@ -11,7 +11,7 @@ from pathlib import Path
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parent.parent
-SAMPLES = ROOT.parent.parent / "UI SAMPLE"
+SAMPLES = ROOT.parent.parent / "data" / "ui-reference"
 OUT = ROOT / "assets" / "sample-ui"
 
 # Coordinates are in the original, unresized screenshots. S3/S4 are the

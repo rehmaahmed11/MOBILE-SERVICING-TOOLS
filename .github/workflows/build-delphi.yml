@@ -37,30 +37,30 @@ jobs:
           call "%DELPHI_STUDIO_DIR%\bin\rsvars.bat"
           if errorlevel 1 exit /b 1
 
-          msbuild "Delphi\DeviceSetup\DeviceSetup.dproj" /t:Build /p:Config=Release /p:Platform=Win32 /verbosity:minimal
+          msbuild "src\DeviceSetup\DeviceSetup.dproj" /t:Build /p:Config=Release /p:Platform=Win32 /verbosity:minimal
           if errorlevel 1 exit /b 1
 
-          msbuild "Delphi\DeviceSetup\DeviceSetup.dproj" /t:Build /p:Config=Release /p:Platform=Win64 /verbosity:minimal
+          msbuild "src\DeviceSetup\DeviceSetup.dproj" /t:Build /p:Config=Release /p:Platform=Win64 /verbosity:minimal
           if errorlevel 1 exit /b 1
 
-          if not exist "Delphi\DeviceSetup\Win32\Release\DeviceSetup.exe" (
+          if not exist "src\DeviceSetup\Win32\Release\DeviceSetup.exe" (
             echo Win32 EXE was not produced.
             exit /b 1
           )
-          if not exist "Delphi\DeviceSetup\Win64\Release\DeviceSetup.exe" (
+          if not exist "src\DeviceSetup\Win64\Release\DeviceSetup.exe" (
             echo Win64 EXE was not produced.
             exit /b 1
           )
 
-          python "Delphi\DeviceSetup\tools\package_app.py" --exe "Delphi\DeviceSetup\Win32\Release\DeviceSetup.exe" --output "Delphi\DeviceSetup\artifacts\package-Win32" --archive "Delphi\DeviceSetup\artifacts\DeviceSetup-Win32.zip"
+          python "src\DeviceSetup\tools\package_app.py" --exe "src\DeviceSetup\Win32\Release\DeviceSetup.exe" --output "artifacts\package-Win32" --archive "artifacts\DeviceSetup-Win32.zip"
           if errorlevel 1 exit /b 1
-          python "Delphi\DeviceSetup\tools\package_app.py" --exe "Delphi\DeviceSetup\Win64\Release\DeviceSetup.exe" --output "Delphi\DeviceSetup\artifacts\package-Win64" --archive "Delphi\DeviceSetup\artifacts\DeviceSetup-Win64.zip"
+          python "src\DeviceSetup\tools\package_app.py" --exe "src\DeviceSetup\Win64\Release\DeviceSetup.exe" --output "artifacts\package-Win64" --archive "artifacts\DeviceSetup-Win64.zip"
           if errorlevel 1 exit /b 1
 
       - name: Upload both portable bundles
         uses: actions/upload-artifact@v4
         with:
           name: DeviceSetup-${{ github.sha }}
-          path: Delphi/DeviceSetup/artifacts/*.zip
+          path: artifacts/*.zip
           if-no-files-found: error
           retention-days: 30

@@ -2,7 +2,7 @@
 
 The .dfm files are the single source of truth. This strips the few
 Delphi-only properties that the LCL streaming system does not know.
-Usage: python tools/dfm2lfm.py   (run from Delphi/DeviceSetup)
+Usage: python tools/dfm2lfm.py   (run from src/DeviceSetup)
 """
 import pathlib
 import re

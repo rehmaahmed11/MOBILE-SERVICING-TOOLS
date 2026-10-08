@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Build the Windows setup EXE from the verified portable app bundle.
 
-Run from any directory after package_app.py has assembled
-``artifacts/package``. Inno Setup 6's ISCC compiler is the only extra tool.
+Run after ``package_app.py`` assembles the repository-level
+``artifacts/package`` tree. Inno Setup 6's ISCC compiler is the only extra tool.
 """
 from __future__ import annotations
 
@@ -16,10 +16,11 @@ import sys
 from package_app import verify_asset_manifest, verify_bundle
 
 DEVICE_SETUP_DIR = Path(__file__).resolve().parents[1]
+REPO_ROOT = DEVICE_SETUP_DIR.parents[1]
 PROJECT_FILE = DEVICE_SETUP_DIR / "DeviceSetup.iss"
 APP_INFO_FILE = DEVICE_SETUP_DIR / "AppInfo.pas"
-DEFAULT_BUNDLE_DIR = DEVICE_SETUP_DIR / "artifacts" / "package"
-DEFAULT_OUTPUT_DIR = DEVICE_SETUP_DIR / "artifacts"
+DEFAULT_BUNDLE_DIR = REPO_ROOT / "artifacts" / "package"
+DEFAULT_OUTPUT_DIR = REPO_ROOT / "artifacts"
 
 
 def app_version() -> str:
@@ -82,7 +83,7 @@ def main(argv: list[str] | None = None) -> int:
         "--output",
         type=Path,
         default=DEFAULT_OUTPUT_DIR,
-        help="directory for the generated setup EXE (default: artifacts)",
+        help="directory for the generated setup EXE (default: repository artifacts/)",
     )
     args = parser.parse_args(argv)
 
