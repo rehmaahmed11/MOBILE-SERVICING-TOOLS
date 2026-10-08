@@ -243,6 +243,8 @@ function BuildSyntheticDa(AHwCode: Word): TBytesArray;
 var
   GSimDemandSla: Boolean = False;
   GSimFullDaSequence: Boolean = False;
+  { TEMP-TRACE }
+  GSimTrace: TStringList = nil;
 
 { Writes a scatter file and the image files it names into ADir, describing the
   simulated phone: a 4 MiB boot1, a 16 MiB user area with preloader, lk, boot,
@@ -258,6 +260,13 @@ implementation
 
 var
   GSimInUse: Boolean = False;
+
+{ TEMP-TRACE }
+procedure SimTraceAdd(const S: string);
+begin
+  if (GSimTrace <> nil) and (GSimTrace.Count < 1500) then
+    GSimTrace.Add(S);
+end;
 
 function SimPortInUse: Boolean;
 begin
@@ -745,6 +754,7 @@ end;
 procedure TSimPort.EnterDa;
 begin
   FPhase := spDa;
+  SimTraceAdd('EnterDa');
   FInHandshake := False;
   FOnCollect := scNone;
   FCollectLeft := 0;
@@ -984,7 +994,7 @@ begin
   case FOnCollect of
     scDumpAck:
       begin
-        StartCollect(scStage2Config, 14 + Stage2ExtraSize(Stage2ExtraKind(FHwCode)),
+        StartCollect(scStage2Config, 18 + Stage2ExtraSize(Stage2ExtraKind(FHwCode)),
           False);
         Exit;
       end;
@@ -1175,9 +1185,9 @@ begin
       end;
     scStage2Config:
       begin
-        { bromver, blver, nor chip, chip select, nand acccon, bmt flag,
-          bmt part size, force charge, reset keys, ext clock, msdc boot ch
-          and the chip-specific extra block. Answer with the DRAM info. }
+        { 18 fixed bytes (bromver, blver, nor chip, chip select, nand acccon,
+          bmt flag, bmt part size, force charge, reset keys, ext clock, msdc
+          boot ch) and the chip-specific extra block. Answer with the DRAM info. }
         EmitDwordBe($00000000);
         StartCollect(scStage2Addr, 4, False);
         Exit;
@@ -1327,7 +1337,10 @@ begin
         StartCollect(scFinishValue, 4, False);
       end;
   else
-    EmitNack;
+    begin
+      SimTraceAdd('  NACK cmd $' + IntToHex(B, 2));
+      EmitNack;
+    end;
   end;
 end;
 
@@ -1356,6 +1369,10 @@ begin
     B := P^;
     Inc(P);
     Inc(FBytesOut);
+    if (FPhase = spDa) and (FPayloadLeft <= 0) then
+      SimTraceAdd('W ' + IntToHex(B, 2) + ' co=' + IntToStr(FCollectLeft) +
+        ' oc=' + IntToStr(Ord(FOnCollect)) + ' aw=' + IntToStr(Ord(FAwait)) +
+        ' out=' + IntToStr(FInLen - FOutPos));
     if FPayloadLeft > 0 then
       PayloadByte(B)
     else if FCollectLeft > 0 then
@@ -1503,4 +1520,9 @@ begin
   Result := True;
 end;
 
+initialization
+  GSimTrace := TStringList.Create;
+
+finalization
+  FreeAndNil(GSimTrace);
 end.
