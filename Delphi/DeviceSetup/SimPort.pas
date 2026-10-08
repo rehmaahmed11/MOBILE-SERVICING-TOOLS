@@ -267,6 +267,11 @@ begin
 end;
 
 function CreateSimTransport: TCommTransport;
+var
+  { The function returns the abstract TCommTransport the caller asked for, so
+    the two simulation switches have to be set on a TSimPort-typed local:
+    `Result.DemandSla` would be a member lookup on TCommTransport. }
+  Port: TSimPort;
 begin
   { Models ERROR_SHARING_VIOLATION: only one owner at a time. }
   if GSimInUse then
@@ -275,9 +280,10 @@ begin
     Exit;
   end;
   GSimInUse := True;
-  Result := TSimPort.Create;
-  Result.DemandSla := GSimDemandSla;
-  Result.FullDaSequence := GSimFullDaSequence;
+  Port := TSimPort.Create;
+  Port.DemandSla := GSimDemandSla;
+  Port.FullDaSequence := GSimFullDaSequence;
+  Result := Port;
 end;
 
 procedure PutLeWord(var AData: TBytesArray; AOffset: Integer; AValue: Word);
