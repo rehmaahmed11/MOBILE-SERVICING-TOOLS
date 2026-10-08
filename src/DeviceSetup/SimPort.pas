@@ -917,13 +917,15 @@ begin
         Inc(FStage2Done, FPayloadPos);
         EmitAck;
         if FStage2Done < FStage2Size then
-          StartPayload(scStage2Packet, FStage2Packet)
-        else
         begin
-          FOnCollect := scNone;
-          { The host acks once more; only then does the DA report the flash. }
-          FAwait := awStage2FinalAck;
+          { Exit: the code after this case clears the payload state, which
+            would undo the start of the next packet. }
+          StartPayload(scStage2Packet, FStage2Packet);
+          Exit;
         end;
+        FOnCollect := scNone;
+        { The host acks once more; only then does the DA report the flash. }
+        FAwait := awStage2FinalAck;
       end;
   else
     { nothing }
