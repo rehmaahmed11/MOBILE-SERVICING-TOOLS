@@ -96,6 +96,7 @@ type
     function GetConnected: Boolean;
     function GetFlashInfo: TMtkFlashInfo;
     function GetChipLabel: string;
+    function MissingTransportMessage(const ADevice: TUsbDevice): string;
     procedure DoLog(const AText: string);
     procedure DoProgress(APercent: Integer; const AText: string);
     procedure CaptureProgress(Sender: TObject; const AText: string;
@@ -291,6 +292,34 @@ begin
     Result := '';
 end;
 
+function TDeviceSession.MissingTransportMessage(
+  const ADevice: TUsbDevice): string;
+var
+  Identity, AccessHint: string;
+begin
+  Identity := ADevice.VidPid;
+  if ADevice.Name <> '' then
+  begin
+    if Identity <> '' then
+      Identity := Identity + ' - ';
+    Identity := Identity + ADevice.Name;
+  end;
+  if Identity = '' then
+    Identity := 'the detected USB device';
+
+  if FPlatform = dpMtk then
+    AccessHint := 'Install or repair a compatible MediaTek USB VCOM/Preloader '
+      + 'driver and verify Device Manager shows a COM number. This build has '
+      + 'no raw WinUSB/libusb BROM transport.'
+  else
+    AccessHint := 'Install the service driver that exposes this interface as '
+      + 'a COM port, or use a supported transport.';
+
+  Result := PlatformLabel(FPlatform) + ' device detected (' + Identity +
+    ') but Windows did not expose a COM/VCOM port. VID/PID detection alone is '
+    + 'not a device lock. No protocol bytes were sent. ' + AccessHint;
+end;
+
 procedure TDeviceSession.DoLog(const AText: string);
 begin
   if Assigned(FOnLog) then
@@ -416,28 +445,21 @@ begin
     Exit;
   end;
 
-  if not LoadAuth(AAuthFile, Auth, Msg) then
+  { Check the chip's DA dialect before sending AUTH or touching the selected
+    payload. In particular, MT6761/MT6762 devices (hwcode $0717, including
+    devices such as the Infinix Hot 8 X650C) use XFLASH, not the legacy DA
+    implemented by this build. }
+  ChipMode := dmLegacy;
+  if FBrom.ChipKnown then
+    ChipMode := FBrom.Chip.DaMode;
+  if ChipMode <> dmLegacy then
   begin
-    FLastError := Msg;
-    Exit;
-  end;
-  if Length(Auth) > 0 then
-  begin
-    DoLog('Sending the authorization file (' + IntToStr(Length(Auth)) +
-      ' bytes).');
-    if not FBrom.SendAuth(Auth) then
-    begin
-      FLastError := 'BROM authorization failed: ' + FBrom.LastError;
-      DoLog(FLastError);
-      Exit;
-    end;
-    DoLog('BROM authorization accepted.');
-  end
-  else if FBrom.Target.Daa or FBrom.Target.Cert then
-  begin
-    FLastError := 'This device demands download-agent authentication ' +
-      '(target config ' + TargetConfigText(FBrom.Target) + ') but no AUTH ' +
-      'file was selected. Choose the .auth file that belongs to this board.';
+    FLastError := 'This chip (' + MtkChips.ChipLabel(FBrom.Chip) +
+      ', hwcode $' + IntToHex(FBrom.HwCode, 4) + ') uses the ' +
+      DaModeLabel(ChipMode) + ' download-agent protocol. Only the legacy ' +
+      'DA protocol is implemented in this build. No AUTH or DA was sent; a '
+      + 'compatible XFLASH/XML implementation and a usable plaintext DA are '
+      + 'required before flash operations can work.';
     DoLog(FLastError);
     Exit;
   end;
@@ -494,15 +516,30 @@ begin
         IntToStr(Length(Data)) + ' bytes). It carries no vendor code.');
     end;
 
-    ChipMode := dmLegacy;
-    if FBrom.ChipKnown then
-      ChipMode := FBrom.Chip.DaMode;
-    if ChipMode <> dmLegacy then
+    { Send authorization only after the selected payload has parsed, but
+      before stage 1 is sent to or started on the target. }
+    if not LoadAuth(AAuthFile, Auth, Msg) then
     begin
-      FLastError := 'This chip (' + MtkChips.ChipLabel(FBrom.Chip) + ') uses the ' +
-        DaModeLabel(ChipMode) + ' download agent protocol. Only the legacy ' +
-        'DA protocol is implemented in this build; the xflash / XML command ' +
-        'sets are not. The port stays locked and is released now.';
+      FLastError := Msg;
+      Exit;
+    end;
+    if Length(Auth) > 0 then
+    begin
+      DoLog('Sending the authorization file (' + IntToStr(Length(Auth)) +
+        ' bytes).');
+      if not FBrom.SendAuth(Auth) then
+      begin
+        FLastError := 'BROM authorization failed: ' + FBrom.LastError;
+        DoLog(FLastError);
+        Exit;
+      end;
+      DoLog('BROM authorization accepted.');
+    end
+    else if FBrom.Target.Daa or FBrom.Target.Cert then
+    begin
+      FLastError := 'This device demands download-agent authentication ' +
+        '(target config ' + TargetConfigText(FBrom.Target) + ') but no AUTH ' +
+        'file was selected. Choose the .auth file that belongs to this board.';
       DoLog(FLastError);
       Exit;
     end;
@@ -589,17 +626,33 @@ begin
     Exit;
   end;
 
-  FStage := ssLocked;
   FSimulated := FGrab.Simulated;
   FTransport := FCapture.TakeTransport;
+  if FGrab.Device.Mode <> '' then
+    DoLog('Device: ' + DescribeDevice(FGrab.Device));
+
+  { A matching VID/PID is only detection. The no-COM path in TDeviceCapture
+    can describe a USB node, but it has not acquired a handle and there is no
+    byte transport for the BROM protocol. Never label that as a locked port. }
+  if (FTransport = nil) or (not FTransport.PortOpen) or
+     (not FCapture.Locked) then
+  begin
+    if FSimulated then
+      FLastError := 'The simulated device transport did not open.'
+    else
+      FLastError := MissingTransportMessage(FGrab.Device);
+    FGrab.LockError := FLastError;
+    DoLog(FLastError);
+    Exit;
+  end;
+
+  FStage := ssLocked;
   if FSimulated then
     DoLog('Simulated device attached instead of a phone. Every result of this ' +
       'session is flagged SIMULATED.')
   else
     DoLog('Port ' + FGrab.PortName + ' is now held exclusively. No other ' +
       'program can open it until this job finishes.');
-  if FGrab.Device.Mode <> '' then
-    DoLog('Device: ' + DescribeDevice(FGrab.Device));
 
   if ANeed = coCapture then
   begin
@@ -681,12 +734,29 @@ begin
     Exit;
   end;
 
-  FStage := ssLocked;
   FSimulated := FGrab.Simulated;
   FTransport := FCapture.TakeTransport;
-  DoLog('Port ' + FGrab.PortName + ' is now held exclusively.');
   if FGrab.Device.Mode <> '' then
     DoLog('Device: ' + DescribeDevice(FGrab.Device));
+
+  if (FTransport = nil) or (not FTransport.PortOpen) or
+     (not FCapture.Locked) then
+  begin
+    if FSimulated then
+      FLastError := 'The simulated device transport did not open.'
+    else
+      FLastError := MissingTransportMessage(FGrab.Device);
+    FGrab.LockError := FLastError;
+    DoLog(FLastError);
+    Exit;
+  end;
+
+  FStage := ssLocked;
+  if FSimulated then
+    DoLog('Simulated device attached instead of a phone. Every result of this ' +
+      'session is flagged SIMULATED.')
+  else
+    DoLog('Port ' + FGrab.PortName + ' is now held exclusively.');
 
   if ANeed = coCapture then
   begin
@@ -757,8 +827,8 @@ begin
   end;
 
   if not Result then
-    DoLog('Session stopped at "' + StageName(FStage) + '". The port is being ' +
-      'released.');
+    DoLog('Session stopped at "' + StageName(FStage) +
+      '". Any open port handle is being released.');
 end;
 
 procedure TDeviceSession.Close;

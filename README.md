@@ -74,9 +74,9 @@ Address boxes use the `00000000  00000000` format (high and low 32 bits of a 64-
 Every action button — Flash, Read, Format, IMEI, Locks, Service and RPMB — now hands a job to the engine in `JobEngine.pas`. One job always runs the same lifecycle:
 
 1. **Capture.** A modal window (`CaptureForm.pas`) opens, tells you how to get the phone into the service mode this job needs, and waits. `WM_DEVICECHANGE` wakes it the moment Windows enumerates the phone, so it does not have to poll for it.
-2. **Exclusive lock.** `TDeviceCapture` opens the phone's COM port with `CreateFile(..., dwShareMode = 0)`. From that moment no other program — and no other part of this app — can open the port. The device state at the bottom of MAIN 2 reads `LOCKED COM5 - running`.
+2. **Exclusive lock.** When Windows exposes the service interface as a COM port, `TDeviceCapture` opens it with `CreateFile(..., dwShareMode = 0)`. The lock is real only after that handle succeeds; seeing a VID/PID in SetupAPI is detection, not ownership. If Windows exposes only a USB device node with no COM port, the job now stops with a driver/transport explanation and sends no protocol bytes. This build has no raw WinUSB/libusb BROM transport.
 3. **Operate.** The platform bring-up runs (MediaTek: BROM handshake → download agent), then the operation, with progress and a log line per step.
-4. **Release.** The port handle is closed from a `finally` block, whatever happened — success, failure or cancel. A crash, a cancel or an error cannot leave the phone locked.
+4. **Release.** Any acquired port handle is closed when the session ends — success, failure or cancel. A VID/PID-only candidate never acquired a handle in the first place, and is reported as detected but not locked.
 
 While a job holds the device, every input on MAIN 2 is disabled, the USB poll timer stops, `WM_DEVICECHANGE` events are logged but ignored, and *Exit* / *Change device* refuse to run. The capture window's **Close** button does not respond until the device has been released, and closing the window with **Alt+F4** during a job cancels the job first rather than dropping the phone mid-write.
 
@@ -96,7 +96,8 @@ While a job holds the device, every input on MAIN 2 is disabled, the USB poll ti
 | Unisoc / Spreadtrum flashing | `NO_PROTOCOL_UNISOC_*` — the Diag + FDL1/FDL2 protocol is not public. The bundled FDL files are catalogued, never parsed or sent |
 | Samsung flashing | `NO_PROTOCOL_SAMSUNG` — the Loke/Odin protocol is not public |
 | Qualcomm flashing | Sahara works; **firehose** (which needs the vendor `prog_firehose` for the exact chipset) is not implemented |
-| MediaTek xflash / XML DA chips | reported by the bring-up; only the legacy DA protocol is implemented |
+| MediaTek xflash / XML DA chips | reported by the bring-up; only the legacy DA protocol is implemented. MT6761/MT6762 (hwcode `$0717`, used by devices such as the Infinix Hot 8 X650C) use XFLASH and cannot be read/flashed by this build |
+| MediaTek VID/PID-only USB nodes | not treated as locked; this build requires Windows to expose an exclusive VCOM `COMx` interface. Install the compatible MediaTek driver and verify a COM number appears in Device Manager |
 | Write RPMB / Format RPMB | `RPMB_KEY` / `RPMB_RO` — RPMB needs the per-device key and cannot be erased at all |
 | Repair IMEI / Read IMEI in download mode | `IMEI_CODEC` — the NVRAM record codec is chip-specific and not public. The `nvram` / `nvdata` / `nvcfg` partitions are **backed up first**, so a repair elsewhere can be undone |
 | Unlock Network / Read Codes / Reset Password / Reset Account | the vendor algorithm or a legitimate route is explained; nothing is sent |

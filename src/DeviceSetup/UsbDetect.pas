@@ -178,11 +178,14 @@ var
   Dev: TUsbDevice;
   Known: TKnownId;
   I, Found: Integer;
-  Enumerator: UnicodeString;
 begin
   SetLength(Result, 0);
-  Enumerator := 'USB';
-  DevSet := SetupDiGetClassDevsW(nil, PWideChar(Enumerator), 0,
+  { Enumerate every present device node, not just the USB parent node. MTK
+    VCOM ports are sometimes exposed as a child under Ports (COM & LPT); that
+    child still carries the USB VID/PID in its hardware ID and its friendly
+    name contains the COM number. Restricting the search to Enumerator='USB'
+    can therefore report a VID/PID-only parent and miss the usable COM port. }
+  DevSet := SetupDiGetClassDevsW(nil, nil, 0,
     DIGCF_PRESENT or DIGCF_ALLCLASSES);
   if DevSet = HDEVINFO(INVALID_HANDLE_VALUE) then
     Exit;

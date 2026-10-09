@@ -501,7 +501,7 @@ begin
       IfThenStr(Result.BytesMoved > 0, ', ' + IntToStr(Result.BytesMoved) +
         ' bytes moved', '') + '.')
   else if Result.State = jsCancelled then
-    DoLog('Cancelled. The device port has been released.')
+    DoLog('Cancelled. Any acquired device port handle has been released.')
   else
     DoLog('Failed: ' + Result.Message);
   DoProgress(100, JobName(FParams.Kind) + ' - ' + JobStateName(Result.State));

@@ -132,10 +132,11 @@ file presence and integrity against the checked-in hash inventory; it does not
 prove vendor authenticity or exact device compatibility.
 
 Job buttons are wired to the job engine: each one opens the capture window,
-waits for the phone, takes its COM port with an exclusive handle, runs the
-operation and then releases the port (see the *Device jobs* section of the
-README for what is implemented per platform). The **screens and their geometry
-are unchanged by that work** — the capture window is a separate dialog built in
+waits for the phone, takes its COM port with an exclusive handle when Windows
+exposes one, runs the operation and then releases the port. A VID/PID-only USB
+node is not reported as locked; the app explains that the raw USB transport is
+not implemented (see the *Device jobs* section of the README). The **screens
+and their geometry are unchanged by that work** — the capture window is a separate dialog built in
 code, and nothing in `Main2Form.dfm` moved, so every screenshot contract here
 still holds byte-for-byte. Operations whose vendor protocol is not public fail
 with an explicit reason instead of reporting success.
