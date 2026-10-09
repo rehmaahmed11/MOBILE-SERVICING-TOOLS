@@ -74,7 +74,7 @@ Address boxes use the `00000000  00000000` format (high and low 32 bits of a 64-
 Every action button — Flash, Read, Format, IMEI, Locks, Service and RPMB — now hands a job to the engine in `JobEngine.pas`. One job always runs the same lifecycle:
 
 1. **Capture.** A modal window (`CaptureForm.pas`) opens, tells you how to get the phone into the service mode this job needs, and waits. `WM_DEVICECHANGE` wakes it the moment Windows enumerates the phone, so it does not have to poll for it.
-2. **Exclusive lock.** When Windows exposes the service interface as a COM port, `TDeviceCapture` opens it with `CreateFile(..., dwShareMode = 0)`. The lock is real only after that handle succeeds; seeing a VID/PID in SetupAPI is detection, not ownership. If Windows exposes only a USB device node with no COM port, the job now stops with a driver/transport explanation and sends no protocol bytes. This build has no raw WinUSB/libusb BROM transport.
+2. **Exclusive lock.** Two locks exist, tried in this order. When Windows exposes the service interface as a COM port, `TDeviceCapture` opens it with `CreateFile(..., dwShareMode = 0)`. A MediaTek phone that Windows did **not** expose as a COM port is bound the mtkclient way instead: `UsbRaw.pas` finds it as a raw USB device by VID/PID, opens it with the bundled `libusb0.dll`, detaches any kernel driver (best effort) and claims its bulk interface — while that claim lives, no other program can open the interface either. The lock is real only after one of those succeeds; seeing a VID/PID in SetupAPI is detection, not ownership. A device that neither path can lock stops the job with a driver/transport explanation and sends no protocol bytes.
 3. **Operate.** The platform bring-up runs (MediaTek: BROM handshake → download agent), then the operation, with progress and a log line per step.
 4. **Release.** Any acquired port handle is closed when the session ends — success, failure or cancel. A VID/PID-only candidate never acquired a handle in the first place, and is reported as detected but not locked.
 
@@ -83,6 +83,7 @@ While a job holds the device, every input on MAIN 2 is disabled, the USB poll ti
 | What really works | How |
 | --- | --- |
 | MediaTek BROM | `BromProtocol.pas` — handshake, hwcode/blver/target config, ME ID, SOC ID, watchdog, read/write 16/32, memory read/write, AUTH, CERT, send DA, jump DA / DA64 / BL |
+| MediaTek raw USB transport | `UsbRaw.pas` — detects the service-mode phone by VID/PID, binds it with the bundled libusb (interface claim = the exclusive lock), then the same BROM handshake and DA read/flash stack run over bulk endpoints. No VCOM driver needed for BROM/preloader/DA phones |
 | MediaTek legacy download agent | `MtkDaLegacy.pas` — full bring-up (sync, storage report, stage-2 config, stage-2 upload) and `readflash` / `write` / `format` / `switch_part` / `finish` |
 | Read / write / format any region | flash info, partition table (scatter **or** the GPT read out of the flash), Read BIN, Read Region (boot1/boot2/RPMB/user), format, wipe data, wipe partitions, erase FRP |
 | Flashing from a scatter file | `ScatterFile.pas` parses the ROM's `-Android_scatter.txt` and writes every partition marked `is_download` to its own address and hardware partition |
@@ -97,7 +98,7 @@ While a job holds the device, every input on MAIN 2 is disabled, the USB poll ti
 | Samsung flashing | `NO_PROTOCOL_SAMSUNG` — the Loke/Odin protocol is not public |
 | Qualcomm flashing | Sahara works; **firehose** (which needs the vendor `prog_firehose` for the exact chipset) is not implemented |
 | MediaTek xflash / XML DA chips | reported by the bring-up; only the legacy DA protocol is implemented. MT6761/MT6762 (hwcode `$0717`, used by devices such as the Infinix Hot 8 X650C) use XFLASH and cannot be read/flashed by this build |
-| MediaTek VID/PID-only USB nodes | not treated as locked; this build requires Windows to expose an exclusive VCOM `COMx` interface. Install the compatible MediaTek driver and verify a COM number appears in Device Manager |
+| MediaTek VID/PID-only USB nodes (no COM port) | bound over raw USB through the bundled libusb when the interface can be claimed; otherwise detected but not locked. If the claim is denied, install the libusb WinUSB filter driver (`install-filter` in the support tree's `libusb` folder) or the MediaTek VCOM driver and verify a COM number appears in Device Manager |
 | Write RPMB / Format RPMB | `RPMB_KEY` / `RPMB_RO` — RPMB needs the per-device key and cannot be erased at all |
 | Repair IMEI / Read IMEI in download mode | `IMEI_CODEC` — the NVRAM record codec is chip-specific and not public. The `nvram` / `nvdata` / `nvcfg` partitions are **backed up first**, so a repair elsewhere can be undone |
 | Unlock Network / Read Codes / Reset Password / Reset Account | the vendor algorithm or a legitimate route is explained; nothing is sent |

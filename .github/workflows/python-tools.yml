@@ -1,0 +1,41 @@
+# This workflow lints the Python tooling in src/DeviceSetup/tools with flake8.
+# It mirrors the CI check used by bkerler/mtkclient (python-app.yml): the same
+# triggers (push to main, pull requests, manual dispatch), the same runner and
+# Python setup, and the same two flake8 passes - one that fails the build on
+# syntax errors and undefined names, and one that reports style warnings
+# without failing.
+# No pip cache: unlike mtkclient this repo has no Python dependency file at
+# the root, and actions/setup-python fails outright when cache: 'pip' finds
+# no requirements.txt / pyproject.toml to key the cache on.
+# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
+
+name: Python tools (lint)
+
+on:
+  push:
+    branches:
+    - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Lint
+    runs-on: ubuntu-24.04
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: Set up Python3
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.x"
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8
+    - name: Lint with flake8
+      run: |
+        # stop the build if there are Python syntax errors or undefined names
+        flake8 src/DeviceSetup/tools --count --select=E9,F63,F7,F82 --show-source --statistics
+        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+        flake8 src/DeviceSetup/tools --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics

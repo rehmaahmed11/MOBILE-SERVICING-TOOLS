@@ -14,6 +14,7 @@ uses
   SelfTest in 'SelfTest.pas',
   DevTypes in 'DevTypes.pas',
   CommPort in 'CommPort.pas',
+  UsbRaw in 'UsbRaw.pas',
   DevNotify in 'DevNotify.pas',
   DevCapture in 'DevCapture.pas',
   MtkChips in 'MtkChips.pas',

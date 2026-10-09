@@ -11,7 +11,9 @@ unit DeviceSession;
   the user presses an action button and ends when the operation is finished.
 
       Open  ->  wait for the phone in the right service mode
-            ->  take its COM port with an EXCLUSIVE handle (the lock)
+            ->  lock it: its COM port with an EXCLUSIVE handle, or - for a
+                MediaTek phone Windows did not expose as a COM port - its
+                USB bulk interface claimed through the bundled libusb
             ->  run the platform bring-up (MediaTek: BROM handshake, then the
                 download agent)
       ...   ->  the job runs against the held session
@@ -174,6 +176,9 @@ procedure InstallSyntheticDaFactory(AFactory: TSyntheticDaFactory);
 
 implementation
 
+uses
+  UsbRaw;
+
 { -------------------------------------------------------------------- TPump }
 
 var
@@ -308,15 +313,19 @@ begin
     Identity := 'the detected USB device';
 
   if FPlatform = dpMtk then
-    AccessHint := 'Install or repair a compatible MediaTek USB VCOM/Preloader '
-      + 'driver and verify Device Manager shows a COM number. This build has '
-      + 'no raw WinUSB/libusb BROM transport.'
+    AccessHint := 'Two transports were tried: the Windows VCOM COM port and '
+      + 'a raw USB bind through the bundled libusb. Install or repair a '
+      + 'compatible MediaTek USB VCOM/Preloader driver (a COM number in '
+      + 'Device Manager) or the libusb WinUSB filter driver (install-filter '
+      + 'is in the libusb folder of the support tree) so one of them can '
+      + 'claim the device.'
   else
     AccessHint := 'Install the service driver that exposes this interface as '
       + 'a COM port, or use a supported transport.';
 
   Result := PlatformLabel(FPlatform) + ' device detected (' + Identity +
-    ') but Windows did not expose a COM/VCOM port. VID/PID detection alone is '
+    ') but neither a COM/VCOM port nor a raw USB interface could be claimed. '
+    + 'VID/PID detection alone is '
     + 'not a device lock. No protocol bytes were sent. ' + AccessHint;
 end;
 
@@ -631,9 +640,11 @@ begin
   if FGrab.Device.Mode <> '' then
     DoLog('Device: ' + DescribeDevice(FGrab.Device));
 
-  { A matching VID/PID is only detection. The no-COM path in TDeviceCapture
-    can describe a USB node, but it has not acquired a handle and there is no
-    byte transport for the BROM protocol. Never label that as a locked port. }
+  { A matching VID/PID is only detection. A lock exists only after TDeviceCapture
+    acquired something real: an exclusive COM handle, or - for a MediaTek
+    phone with no COM port - a successful libusb interface claim, which is
+    what PortOpen on the raw USB transport means. Never label a VID/PID-only
+    candidate as a locked port. }
   if (FTransport = nil) or (not FTransport.PortOpen) or
      (not FCapture.Locked) then
   begin
@@ -650,6 +661,11 @@ begin
   if FSimulated then
     DoLog('Simulated device attached instead of a phone. Every result of this ' +
       'session is flagged SIMULATED.')
+  else if FTransport is TUsbTransport then
+    DoLog('USB device ' + FGrab.PortName + ' is now claimed exclusively ' +
+      '(libusb interface ' +
+      IntToStr(TUsbTransport(FTransport).InterfaceNumber) + '). No other ' +
+      'program can use it until this job finishes.')
   else
     DoLog('Port ' + FGrab.PortName + ' is now held exclusively. No other ' +
       'program can open it until this job finishes.');

@@ -63,6 +63,7 @@
     <DCCReference Include="SelfTest.pas" />
     <DCCReference Include="DevTypes.pas" />
     <DCCReference Include="CommPort.pas" />
+    <DCCReference Include="UsbRaw.pas" />
     <DCCReference Include="DevNotify.pas" />
     <DCCReference Include="DevCapture.pas" />
     <DCCReference Include="MtkChips.pas" />
