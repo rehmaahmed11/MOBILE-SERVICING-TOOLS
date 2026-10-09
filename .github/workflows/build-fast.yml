@@ -111,6 +111,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python tools/test_da_integration.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/test_capture_contract.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Stamp build id (shown in Help)
         shell: pwsh

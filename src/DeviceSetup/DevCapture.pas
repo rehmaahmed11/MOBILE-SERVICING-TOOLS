@@ -76,10 +76,12 @@ type
     constructor Create;
     destructor Destroy; override;
 
-    { Waits up to ATimeoutMs for a phone matching APlatform, then locks its
-      port exclusively. When AAllowSimulated is True (self-test / demo) and no
-      hardware appears, a simulated transport is attached instead so the rest
-      of the pipeline can still be exercised - the outcome is flagged
+    { Waits up to ATimeoutMs for a phone matching APlatform. A serial COM
+      interface is opened exclusively when one is available; a VID/PID-only
+      USB node is returned as a detected candidate but is not a lock and has
+      no byte transport. When AAllowSimulated is True (self-test / demo) and
+      no hardware appears, a simulated transport is attached instead so the
+      rest of the pipeline can still be exercised - the outcome is flagged
       Simulated and every log line says so. }
     function WaitForDevice(APlatform: TDevPlatform; ATimeoutMs: Integer;
       AAllowSimulated: Boolean): TGrabbedPort;
@@ -155,7 +157,9 @@ end;
 function ModesForPlatform(AP: TDevPlatform): string;
 begin
   case AP of
-    dpMtk: Result := 'BROM,PRELOADER,DA,META,MTK';
+    { MTK is only the generic VID_0E8D fallback, not proof of a service
+      interface. Accept the explicit BROM / Preloader / DA / META IDs only. }
+    dpMtk: Result := 'BROM,PRELOADER,DA,META';
     dpUnisoc: Result := 'SPD,DIAG';
     dpQualcomm: Result := 'EDL,DIAG';
     dpSamsung: Result := 'DOWNLOAD,ANDROID';
@@ -269,7 +273,11 @@ var
 begin
   Result := False;
   AGrab := EmptyGrabbedPort;
-  if FLocked or (FHaveDevice and not FSimulated) then
+  { Only a live exclusive handle survives between polls. FHaveDevice is a
+    description of the current candidate, not proof of ownership: previously
+    it also short-circuited later captures after Release and returned a stale
+    VID/PID with no open transport. }
+  if FLocked then
   begin
     AGrab.Found := True;
     AGrab.PortName := FDevice.Port;
@@ -286,9 +294,9 @@ begin
     AGrab.Device := Devs[I];
     if Devs[I].Port = '' then
     begin
-      { A phone without a COM port (WinUSB interface, fastboot, adb). There is
-        no serial handle to take exclusively; remember the device and let the
-        platform back end reach it through its own driver path. }
+      { A matching USB device with no COM interface. Retain the description
+        long enough for DeviceSession to explain that it has no transport, but
+        do not mark it locked or claim that the protocol can reach it. }
       NoteDevice(Devs[I], '', False);
       FLocked := False;
       FTransport := nil;
@@ -312,8 +320,16 @@ end;
 
 function TDeviceCapture.WaitForDevice(APlatform: TDevPlatform;
   ATimeoutMs: Integer; AAllowSimulated: Boolean): TGrabbedPort;
+const
+  { Some MTK driver stacks publish the USB parent first and add its VCOM COM
+    child a little later. Wait briefly for that usable child before deciding
+    the VID/PID-only node has no serial transport. }
+  CComPortEnumerationGraceMs = 3000;
 var
   Deadline, NextPoll, NowTick: Int64;
+  PortlessAt: Int64;
+  PortlessDevice: TUsbDevice;
+  HavePortlessDevice: Boolean;
   Grab: TGrabbedPort;
   Left: Integer;
   SimError: string;
@@ -338,6 +354,12 @@ begin
   NowTick := Tick64;
   Deadline := NowTick + ATimeoutMs;
   NextPoll := 0;
+  PortlessAt := 0;
+  HavePortlessDevice := False;
+  PortlessDevice.VidPid := '';
+  PortlessDevice.Mode := '';
+  PortlessDevice.Name := '';
+  PortlessDevice.Port := '';
   FNotifier.Enabled := True;
 
   while True do
@@ -350,7 +372,8 @@ begin
     NowTick := Tick64;
     if NowTick >= Deadline then
     begin
-      Result.LockError := 'Timeout';
+      if Result.LockError = '' then
+        Result.LockError := 'Timeout';
       Break;
     end;
 
@@ -359,17 +382,54 @@ begin
       FNotifyTick := False;
       NextPoll := NowTick + 100;
       if PollOnce(APlatform, Grab) then
-        Exit(Grab)
+      begin
+        if (Grab.PortName <> '') or Grab.Simulated then
+          Exit(Grab);
+
+        { The USB parent can appear before Windows publishes the VCOM child.
+          Remember the candidate and keep polling rather than returning a
+          "successful" capture with no transport. }
+        if (not HavePortlessDevice) or
+           (Grab.Device.VidPid <> PortlessDevice.VidPid) then
+        begin
+          PortlessDevice := Grab.Device;
+          PortlessAt := NowTick;
+          HavePortlessDevice := True;
+        end;
+      end
       else
       begin
-        Result.LockError := Grab.LockError;
-        Result.HeldByOther := Grab.HeldByOther;
+        { Preserve the last actionable open error at timeout (for example a
+          sharing violation) instead of replacing it with the generic word
+          "Timeout". }
+        if Grab.LockError <> '' then
+          Result.LockError := Grab.LockError;
+        if Grab.HeldByOther then
+          Result.HeldByOther := True;
+      end;
+
+      if HavePortlessDevice and
+         (TicksSince(PortlessAt) >= CComPortEnumerationGraceMs) then
+      begin
+        Grab := EmptyGrabbedPort;
+        Grab.Found := True;
+        Grab.Device := PortlessDevice;
+        Grab.LockError := 'No COM/VCOM interface appeared within ' +
+          IntToStr(CComPortEnumerationGraceMs div 1000) + ' seconds for ' +
+          PortlessDevice.VidPid;
+        Exit(Grab);
       end;
     end;
 
     Left := Integer((Deadline - NowTick) div 1000);
     if Assigned(FOnProgress) then
-      FOnProgress(Self, '', Left);
+    begin
+      if HavePortlessDevice then
+        FOnProgress(Self, 'USB device ' + PortlessDevice.VidPid +
+          ' found; waiting for its COM/VCOM port', Left)
+      else
+        FOnProgress(Self, '', Left);
+    end;
     Sleep(20);
   end;
 
@@ -404,13 +464,23 @@ end;
 procedure TDeviceCapture.Release;
 begin
   { THE RELEASE. Called from a finally block on every job path, so the phone
-    is handed back after success, failure and cancel alike. }
+    is handed back after success, failure and cancel alike. A previously
+    detected device is not an open handle: clear that candidate too, so the
+    next job must rescan and acquire a fresh transport instead of reusing a
+    stale VID/PID-only record. }
   FLocked := False;
   if (FTransport <> nil) and (FTransport <> FPort) then
     FreeAndNil(FTransport);
   FTransport := nil;
   FPort.ClosePort;
   FSimulated := False;
+  FHaveDevice := False;
+  FDevice.VidPid := '';
+  FDevice.Mode := '';
+  FDevice.Name := '';
+  FDevice.Port := '';
+  FGrabbedAt := 0;
+  FNotifyTick := False;
 end;
 
 procedure TDeviceCapture.Cancel;

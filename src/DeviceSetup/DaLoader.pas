@@ -736,7 +736,9 @@ begin
   Result.IsOpaque := True;
   Result.FileSizeBytes := FileSizeByPath(DaFile);
   Result.Message := 'Vendor payload found for brand ' + ABrand +
-    '; exact model compatibility and authenticity are not verified.';
+    '; exact model compatibility and authenticity are not verified. This is an '
+    + 'opaque vendor container, not a plaintext DA: this build cannot decode '
+    + 'or upload it as-is.';
 end;
 
 end.

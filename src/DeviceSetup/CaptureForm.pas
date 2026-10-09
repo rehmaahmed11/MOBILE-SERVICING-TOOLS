@@ -450,13 +450,13 @@ begin
     jsCancelled:
       begin
         AddLine('CANCELLED  ' + Outcome.Message);
-        AddLine('The device port has been released.');
+        AddLine('Any acquired device port handle has been released.');
       end;
   else
     AddLine('FAILED [' + Outcome.Code + ']  ' + Outcome.Message);
-    AddLine('The device port has been released.');
+    AddLine('The session ended; no device port is currently held.');
   end;
-  AddLine('Device held for ' + Format('%d.%d s',
+  AddLine('Session duration ' + Format('%d.%d s',
     [Elapsed div 1000, (Elapsed mod 1000) div 100]) + '.');
 
   FFinished := True;

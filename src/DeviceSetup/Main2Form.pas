@@ -1414,7 +1414,7 @@ var
   Known: Boolean;
 begin
   if (not AInitial) and (FEngine <> nil) and FEngine.Busy then
-    Exit;   { a job owns the port; the list must not change under it }
+    Exit;   { a job is acquiring/using the target; keep the list stable }
   NewDevices := ScanServiceDevices;
   Sig := DevicesSignature(NewDevices);
   if (not AInitial) and (Sig = FDeviceSig) then
@@ -2267,7 +2267,12 @@ procedure TMain2Form.EngineStateChanged(Sender: TObject);
 begin
   UpdateDeviceState;
   if FEngine.Busy then
-    pbDeviceState.Hint := 'Job running - the device port is held exclusively'
+  begin
+    if FEngine.DeviceLocked then
+      pbDeviceState.Hint := 'Job running - the device port is held exclusively'
+    else
+      pbDeviceState.Hint := 'Job running - waiting for a device or transport';
+  end
   else
     Progress := 0;
 end;
@@ -2282,8 +2287,8 @@ procedure TMain2Form.DeviceChanged(Sender: TObject; AKind: TDevChangeKind;
 begin
   if FEngine.Busy then
   begin
-    { A job owns the port. Windows notifications are logged but the USB list
-      is not rescanned, so nothing can take the device away mid-operation. }
+    { A job is acquiring or using a device. Windows notifications are logged
+      but the USB list is not rescanned during the active session. }
     if AKind <> dcNodesChanged then
       Log(LMuted('[USB] ' + ADescription + ' (ignored while a job holds the ' +
         'device)'));
