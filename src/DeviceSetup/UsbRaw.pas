@@ -223,6 +223,15 @@ const
 
 { ------------------------------------------------------------- small helpers }
 
+{ GetProcAddress takes an ANSI name. Declared here with an untyped const
+  parameter - the same pattern CommPort uses for ReadFile/WriteFile - because
+  the FPC and Delphi declarations of the RTL one disagree on the parameter
+  type (PChar in both, but PChar is PAnsiChar in FPC and PWideChar in modern
+  Delphi). Callers pass an AnsiString; both compilers hand the callee a
+  pointer to its ANSI character data, so the ABI is unchanged. }
+function GetProcAddressWin(hModule: THandle; const AProcName): Pointer;
+  stdcall; external kernel32 name 'GetProcAddress';
+
 function LibUsbErrorName(AError: Integer): string;
 begin
   case AError of
@@ -451,7 +460,7 @@ var
 
   function Need(const AName: string): Pointer;
   begin
-    Result := GetProcAddress(FDll, PAnsiChar(AnsiString(AName)));
+    Result := GetProcAddressWin(FDll, AnsiString(AName));
   end;
 
 begin

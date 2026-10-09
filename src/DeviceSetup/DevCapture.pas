@@ -405,6 +405,9 @@ var
   Grab: TGrabbedPort;
   Left: Integer;
   SimError: string;
+  { Why the raw USB bind failed for the current portless candidate, so the
+    final error can report both missing transports. }
+  UsbError: string;
 begin
   Result := EmptyGrabbedPort;
   if ATimeoutMs <= 0 then
