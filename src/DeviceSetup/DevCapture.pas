@@ -13,15 +13,20 @@ unit DevCapture;
        service mode, watching both the Windows arrival notification and the
        polled device list, so it reacts the instant Device Manager picks the
        device up.
-    3. The moment a candidate port is seen the app opens it with
-       dwShareMode = 0 (TCommPort.Exclusive). Windows then answers every other
-       open request with ERROR_SHARING_VIOLATION - the device is ours and no
-       other program can take it away mid-operation.
+    3. The moment a candidate is seen it is locked. Two locks exist:
+       a COM/VCOM port is opened with dwShareMode = 0 (TCommPort.Exclusive)
+       and Windows answers every other open request with
+       ERROR_SHARING_VIOLATION; a MediaTek device that Windows did NOT
+       expose as a COM port is opened as a raw USB device and its bulk
+       interface is claimed through the bundled libusb (UsbRaw.pas, the
+       mtkclient way) - while the claim lives, no other program can open
+       that interface either. Either way the device is ours and no other
+       program can take it away mid-operation.
     4. The lock is held for the whole job. It is released only by Release,
        which every job path calls from a finally block: after success, after a
        failure and after a cancel.
 
-  Nothing here sends protocol data; it only finds and owns the port. }
+  Nothing here sends protocol data; it only finds and owns the device. }
 
 interface
 
@@ -66,9 +71,19 @@ type
     FNotifyTick: Boolean;
     FOnProgress: TCaptureProgress;
     FSimulated: Boolean;
+    { Raw-USB bind throttle: the poll loop runs every ~100 ms and a failed
+      bind must not turn into a libusb enumeration storm. }
+    FUsbLastVidPid: string;
+    FUsbLastAt: Int64;
     procedure NotifierChange(Sender: TObject; AKind: TDevChangeKind;
       const ADescription: string);
     function TryGrab(const APortName: string; const ADev: TUsbDevice;
+      out AError: string): Boolean;
+    { The mtkclient-style path for a MediaTek device that Windows did NOT
+      expose as a COM port: detect by VID/PID, open it with the bundled
+      libusb and claim its bulk interface. A successful claim is a real
+      exclusive lock - at the USB driver level instead of a file handle. }
+    function TryUsbBind(const ADev: TUsbDevice; out AGrab: TGrabbedPort;
       out AError: string): Boolean;
     procedure NoteDevice(const ADev: TUsbDevice; APortName: string;
       ASimulated: Boolean);
@@ -77,10 +92,12 @@ type
     destructor Destroy; override;
 
     { Waits up to ATimeoutMs for a phone matching APlatform. A serial COM
-      interface is opened exclusively when one is available; a VID/PID-only
-      USB node is returned as a detected candidate but is not a lock and has
-      no byte transport. When AAllowSimulated is True (self-test / demo) and
-      no hardware appears, a simulated transport is attached instead so the
+      interface is opened exclusively when one is available; a MediaTek
+      VID/PID-only USB node is bound over raw USB (interface claim) when the
+      bundled libusb can claim it. A VID/PID-only node that neither path can
+      lock is returned as a detected candidate but is not a lock and has no
+      byte transport. When AAllowSimulated is True (self-test / demo) and no
+      hardware appears, a simulated transport is attached instead so the
       rest of the pipeline can still be exercised - the outcome is flagged
       Simulated and every log line says so. }
     function WaitForDevice(APlatform: TDevPlatform; ATimeoutMs: Integer;
@@ -122,6 +139,9 @@ function CaptureHint(AP: TDevPlatform; AForceBrom: Boolean): string;
 function EmptyGrabbedPort: TGrabbedPort;
 
 implementation
+
+uses
+  UsbRaw;
 
 var
   GSimFactory: TSimTransportFactory = nil;
@@ -219,6 +239,8 @@ begin
   FNotifier := TDeviceNotifier.Create;
   FNotifier.OnChange := NotifierChange;
   FNotifier.Start(0);
+  FUsbLastVidPid := '';
+  FUsbLastAt := 0;
 end;
 
 destructor TDeviceCapture.Destroy;
@@ -264,6 +286,42 @@ begin
   Result := False;
 end;
 
+function TDeviceCapture.TryUsbBind(const ADev: TUsbDevice;
+  out AGrab: TGrabbedPort; out AError: string): Boolean;
+var
+  Usb: TUsbTransport;
+begin
+  Result := False;
+  AError := '';
+  { One attempt per second per VID/PID: a device whose bind keeps failing
+    (no driver, claimed elsewhere) is retried, but not ten times a second. }
+  if (ADev.VidPid <> '') and (ADev.VidPid = FUsbLastVidPid) and
+     (TicksSince(FUsbLastAt) < 1000) then
+    Exit;
+  FUsbLastVidPid := ADev.VidPid;
+  FUsbLastAt := Tick64;
+  Usb := TUsbTransport.Create;
+  try
+    Usb.SetVidPid(ADev.VidPid);
+    if not Usb.OpenPort(AError) then
+    begin
+      Usb.Free;
+      Exit;
+    end;
+  except
+    Usb.Free;
+    raise;
+  end;
+  { The claim succeeded: this transport owns the device now. Release frees
+    it, because it is not FPort. }
+  FTransport := Usb;
+  AGrab.Found := True;
+  AGrab.Device := ADev;
+  AGrab.PortName := Usb.PortName;
+  AGrab.Simulated := False;
+  Result := True;
+end;
+
 function TDeviceCapture.PollOnce(APlatform: TDevPlatform;
   out AGrab: TGrabbedPort): Boolean;
 var
@@ -294,9 +352,23 @@ begin
     AGrab.Device := Devs[I];
     if Devs[I].Port = '' then
     begin
-      { A matching USB device with no COM interface. Retain the description
-        long enough for DeviceSession to explain that it has no transport, but
-        do not mark it locked or claim that the protocol can reach it. }
+      { No serial interface. For MediaTek the raw USB path (the mtkclient
+        way) can still reach the phone: detect by VID/PID, open it with the
+        bundled libusb, claim its bulk interface. A successful claim IS an
+        exclusive lock - at the USB driver level instead of a file handle -
+        so it may be reported as locked. A failed claim is not. }
+      if (APlatform = dpMtk) and TryUsbBind(Devs[I], AGrab, Err) then
+      begin
+        NoteDevice(Devs[I], AGrab.PortName, False);
+        FLocked := True;
+        Exit(True);
+      end;
+      if Err <> '' then
+        AGrab.LockError := Err;
+      { A matching USB device with no COM interface and no raw USB claim.
+        Retain the description long enough for DeviceSession to explain
+        that it has no transport, but do not mark it locked or claim that
+        the protocol can reach it. }
       NoteDevice(Devs[I], '', False);
       FLocked := False;
       FTransport := nil;
@@ -360,6 +432,7 @@ begin
   PortlessDevice.Mode := '';
   PortlessDevice.Name := '';
   PortlessDevice.Port := '';
+  UsbError := '';
   FNotifier.Enabled := True;
 
   while True do
@@ -385,6 +458,12 @@ begin
       begin
         if (Grab.PortName <> '') or Grab.Simulated then
           Exit(Grab);
+
+        { Remember why the raw USB bind failed, so the final error can say
+          it: the candidate had no COM port AND its USB interface could not
+          be claimed. }
+        if Grab.LockError <> '' then
+          UsbError := Grab.LockError;
 
         { The USB parent can appear before Windows publishes the VCOM child.
           Remember the candidate and keep polling rather than returning a
@@ -417,6 +496,9 @@ begin
         Grab.LockError := 'No COM/VCOM interface appeared within ' +
           IntToStr(CComPortEnumerationGraceMs div 1000) + ' seconds for ' +
           PortlessDevice.VidPid;
+        if UsbError <> '' then
+          Grab.LockError := Grab.LockError +
+            '. Raw USB bind also failed: ' + UsbError;
         Exit(Grab);
       end;
     end;
@@ -481,6 +563,8 @@ begin
   FDevice.Port := '';
   FGrabbedAt := 0;
   FNotifyTick := False;
+  FUsbLastVidPid := '';
+  FUsbLastAt := 0;
 end;
 
 procedure TDeviceCapture.Cancel;

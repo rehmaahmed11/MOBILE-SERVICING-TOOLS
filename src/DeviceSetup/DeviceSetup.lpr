@@ -23,6 +23,7 @@ uses
   { device layer: capture, exclusive port lock, protocols, job engine }
   DevTypes,
   CommPort,
+  UsbRaw,
   DevNotify,
   DevCapture,
   MtkChips,

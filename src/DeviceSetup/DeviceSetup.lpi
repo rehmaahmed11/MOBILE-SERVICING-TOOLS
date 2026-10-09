@@ -109,6 +109,10 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
+        <Filename Value="UsbRaw.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
         <Filename Value="DevNotify.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
